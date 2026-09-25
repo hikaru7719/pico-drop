@@ -1,0 +1,11 @@
+[tasks.dev]
+description = "アーキテクチャ資料の開発サーバーを起動する"
+run = "pnpm exec vite --host 127.0.0.1 --port 5174 --strictPort"
+
+[tasks.build]
+description = "アーキテクチャ資料をビルドする"
+run = "pnpm exec vite build"
+
+[tasks.preview]
+description = "ビルドしたアーキテクチャ資料をプレビューする"
+run = "pnpm exec vite preview --host 127.0.0.1 --port 4174 --strictPort"

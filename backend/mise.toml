@@ -1,0 +1,19 @@
+[tasks.dev]
+description = "バックエンドのWorkers開発サーバーを起動する"
+run = "wrangler dev --port 8787"
+
+[tasks.gen]
+description = "バックエンドのWorkers型を生成する"
+run = "wrangler types"
+
+[tasks.check]
+description = "Workers型とTypeScriptを検査する"
+run = ["wrangler types --check", "pnpm exec tsc --noEmit"]
+
+[tasks.build]
+description = "バックエンドをビルドする（dry-run）"
+run = "wrangler deploy --dry-run --outdir dist"
+
+[tasks.deploy]
+description = "バックエンドをCloudflareへ公開する"
+run = "wrangler deploy"

@@ -1,0 +1,20 @@
+{
+	"$schema": "https://unpkg.com/oxlint@1.85.0/configuration_schema.json",
+	"plugins": ["eslint", "typescript", "oxc", "unicorn"],
+	"categories": {
+		"correctness": "error"
+	},
+	"ignorePatterns": [
+		"**/node_modules/**",
+		"**/.pnpm-store/**",
+		"**/.svelte-kit/**",
+		"**/.wrangler/**",
+		"**/dist/**",
+		"**/build/**",
+		"**/storybook-static/**",
+		"**/coverage/**",
+		"**/worker-configuration.d.ts",
+		"work/**",
+		"outputs/**"
+	]
+}

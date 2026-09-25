@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta
+			name="description"
+			content="pico-dropのアーキテクチャ。Cloudflareで接続を調整し、WebRTCで写真を端末間転送する仕組み。"
+		/>
+		<title>Architecture — pico-drop</title>
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<header class="topbar">
+			<a class="brand" href="#">pico-drop<span class="dot">●</span></a
+			><span>ENGINEERING / 01</span>
+		</header>
+		<main>
+			<section class="hero" aria-labelledby="title">
+				<p class="eyebrow">SYSTEM ARCHITECTURE · 2026.09.24</p>
+				<h1 id="title">写真は、端末から端末へ。<br /><span>接続の調整は、Cloudflareで。</span></h1>
+				<p class="intro">
+					近くにいる人へ、ブラウザから写真を渡す。pico-dropは、相手の発見と接続の調整をサーバーが担い、写真本体はWebRTC
+					DataChannelで転送する構成です。
+				</p>
+				<div class="tags">
+					<span>SvelteKit + TypeScript</span><span>Workers + Durable Objects</span
+					><span>WebRTC + TURN</span>
+				</div>
+				<nav aria-label="目次">
+					<a href="#overview">01 全体構成 ↗</a><a href="#flow">02 転送の流れ ↗</a
+					><a href="#data">03 データの境界 ↗</a><a href="#code">04 コード構成 ↗</a
+					><a href="#durable-objects">05 Durable Objects ↗</a>
+				</nav>
+			</section>
+
+			<section id="overview">
+				<div class="section-title">
+					<p class="eyebrow">01 / OVERVIEW</p>
+					<h2>2つの通信経路</h2>
+					<p>青は接続を調整する制御情報、緑は写真本体の経路。</p>
+				</div>
+				<div
+					class="diagram"
+					role="img"
+					aria-label="送信側と受信側ブラウザはHTTPSとWebSocketでFrontend Worker、Backend Worker、NearbyHubに接続。写真はブラウザ間のWebRTC DataChannelで直接転送し、直接接続できない場合はTURNで中継する。"
+				>
+					<div class="endpoints">
+						<div class="node">
+							<small>SENDER</small>
+							<h3>送信側ブラウザ</h3>
+							<p>写真選択 / 位置取得 / あいことば確認</p>
+							<span>SvelteKit UI</span>
+						</div>
+						<div class="node">
+							<small>RECEIVER</small>
+							<h3>受信側ブラウザ</h3>
+							<p>受信承諾 / プレビュー / 共有保存</p>
+							<span>SvelteKit UI</span>
+						</div>
+					</div>
+					<div class="data-path">
+						← WebRTC DataChannel →<small>写真のバイト列 · P2Pを優先</small>
+					</div>
+					<div class="relay">直接接続できない場合：Cloudflare TURNで暗号化通信を中継</div>
+					<div class="control-path">↕ HTTPS / WebSocket · セッション、送信要求、SDP / ICE ↕</div>
+					<div class="cloud">
+						<div class="node">
+							<small>WEB / FRONTEND WORKER</small>
+							<h3>SvelteKit + 静的アセット</h3>
+							<p>同一オリジンの <code>/api/*</code> を転送</p>
+						</div>
+						<div class="connector">↓ BACKEND Service Binding</div>
+						<div class="node">
+							<small>API / BACKEND WORKER</small>
+							<h3>入口とリクエスト検証</h3>
+							<p>Origin検証 / health / Hubへのルーティング</p>
+						</div>
+						<div class="connector">↓ HUB binding</div>
+						<div class="node hub">
+							<small>STATE / DURABLE OBJECT</small>
+							<h3>NearbyHub</h3>
+							<p>
+								匿名セッション · Nearby候補 · Accept / あいことば確認<br />WebSocket signaling ·
+								転送状態 · TURN資格情報の発行
+							</p>
+							<span>MVPは単一Hub（idFromName('mvp')）</span>
+						</div>
+					</div>
+				</div>
+				<p class="note">
+					開発時はViteの <code>/api</code> proxy（WebSocket対応）から
+					<code>localhost:8787</code> へ接続。本番はFrontend WorkerのService
+					Bindingを使います。TURN管理キー未設定時はSTUNのみを返すため、中継は利用できません。
+				</p>
+			</section>
+
+			<section id="flow">
+				<div class="section-title">
+					<p class="eyebrow">02 / TRANSFER LIFECYCLE</p>
+					<h2>承諾と照合を、転送の前に。</h2>
+				</div>
+				<ol class="steps">
+					<li>
+						<h3>匿名セッションを作成</h3>
+						<p>
+							<code>POST /api/session</code> でID・表示名・秘密トークンを取得。<code>/api/ws</code>
+							に接続し、最初のメッセージで認証します。
+						</p>
+					</li>
+					<li>
+						<h3>近くの候補を発見</h3>
+						<p>
+							Geolocationで取得した位置をpresenceとして送信。Hubが座標と精度から候補を判定し、端末IDと表示名を返します。距離や同室を保証する機能ではありません。
+						</p>
+					</li>
+					<li>
+						<h3>写真を選び、受信を承諾</h3>
+						<p>
+							まず送るのは名前・形式・サイズなどのメタデータ。受信者がAcceptし、送信者から聞いたあいことばを8枚の絵付きカードから正しく選ぶとHubがstartを通知します。誤答の場合は転送を中止します。
+						</p>
+					</li>
+					<li>
+						<h3>WebRTC接続を確立</h3>
+						<p>
+							<code>POST /api/ice</code>
+							で接続設定を取得。WebSocketでSDP・ICE候補を交換し、DataChannelを開きます。TURN設定時は短命の資格情報を発行します。
+						</p>
+					</li>
+					<li>
+						<h3>写真を分割転送・検証</h3>
+						<p>
+							16
+							KiBのチャンクと送信バッファ制御で転送。受信側は順序・サイズ・SHA-256を検証し、すべての写真を受信したら完了を通知します。
+						</p>
+					</li>
+					<li>
+						<h3>端末でプレビュー・保存</h3>
+						<p>
+							受信したFileをブラウザに一時保持。ユーザー操作でWeb Share
+							APIを呼び、共有シートから保存します。共有APIの成功は写真アプリへの保存確認を意味しません。
+						</p>
+					</li>
+				</ol>
+			</section>
+
+			<section id="data">
+				<div class="section-title">
+					<p class="eyebrow">03 / DATA BOUNDARIES</p>
+					<h2>写真をサーバーに保存しない。</h2>
+					<p>制御用の短命データは、写真本体とは別に管理します。</p>
+				</div>
+				<div class="cards">
+					<article>
+						<span class="card-label">BROWSER</span>
+						<h3>写真本体を扱う場所</h3>
+						<p>
+							元のFile、受信チャンク、プレビュー用Object
+							URLを保持。画面を開いて転送し、終了時に不要なバッファやURLを解放します。
+						</p>
+					</article>
+					<article>
+						<span class="card-label">DURABLE OBJECT</span>
+						<h3>接続を再開できる状態</h3>
+						<p>
+							セッション、転送メタデータ、期限付きレート制限をDOストレージに保存。位置・presence等はWebSocket
+							attachmentで保持し、Hibernation後にも利用します。期限切れをalarmで削除します。
+						</p>
+					</article>
+					<article>
+						<span class="card-label">TURN</span>
+						<h3>通信の中継</h3>
+						<p>
+							直接接続できないときに暗号化通信を中継。アプリは写真をR2・D1・KV・DOストレージに保存しません。管理用秘密トークンはバックエンドに置きます。
+						</p>
+					</article>
+				</div>
+				<div class="table-wrap">
+					<table>
+						<caption>
+							現行コードの制限値（shared/protocol.ts）
+						</caption>
+						<thead>
+							<tr>
+								<th scope="col">項目</th>
+								<th scope="col">設定</th>
+								<th scope="col">意味</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>写真</td>
+								<td>10枚 / 合計50 MiB</td>
+								<td>JPEG・PNG・WebP・HEIC/HEIFを対象</td>
+							</tr>
+							<tr>
+								<td>セッション / presence</td>
+								<td>30分 / 90秒</td>
+								<td>匿名セッションの期限 / 候補の鮮度</td>
+							</tr>
+							<tr>
+								<td>受信待ち / 転送</td>
+								<td>2分 / 10分</td>
+								<td>要求・転送状態の有効期限</td>
+							</tr>
+							<tr>
+								<td>Nearby</td>
+								<td>300m + 両端末の精度補正</td>
+								<td>補正は各最大500m。精密な近接判定ではない</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
+
+			<section id="code">
+				<div class="section-title">
+					<p class="eyebrow">04 / REPOSITORY MAP</p>
+					<h2>UI・接続・転送を分離する。</h2>
+				</div>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th scope="col">パス</th>
+								<th scope="col">責務</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td><code>frontend/src/routes/</code></td>
+								<td>SvelteKit UI、本番のAPIプロキシ</td>
+							</tr>
+							<tr>
+								<td><code>frontend/src/lib/webrtc/</code></td>
+								<td>peer：接続 / signaling：制御通信 / transfer：写真転送</td>
+							</tr>
+							<tr>
+								<td><code>frontend/src/lib/discovery/</code></td>
+								<td>位置情報の取得</td>
+							</tr>
+							<tr>
+								<td><code>frontend/src/lib/photos/</code></td>
+								<td>写真の形式判定、メタデータ、共有保存</td>
+							</tr>
+							<tr>
+								<td><code>backend/src/index.ts</code></td>
+								<td>Worker API、NearbyHub、TURN資格情報発行</td>
+							</tr>
+							<tr>
+								<td><code>shared/protocol.ts</code></td>
+								<td>通信型、入力検証、状態遷移の認可、共通制限</td>
+							</tr>
+							<tr>
+								<td><code>docs/</code></td>
+								<td>設計資料と、この静的HTMLのViteサーバー</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<aside class="status">
+					<h3>実装と検証の境界</h3>
+					<p>
+						このページは2026-09-24時点のワークスペース内のコードと設計メモを整理したものです。コードの存在は本番稼働や実機検証の完了を意味しません。iPhone
+						Safariでの保存・HEICプレビュー・異なる回線でのTURN接続は実機検証が必要です。現在の単一Hubによる探索はMVP向けで、エリア分割は今後の設計項目です。
+					</p>
+				</aside>
+			</section>
+			<section id="durable-objects">
+				<div class="section-title">
+					<p class="eyebrow">05 / DURABLE OBJECTS</p>
+					<h2>複数の端末が、同じ状態を共有する場所。</h2>
+					<p>
+						Durable
+						Objects（DO）は、一意のIDで呼び出せる実行単位に、専用の永続ストレージを組み合わせたCloudflareの仕組みです。pico-dropでは、両端末の状況を把握する「待ち合わせ場所」として使います。
+					</p>
+				</div>
+				<div class="table-wrap">
+					<table>
+						<caption>
+							通常のWorkerとDurable Objectの役割
+						</caption>
+						<thead>
+							<tr>
+								<th scope="col">観点</th>
+								<th scope="col">Worker</th>
+								<th scope="col">Durable Object</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>リクエストの行き先</td>
+								<td>複数の実行インスタンスで処理。毎回同じメモリに届く保証はない</td>
+								<td>同じ名前空間・IDへの呼び出しは、同じ論理オブジェクトへ届く</td>
+							</tr>
+							<tr>
+								<td>状態の管理</td>
+								<td>インスタンスの変数を、全端末共通の状態としては使えない</td>
+								<td>オブジェクトごとのメモリと、再起動後も残る専用ストレージを持つ</td>
+							</tr>
+							<tr>
+								<td>このアプリでの担当</td>
+								<td>APIの入口、Origin検証、Hubへの転送</td>
+								<td>接続中の端末、受信承諾、あいことば、転送状態の調整</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<p class="note">
+					同じIDは同じ論理的な窓口を指しますが、同じプロセスが永久に動き続けるわけではありません。概要は<a
+						href="https://developers.cloudflare.com/durable-objects/concepts/what-are-durable-objects/"
+						>Cloudflare公式：What are Durable Objects?</a
+					>を参照してください。
+				</p>
+
+				<h3>pico-dropでは、NearbyHubが両者を仲介する</h3>
+				<div
+					class="diagram"
+					role="img"
+					aria-label="送信者のrequestと受信者のaccept・confirmを、同じNearbyHub mvpが受け取る。受信承諾と受信者のあいことば選択が正しく完了すると、両端末にstartを通知する。"
+				>
+					<div class="endpoints">
+						<div class="node">
+							<small>SENDER → HUB</small>
+							<h3>送信者</h3>
+							<p>request：送りたい写真の情報<br />あいことばを相手に伝える</p>
+						</div>
+						<div class="node">
+							<small>RECEIVER → HUB</small>
+							<h3>受信者</h3>
+							<p>accept：受信を承諾<br />confirm：選択したあいことば</p>
+						</div>
+					</div>
+					<div class="connector">↓ 同じHubに両者の操作を集約 ↓</div>
+					<div class="node hub">
+						<small>NEARBY HUB / mvp</small>
+						<h3>承諾済み ＋ 受信者のあいことばが一致</h3>
+						<p>
+							転送状態を更新し、両端末にstartを通知。<br />その後のSDP・ICE候補も、相手のWebSocketに届けます。
+						</p>
+					</div>
+				</div>
+				<p class="note">
+					実装では
+					<code>env.HUB.get(env.HUB.idFromName('mvp'))</code>
+					で同じHubを選びます。DOのJavaScriptは単一スレッドで動きますが、非同期処理の待機中には別イベントが進み得ます。このコードは主要な状態更新を
+					<code>blockConcurrencyWhile()</code>
+					で囲み、処理途中への別イベントの割り込みを抑えています。
+				</p>
+
+				<div class="cards">
+					<article>
+						<span class="card-label">STORAGE</span>
+						<h3>残す状態を明示する</h3>
+						<p>
+							<code>ctx.storage</code>
+							にセッション、転送メタデータ、レート制限を保存します。保存したデータは通常の変数と違い、オブジェクトがメモリから外れても残ります。このアプリでは期限を付け、alarmで削除します。
+						</p>
+					</article>
+					<article>
+						<span class="card-label">HIBERNATION</span>
+						<h3>接続を保って休止する</h3>
+						<p>
+							<code>ctx.acceptWebSocket()</code>
+							で受けた接続は、DOが休止しても維持されます。イベントで復帰するとメモリ内の変数は再初期化されるため、接続ごとの情報は
+							<code>serializeAttachment()</code> で保持し、復帰時に読み出します。
+						</p>
+					</article>
+					<article>
+						<span class="card-label">ALARM</span>
+						<h3>期限切れを片付ける</h3>
+						<p>
+							現在は接続や保存データが残っている間、約15秒ごとにalarmを予約。期限切れセッション・転送を整理し、古い位置情報を候補から除きます。alarmやメッセージで復帰するため、更新頻度は実行量にも影響します。
+						</p>
+					</article>
+				</div>
+				<p class="note">
+					Hibernation中は実行時間に対する課金が発生しません。リクエストやストレージなどの料金とは別の扱いです。attachmentは接続に紐づく情報であり、切断後の再接続や転送の途中再開を保証するものではありません。<a
+						href="https://developers.cloudflare.com/durable-objects/best-practices/websockets/"
+						>Cloudflare公式：WebSocket Hibernation</a
+					>
+				</p>
+				<aside class="status">
+					<h3>規模が増えたときの設計</h3>
+					<p>
+						現在は全端末を1つのHubに集め、アプリ側でWebSocketを最大200接続に制限しています。DO全体の製品上限を示す数字ではありません。利用が増えたらエリアや部屋ごとに別IDのHubへ分ける設計が必要です。その際は、隣接エリアの候補探索や移動時の所属変更も設計します。写真本体は引き続きDataChannelで転送します。
+					</p>
+				</aside>
+			</section>
+
+			<footer>
+				<span>pico-drop / Share photos nearby.</span><span>Architecture notes · 01</span>
+			</footer>
+		</main>
+	</body>
+</html>

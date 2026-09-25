@@ -1,0 +1,56 @@
+monorepo_root = true
+
+[monorepo]
+config_roots = ["frontend", "backend", "docs"]
+
+[tools]
+node = "24.20.0"
+pnpm = "10.34.5"
+"npm:wrangler" = "4.138.0"
+"npm:oxfmt" = "0.70.0"
+"npm:oxlint" = "1.85.0"
+
+[settings]
+npm.package_manager = "npm"
+
+[tasks.setup]
+description = "依存パッケージをインストールし、開発用の型を生成する"
+run = ["pnpm install --frozen-lockfile", { task = "//:gen" }, { task = "//frontend:sync" }]
+
+[tasks.dev]
+description = "フロントエンドとバックエンドを並列起動する"
+depends = ["//frontend:dev", "//backend:dev"]
+
+[tasks.gen]
+description = "Cloudflare Workersの型を生成する"
+depends = ["//frontend:gen", "//backend:gen"]
+
+[tasks.check]
+description = "フロントエンドとバックエンドの型を検査する"
+depends = ["//frontend:check", "//backend:check"]
+
+[tasks.build]
+description = "アプリと資料をビルドする（公開しない）"
+depends = ["//frontend:build", "//backend:build", "//docs:build"]
+
+[tasks.lint]
+description = "ソースとテストをoxlintで検査する"
+run = "oxlint --deny-warnings frontend backend shared tests"
+
+[tasks."lint:fix"]
+description = "oxlintの自動修正を適用する"
+run = "oxlint --deny-warnings --fix frontend backend shared tests"
+
+[tasks.format]
+description = "oxfmtで整形する"
+env.NODE_PATH = "{{ config_root }}/node_modules"
+run = "oxfmt --write ."
+
+[tasks."format:check"]
+description = "oxfmtで整形を検査する"
+env.NODE_PATH = "{{ config_root }}/node_modules"
+run = "oxfmt --check ."
+
+[tasks.test]
+description = "ユニットテストを実行する"
+run = "node --experimental-transform-types --test tests/*.test.ts"

@@ -1,0 +1,46 @@
+[tasks.sync]
+description = "SvelteKitの設定と型を同期する"
+run = "pnpm exec svelte-kit sync"
+
+[tasks.dev]
+description = "SvelteKit開発サーバーを起動する"
+depends = ["//frontend:sync"]
+run = "pnpm exec vite dev"
+
+[tasks.gen]
+description = "フロントエンドのWorkers型を生成する"
+run = "wrangler types"
+
+[tasks.check]
+description = "Workers型とSvelte/TypeScriptを検査する"
+depends = ["//frontend:sync"]
+run = ["wrangler types --check", "pnpm exec svelte-check --tsgo --tsconfig ./tsconfig.json"]
+
+[tasks."check:watch"]
+description = "Svelte/TypeScriptを継続的に検査する"
+depends = ["//frontend:sync"]
+run = "pnpm exec svelte-check --tsgo --tsconfig ./tsconfig.json --watch"
+
+[tasks.build]
+description = "フロントエンドをビルドする"
+depends = ["//frontend:sync"]
+run = ["wrangler types --check", "pnpm exec vite build"]
+
+[tasks.preview]
+description = "ビルドしたフロントエンドをWorkersでプレビューする"
+run = "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173"
+
+[tasks.deploy]
+description = "フロントエンドをビルドしてCloudflareへ公開する"
+depends = ["//frontend:build"]
+run = "wrangler deploy"
+
+[tasks.storybook]
+description = "画面のStorybookを起動する（port 6006）"
+depends = ["//frontend:sync"]
+run = "pnpm run storybook"
+
+[tasks."build-storybook"]
+description = "Storybookの静的サイトをビルドする"
+depends = ["//frontend:sync"]
+run = "pnpm run build-storybook"

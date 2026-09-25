@@ -1,0 +1,20 @@
+{
+	"$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+	"name": "pico-drop-backend",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-24",
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "HUB",
+				"class_name": "NearbyHub"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["NearbyHub"]
+		}
+	]
+}

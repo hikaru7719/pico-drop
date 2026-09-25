@@ -1,0 +1,12 @@
+{
+	"name": "pico-drop",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"svelte": "5.57.1"
+	},
+	"engines": {
+		"node": ">=24 <25"
+	},
+	"packageManager": "pnpm@10.34.5"
+}

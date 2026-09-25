@@ -1,0 +1,10 @@
+{
+	"name": "@pico-drop/backend",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"@types/node": "24.13.6",
+		"typescript": "7.0.2"
+	}
+}

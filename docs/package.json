@@ -1,0 +1,9 @@
+{
+	"name": "@pico-drop/docs",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"vite": "8.3.1"
+	}
+}

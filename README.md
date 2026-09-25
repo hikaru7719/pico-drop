@@ -1,0 +1,120 @@
+# pico-drop
+
+Share photos nearby.
+
+近くにいる人へ、ブラウザから写真を渡すサービス。Bunは不要です。
+
+## 構成
+
+```text
+frontend/  SvelteKit / TypeScript / Cloudflare Workers
+backend/   TypeScript / Cloudflare Workers / Durable Objects
+docs/      設計方針・開発メモ
+```
+
+frontend・backend・docsはpnpmワークスペースの独立したパッケージです。共通設定とlockfileをルートで管理します。
+
+依存パッケージはexactバージョンで指定し、`.npmrc` の `save-exact=true` により `pnpm add` でも固定します。更新時はpackage.jsonとlockfileをあわせて更新してください。
+
+バックエンドはTypeScript 7.0.2のGo製コンパイラ（旧称tsgo）を使用します。正式版のコマンド名は `tsc` です。フロントエンドは `@typescript/native` エイリアスでTypeScript 7.0.2を併用し、通常・watchともに `svelte-check --tsgo` で型検査します。SvelteKitとSvelte関連ツールの内部処理用に `typescript` は6.0.3を維持します。
+
+## セットアップ
+
+miseをインストール済みの環境で実行します。Node.js・pnpm・Wrangler・oxfmt・oxlintは `mise.toml` に固定し、miseでインストールします。SvelteKit・TypeScriptなどプロジェクトの依存パッケージはpnpmで管理します。
+
+```sh
+mise trust
+mise run setup
+mise run dev
+```
+
+通常はフロントエンドが http://localhost:5173 、バックエンドが http://localhost:8787 で起動します。タスクは `mise run` で実行します。シェルへのmiseの有効化は不要です。
+
+```sh
+mise run //frontend:dev
+mise run //backend:dev
+mise run check
+mise run test
+mise run lint
+mise run format:check
+mise run build
+mise run //frontend:preview
+```
+
+`mise run setup` は依存のインストール、Workers型の生成、SvelteKitの同期を順に実行します。依存更新のために `mise exec -- pnpm install` を直接実行した場合は、`mise run //frontend:sync` でSvelteKitを同期してください。
+
+タスク一覧は `mise tasks ls --all` で確認できます。ルートのタスクはルートディレクトリで実行します。他のディレクトリからルートのlintを実行する場合は `mise run //:lint` のように指定します。
+
+Wrangler設定変更後は `mise run gen` で型を再生成します。整形は `mise run format`。
+
+整形設定は `.oxfmtrc.json`、lint設定は `.oxlintrc.json` で管理します。lintは `frontend/`・`backend/`・`shared/`・`tests/` が対象です。生成ファイル・ビルド出力・作業用ディレクトリは対象外にしています。設定のJSON Schemaはmiseで固定したバージョンを参照するため、ツール更新時にあわせて更新してください。
+
+関数間は空行を1行入れて記述します。oxfmtは既存の空行を保持しますが、関数間に空行を自動挿入する設定はありません。`printWidth: 100` は長い行の折り返しの目安です。Svelteの整形にはルートの `svelte` 依存と、formatタスクの `NODE_PATH` を使用します。
+
+## 現在の実装範囲
+
+匿名セッション、位置情報によるNearby探索、受信承諾・8択のあいことば確認、WebRTCによる複数枚転送、進捗・キャンセル・プレビュー・共有保存を実装しています。1回10枚・合計50MBまで。写真をサーバーに保存しません。
+
+2つのブラウザでページを開き、双方で「近くの人を探す」を押してください。送信側で写真と相手を選び、受信側が承諾し、送信側から聞いたあいことばを8枚のカードから選ぶと転送します。受け取った写真は、共有シートまたは個別ダウンロードから保存できます。
+
+TURN未設定時はSTUNと直接接続のみです。iPhone Safari実機、異なる回線、TURN強制接続、実際のHEIC/HEIF保存は未検証です。暫定値・テスト・公開前の確認項目は [MVP実装メモ](docs/mvp.md) を参照してください。
+
+仕様は `docs/pico-drop-design.md`、実装順序は `docs/development.md` を参照してください。
+
+## 公開
+
+```sh
+mise exec -- wrangler login
+mise run //backend:deploy
+mise run //frontend:deploy
+```
+
+公開する段階で実行してください。`mise run build` はフロントエンド・資料のビルドとバックエンドのdry-runを行い、リモートに公開しません。
+
+frontendは `BACKEND` service bindingでbackendへ同一オリジンの `/api/*` を転送します。backendを先にデプロイしてください。開発時はViteのHTTP/WebSocket proxyを利用します。
+
+TURNを有効にする場合は、backendディレクトリで `mise exec -- wrangler secret put TURN_KEY_ID` と `mise exec -- wrangler secret put TURN_KEY_API_TOKEN` を実行します。管理鍵はブラウザに渡しません。ローカルでは `backend/.dev.vars` に同名の値を設定できます。このファイルはGit管理しません。
+
+参考: [SvelteKit Cloudflare adapter](https://svelte.dev/docs/kit/adapter-cloudflare)、[mise](https://mise.jdx.dev/configuration.html)、[pnpm workspace](https://pnpm.io/workspaces)
+
+## GitHub Actions
+
+- `.github/workflows/build.yml`: PR・mainへのpush・手動実行で、セットアップとfrontend・backend・docsのビルドを実行します。
+- `.github/workflows/deploy.yml`: mainを選択した手動実行で、同じセットアップとビルドを実行後、backend→frontendの順にCloudflare Workersへ公開します。docsは公開対象に含みません。
+
+GitHubのSettings → Environmentsで `production` を作成し、次のEnvironment secretsを登録してください。
+
+- `CLOUDFLARE_API_TOKEN`: 対象アカウントのWorkersをデプロイできるAPIトークン。
+- `CLOUDFLARE_ACCOUNT_ID`: デプロイ先のCloudflareアカウントID。
+
+Actions → Deploy → Run workflowで `main` を選ぶと公開できます。他のブランチではデプロイジョブをスキップします。同時デプロイは直列化し、実行中のデプロイはキャンセルしません。
+
+ツールは既存の `mise.toml`、依存はlockfileを使います。すべての `uses` は40桁のコミットSHAで固定しています。アクション更新時は公式リポジトリでタグに対応するSHAを確認し、両ワークフローのSHAとバージョンコメントをあわせて更新してください。
+
+## アーキテクチャ資料
+
+`docs/index.html` に現在のアーキテクチャをまとめています。
+
+```sh
+mise run //docs:dev
+```
+
+http://127.0.0.1:5174 で閲覧できます。`mise run dev` はアプリ用で、資料サーバーは別途起動します。HTML・CSSの変更は自動反映されます。
+
+`mise run //docs:build` で `docs/dist/` に静的ファイルを生成し、`mise run //docs:preview` で http://127.0.0.1:4174 からビルド結果を確認できます。
+
+## 意思決定の記録
+
+- [ADR-0001: タスク実行をmiseに集約する](docs/adr/0001-use-mise-for-task-execution.md)
+
+## Storybook
+
+`mise run //frontend:storybook` で起動し、http://127.0.0.1:6006/ を開きます。
+`mise run //frontend:build-storybook` で `frontend/storybook-static/` に静的出力します。
+
+「画面 / 写真を共有」から探索前、探索中、相手選択、写真選択、あいことば確認、転送、受信完了、エラーなど20状態を確認できます。
+「コンポーネント / 探索の波紋」ではアニメーション単体を確認できます。
+
+本番と共通の `DropView.svelte` を固定データで表示します。バックエンド、位置情報の許可、WebRTCは不要です。
+ボタンはStorybookのアクション記録用で、実際の通信や画面遷移は実行しません。状態の切り替えはサイドバーから行ってください。
+新しい画面状態は `DropView.stories.ts` に追加します。

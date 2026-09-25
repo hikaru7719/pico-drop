@@ -1,0 +1,26 @@
+{
+	"$schema": "https://unpkg.com/oxfmt@0.70.0/configuration_schema.json",
+	"useTabs": true,
+	"tabWidth": 2,
+	"semi": true,
+	"singleQuote": true,
+	"trailingComma": "none",
+	"printWidth": 100,
+	"endOfLine": "lf",
+	"insertFinalNewline": true,
+	"svelte": true,
+	"ignorePatterns": [
+		"**/node_modules/**",
+		"**/.pnpm-store/**",
+		"**/.svelte-kit/**",
+		"**/.wrangler/**",
+		"**/dist/**",
+		"**/build/**",
+		"**/storybook-static/**",
+		"**/coverage/**",
+		"**/worker-configuration.d.ts",
+		"work/**",
+		"outputs/**",
+		"pnpm-lock.yaml"
+	]
+}
