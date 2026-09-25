@@ -7,7 +7,7 @@
 	type Props = {
 		flowStarted?: boolean;
 		session?: Session | undefined;
-		connection?: 'connecting' | 'online' | 'offline';
+		connection?: 'idle' | 'connecting' | 'online' | 'offline';
 		devices?: Device[];
 		recipient?: Device | undefined;
 		photosHeading?: HTMLHeadingElement | undefined;
@@ -45,7 +45,7 @@
 	let {
 		flowStarted = $bindable(false),
 		session = $bindable(undefined),
-		connection = $bindable('connecting'),
+		connection = $bindable('idle'),
 		devices = $bindable([]),
 		recipient = $bindable(undefined),
 		photosHeading = $bindable(undefined),
@@ -152,7 +152,9 @@
 					? session?.name
 					: connection === 'connecting'
 						? '接続中…'
-						: 'オフライン'}</span
+						: connection === 'idle'
+							? '未接続'
+							: 'オフライン'}</span
 			>
 		</div>
 	</header>
@@ -289,7 +291,7 @@
 					{#if !discovering && !searching}
 						<button
 							class="primary"
-							disabled={connection !== 'online'}
+							disabled={connection === 'connecting'}
 							onclick={() => {
 								flowStarted = true;
 								startDiscovery();
@@ -401,11 +403,6 @@
 			<p class="description">
 				iPhoneでは共有シートから「画像を保存」を選んでください。ページを閉じると、受け取った写真は破棄されます。次の転送の前に、保存を確認して写真を破棄してください。
 			</p>
-			<div class="actions">
-				<button class="primary" disabled={sharing} onclick={save}>写真に保存・共有</button><button
-					onclick={discard}>写真を破棄する</button
-				>
-			</div>
 			<div class="gallery">
 				{#each received as item}<figure>
 						{#if item.preview}<img
@@ -418,11 +415,14 @@
 								プレビュー非対応<br /><small>元の形式で保存できます</small>
 							</div>{/if}
 						<figcaption>
-							<span>{item.file.name}</span><a href={item.url} download={item.file.name}
-								>ダウンロード</a
-							>
+							<a href={item.url} download={item.file.name}>{item.file.name}</a>
 						</figcaption>
 					</figure>{/each}
+			</div>
+			<div class="actions">
+				<button class="primary" disabled={sharing} onclick={save}>写真に保存・共有</button><button
+					onclick={discard}>写真を破棄する</button
+				>
 			</div>
 		</section>
 	{/if}
@@ -905,12 +905,14 @@
 	}
 
 	.gallery {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
 		gap: 20px;
 		margin-top: 24px;
 	}
 	figure {
+		flex: 0 1 180px;
 		margin: 0;
 		min-width: 0;
 	}
@@ -935,9 +937,10 @@
 		flex-direction: column;
 		gap: 10px;
 		font-size: 12px;
-		padding: 12px 0;
+		padding: 4px 0 12px;
 	}
-	figcaption span {
+	figcaption a {
+		text-align: center;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -1033,8 +1036,8 @@
 		.badge {
 			font-size: 11px;
 		}
-		.gallery {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
+		.gallery figure {
+			flex-basis: calc((100% - 20px) / 2);
 		}
 		figure img,
 		.no-preview {

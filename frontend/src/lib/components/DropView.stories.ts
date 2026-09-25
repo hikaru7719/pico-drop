@@ -36,7 +36,10 @@ const meta = {
 } satisfies Meta<typeof DropView>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const Initial: Story = { name: '01 探索前' };
+export const Initial: Story = {
+	name: '01 探索前',
+	args: { connection: 'idle', session: undefined }
+};
 export const Connecting: Story = {
 	name: '02 接続中',
 	args: { connection: 'connecting', session: undefined }

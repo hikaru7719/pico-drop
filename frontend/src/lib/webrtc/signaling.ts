@@ -35,8 +35,8 @@ export class Signaling {
 		this.ws.close();
 	}
 }
-export async function createSession(): Promise<Session> {
-	const response = await fetch('/api/session', { method: 'POST' });
+export async function createSession(signal?: AbortSignal): Promise<Session> {
+	const response = await fetch('/api/session', { method: 'POST', signal });
 	const data = (await response.json()) as Session & { error?: string };
 	if (!response.ok) throw new Error(data.error ?? '接続に失敗しました。');
 	return data;

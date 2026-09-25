@@ -17,7 +17,7 @@
 	type RequestInfo = Extract<ServerMessage, { type: 'requested' }>;
 	let flowStarted = $state(false);
 	let session = $state<Session>();
-	let connection = $state<'connecting' | 'online' | 'offline'>('connecting');
+	let connection = $state<'idle' | 'connecting' | 'online' | 'offline'>('idle');
 	let devices = $state<Device[]>([]);
 	let recipient = $state<Device>();
 	let photosHeading = $state<HTMLHeadingElement>();
@@ -48,6 +48,7 @@
 	let transferSection = $state<HTMLElement>();
 	let receivedSection = $state<HTMLElement>();
 	let signaling: Signaling | undefined;
+	let sessionAbort: AbortController | undefined;
 	let peer: PhotoPeer | undefined;
 	let receiver: PhotoReceiver | undefined;
 	let abort = new AbortController();
@@ -78,6 +79,24 @@
 		requesting = false;
 		confirmed = false;
 	}
+	function disconnect(state: 'idle' | 'offline' = 'idle') {
+		generation++;
+		discoveryGeneration++;
+		sessionAbort?.abort();
+		sessionAbort = undefined;
+		signaling?.close();
+		signaling = undefined;
+		cleanupTransfer();
+		clearInterval(discoverTimer);
+		discoverTimer = undefined;
+		searching = false;
+		discovering = false;
+		devices = [];
+		recipient = undefined;
+		session = undefined;
+		connection = state;
+	}
+
 	function send(message: Parameters<Signaling['send']>[0]) {
 		if (!signaling) throw new Error('再接続してください。');
 		signaling.send(message);
@@ -91,7 +110,7 @@
 				/* Already disconnected. */
 			}
 		}
-		cleanupTransfer();
+		disconnect('offline');
 		if (!completed) discard();
 	}
 	function touch() {
@@ -102,22 +121,18 @@
 		);
 	}
 	async function connect() {
-		generation++;
+		if (disposed || connection === 'connecting') return;
+		disconnect();
 		const current = generation;
-		signaling?.close();
-		cleanupTransfer();
-		clearInterval(discoverTimer);
-		discoverTimer = undefined;
-		discovering = false;
-		searching = false;
-		devices = [];
 		error = '';
+		notice = '';
 		connection = 'connecting';
-		recipient = undefined;
+		searching = true;
+		sessionAbort = new AbortController();
 		try {
 			if (!window.isSecureContext || !window.RTCPeerConnection)
 				throw new Error('HTTPSとWebRTCに対応したブラウザで開いてください。');
-			const next = await createSession();
+			const next = await createSession(sessionAbort.signal);
 			if (disposed || current !== generation) return;
 			session = next;
 			signaling = new Signaling(
@@ -138,21 +153,22 @@
 				},
 				() => {
 					if (current !== generation || disposed) return;
-					connection = 'offline';
-					devices = [];
-					clearInterval(discoverTimer);
-					discovering = false;
 					fail(new Error('接続が切れました。再接続して相手を探してください。'));
 				}
 			);
 		} catch (e) {
 			if (current === generation) {
-				connection = 'offline';
 				fail(e);
 			}
 		}
 	}
 	async function startDiscovery() {
+		if (disposed || connection === 'connecting') return;
+		flowStarted = true;
+		if (connection !== 'online') {
+			await connect();
+			return;
+		}
 		const pending = search();
 		const current = discoveryGeneration;
 		const centerCard = async () => {
@@ -171,7 +187,7 @@
 	}
 
 	async function search() {
-		if (searching || connection !== 'online') return;
+		if (searching || request || requesting || connection !== 'online') return;
 		searching = true;
 		const current = generation;
 		const discovery = ++discoveryGeneration;
@@ -196,33 +212,15 @@
 				}, 30_000);
 		} catch (e) {
 			if (current !== generation || discovery !== discoveryGeneration) return;
-			discovering = false;
-			devices = [];
-			clearInterval(discoverTimer);
-			discoverTimer = undefined;
 			locationMessage = e instanceof Error ? e.message : '位置情報を取得できません。';
-			try {
-				send({ type: 'presence', location: null });
-			} catch {
-				/* Offline. */
-			}
+			if (request) fail(e);
+			else disconnect();
 		} finally {
 			if (current === generation && discovery === discoveryGeneration) searching = false;
 		}
 	}
 	function stopDiscovery() {
-		recipient = undefined;
-		discoveryGeneration++;
-		searching = false;
-		clearInterval(discoverTimer);
-		discoverTimer = undefined;
-		discovering = false;
-		devices = [];
-		try {
-			send({ type: 'presence', location: null });
-		} catch {
-			/* Offline. */
-		}
+		disconnect();
 		locationMessage = '探索を停止しました。再開すると、近くの端末に表示されます。';
 	}
 	async function select(event: Event) {
@@ -276,7 +274,7 @@
 			if (type === 'accept') phase = 'confirm';
 			if (type === 'confirm') confirmed = true;
 			if (type === 'cancel' || type === 'reject') {
-				cleanupTransfer();
+				disconnect();
 				discard();
 				notice = type === 'reject' ? '受信を辞退しました。' : '転送を中止しました。';
 			}
@@ -287,6 +285,8 @@
 	async function handle(message: ServerMessage) {
 		if (message.type === 'ready') {
 			connection = 'online';
+			searching = false;
+			void startDiscovery();
 			return;
 		}
 		if (message.type === 'nearby') {
@@ -358,7 +358,7 @@
 				error = messages[message.reason];
 				discard();
 			}
-			cleanupTransfer();
+			disconnect();
 			if (completed && received.length) {
 				await tick();
 				receivedSection?.scrollIntoView({ block: 'start' });
@@ -511,19 +511,14 @@
 		}
 	}
 	onMount(() => {
-		void connect();
 		const leave = () => {
 			disposed = true;
-			generation++;
-			signaling?.close();
-			cleanupTransfer();
+			disconnect();
 			discard();
-			clearInterval(discoverTimer);
 		};
 		const resume = (e: PageTransitionEvent) => {
 			if (e.persisted) {
 				disposed = false;
-				void connect();
 			}
 		};
 		window.addEventListener('pagehide', leave);
@@ -564,7 +559,7 @@
 	bind:input
 	bind:transferSection
 	bind:receivedSection
-	{connect}
+	connect={startDiscovery}
 	{startDiscovery}
 	{stopDiscovery}
 	{chooseRecipient}
