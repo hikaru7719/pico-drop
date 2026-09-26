@@ -80,14 +80,14 @@ TURNを有効にする場合は、backendディレクトリで `mise exec -- wra
 ## GitHub Actions
 
 - `.github/workflows/build.yml`: PR・mainへのpush・手動実行で、セットアップとfrontend・backend・docsのビルドを実行します。
-- `.github/workflows/deploy.yml`: mainを選択した手動実行で、同じセットアップとビルドを実行後、backend→frontendの順にCloudflare Workersへ公開します。docsは公開対象に含みません。
+- `.github/workflows/deploy.yml`: mainへのpush・mainを選択した手動実行で、同じセットアップとビルドを実行後、backend→frontendの順にCloudflare Workersへ公開します。docsは公開対象に含みません。
 
 GitHubのSettings → Environmentsで `production` を作成し、次のEnvironment secretsを登録してください。
 
 - `CLOUDFLARE_API_TOKEN`: 対象アカウントのWorkersをデプロイできるAPIトークン。
 - `CLOUDFLARE_ACCOUNT_ID`: デプロイ先のCloudflareアカウントID。
 
-Actions → Deploy → Run workflowで `main` を選ぶと公開できます。他のブランチではデプロイジョブをスキップします。同時デプロイは直列化し、実行中のデプロイはキャンセルしません。
+mainへpushすると自動で公開します。Actions → Deploy → Run workflowで `main` を選んで手動で公開することもできます。他のブランチではデプロイジョブをスキップします。同時デプロイは直列化し、実行中のデプロイはキャンセルしません。
 
 ツールは既存の `mise.toml`、依存はlockfileを使います。すべての `uses` は40桁のコミットSHAで固定しています。アクション更新時は公式リポジトリでタグに対応するSHAを確認し、両ワークフローのSHAとバージョンコメントをあわせて更新してください。
 
