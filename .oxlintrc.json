@@ -4,6 +4,20 @@
 	"categories": {
 		"correctness": "error"
 	},
+	"rules": {
+		"eslint/curly": ["error", "all"],
+		"eslint/max-lines-per-function": [
+			"error",
+			{
+				"max": 10,
+				"skipBlankLines": false,
+				"skipComments": false,
+				"IIFEs": true
+			}
+		],
+		"eslint/max-params": ["error", { "max": 4 }],
+		"eslint/yoda": ["error", "never"]
+	},
 	"ignorePatterns": [
 		"**/node_modules/**",
 		"**/.pnpm-store/**",
