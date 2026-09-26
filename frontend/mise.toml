@@ -47,3 +47,8 @@ run = "pnpm run storybook"
 description = "Storybookの静的サイトをビルドする"
 depends = ["//frontend:sync"]
 run = "pnpm run build-storybook"
+
+[tasks.test]
+description = "frontendのVitestテストを実行する"
+dir = "{{ config_root }}/.."
+run = "pnpm exec vitest run --project frontend"

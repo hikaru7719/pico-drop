@@ -159,3 +159,6 @@ outputs/
 
 # Storybook output
 frontend/storybook-static/
+
+# Local browser inspection artifacts
+.playwright-cli/

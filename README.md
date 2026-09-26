@@ -47,7 +47,7 @@ mise run //frontend:preview
 
 Wrangler設定変更後は `mise run gen` で型を再生成します。整形は `mise run format`。
 
-整形設定は `.oxfmtrc.json`、lint設定は `.oxlintrc.json` で管理します。整形はリポジトリ全体（`shared/` を含む）が対象です。lintは `frontend/`・`backend/`・`shared/`・`tests/` が対象です。生成ファイル・ビルド出力・作業用ディレクトリは対象外にしています。設定のJSON Schemaはmiseで固定したバージョンを参照するため、ツール更新時にあわせて更新してください。
+整形設定は `.oxfmtrc.json`、lint設定は `.oxlintrc.json` で管理します。整形はリポジトリ全体（`shared/` を含む）が対象です。lintは `frontend/`・`backend/`・`shared/`・`docs/` が対象です。生成ファイル・ビルド出力・作業用ディレクトリは対象外にしています。設定のJSON Schemaはmiseで固定したバージョンを参照するため、ツール更新時にあわせて更新してください。
 
 関数間は空行を1行入れて記述します。oxfmtは既存の空行を保持しますが、関数間に空行を自動挿入する設定はありません。`printWidth: 80` は長い行の折り返しの目安であり、文字列などを含むすべての行の長さを強制する上限ではありません。`singleAttributePerLine: true` で複数属性を持つ要素を1属性1行にし、`objectWrap: "preserve"` で既存のオブジェクトの改行を保持します。型定義も複数行で記述し、整形後も改行を維持します。Svelteの整形にはルートの `svelte` 依存と、formatタスクの `NODE_PATH` を使用します。
 
@@ -124,3 +124,9 @@ http://127.0.0.1:5174 で閲覧できます。`mise run dev` はアプリ用で�
 本番と共通の `DropView.svelte` を固定データで表示します。バックエンド、位置情報の許可、WebRTCは不要です。
 ボタンはStorybookのアクション記録用で、実際の通信や画面遷移は実行しません。状態の切り替えはサイドバーから行ってください。
 新しい画面状態は `DropView.stories.ts` に追加します。
+
+## テスト
+
+Vitestのテストは対象ファイルの隣に `.test.ts` として配置します。testsディレクトリは設けません。`mise run test` でfrontend・backend・docs・sharedを検証し、`mise run //frontend:test`、`mise run //backend:test`、`mise run //docs:test`、`mise run test:shared` で個別実行できます。watchは `mise run test:watch`、起動済みアプリとStorybookのブラウザ検証は `mise run test:e2e` です。
+
+- [ADR-0002: Vitestのテストを対象ファイルの隣に配置する](docs/adr/0002-colocate-vitest-tests.md)

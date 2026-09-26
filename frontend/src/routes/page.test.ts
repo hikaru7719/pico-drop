@@ -1,15 +1,12 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import { compileModule } from 'svelte/compiler';
-import { LIMITS } from '../shared/protocol.ts';
+import { LIMITS } from '../../../shared/protocol.ts';
 
 // Exercise the actual page controller with Svelte's reactive state and mocked I/O.
-const page = await readFile(
-	new URL('../frontend/src/routes/+page.svelte', import.meta.url),
-	'utf8'
-);
+const page = await readFile(new URL('./+page.svelte', import.meta.url), 'utf8');
 const script = page
 	.match(/<script lang="ts">([\s\S]*?)<\/script>/)![1]
 	.replace(/\bimport\s[\s\S]*?\sfrom\s+['"][^'"]+['"];?/g, '');
@@ -140,7 +137,7 @@ function assertIdle(app: PageFixture) {
 	assert.equal(app.sessions, 0);
 	assert.equal(app.sockets.length, 0);
 }
-void test('opening and restoring the page do not contact signaling', async () => {
+test('opening and restoring the page do not contact signaling', async () => {
 	const app = setup();
 	await flush();
 	assertIdle(app);
@@ -173,7 +170,7 @@ function assertStopped(app: PageFixture) {
 	assert.equal(app.controller.state.connection, 'idle');
 	assert.equal(app.intervals, 0);
 }
-void test('one click connects, authentication starts discovery, stop closes and restart reconnects', async () => {
+test('one click connects, authentication starts discovery, stop closes and restart reconnects', async () => {
 	const app = setup();
 	await connectOnce(app);
 	await discover(app);
@@ -183,7 +180,7 @@ void test('one click connects, authentication starts discovery, stop closes and 
 	assert.equal(app.sessions, 2);
 	app.controller.stopDiscovery();
 });
-void test('stopping an in-flight session request prevents a late WebSocket connection', async () => {
+test('stopping an in-flight session request prevents a late WebSocket connection', async () => {
 	const app = setup({ pendingSession: true });
 	const pending = app.controller.startDiscovery();
 	app.controller.stopDiscovery();
@@ -193,7 +190,7 @@ void test('stopping an in-flight session request prevents a late WebSocket conne
 	assert.equal(app.sockets.length, 0);
 	assert.equal(app.controller.state.connection, 'idle');
 });
-void test('location denial closes the connection and leaves discovery retryable', async () => {
+test('location denial closes the connection and leaves discovery retryable', async () => {
 	const app = setup({ locationError: true });
 	await app.controller.startDiscovery();
 	app.sockets[0].emit({ type: 'ready' });
@@ -211,7 +208,7 @@ async function requestTransfer(app: PageFixture) {
 	});
 }
 for (const reason of ['complete', 'cancelled']) {
-	void test(`transfer ${reason} closes signaling and stops discovery`, async () => {
+	test(`transfer ${reason} closes signaling and stops discovery`, async () => {
 		const app = setup();
 		await app.controller.startDiscovery();
 		await discover(app);

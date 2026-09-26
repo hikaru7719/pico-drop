@@ -69,7 +69,7 @@ try {
 		.filter({ hasText: '近くの人を探しています' })
 		.waitFor();
 	await a.addScriptTag({
-		path: new URL('./fixtures/browser-helpers.js', import.meta.url).pathname
+		path: new URL('./page.browser-fixture.js', import.meta.url).pathname
 	});
 	await a.waitForFunction(() => window.discoveryCentered());
 	assert.equal(

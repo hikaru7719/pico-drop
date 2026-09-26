@@ -56,12 +56,12 @@ mise run build
 
 `mise run test` はNode.js標準テストランナーで実行し、状態遷移・写真制限・座標境界・破損/順序違い/過大受信・SHA-256一致・送信キャンセル・バッファ制御・形式判定を確認する。
 
-`tests/browser.mjs` と `tests/api.mjs` は稼働中の開発サーバーとPlaywright/Chromiumがある環境で実行する。アプリの依存関係にブラウザテスト用ライブラリは追加していない。`PLAYWRIGHT_MODULE` にPlaywrightの `index.mjs` の絶対パス、必要なら `CHROME_PATH` にChromeの実行ファイルを指定する。未指定時は通常の `playwright` と付属Chromiumを使用する。
+`frontend/src/routes/page.scenario.mjs` と `backend/src/index.scenario.mjs` は稼働中の開発サーバーとPlaywright/Chromiumがある環境で実行する。Playwrightはルートの開発依存として固定している。Vitestからの一括実行は `mise run test:e2e` を使う（Storybookも起動が必要）。`PLAYWRIGHT_MODULE` にPlaywrightの `index.mjs` の絶対パス、必要なら `CHROME_PATH` にChromeの実行ファイルを指定する。未指定時は通常の `playwright` と付属Chromiumを使用する。
 
 ```sh
 # 別ターミナルで mise run dev を起動しておく
-mise exec -- node tests/api.mjs
-mise exec -- node tests/browser.mjs
+mise exec -- node backend/src/index.scenario.mjs
+mise exec -- node frontend/src/routes/page.scenario.mjs
 ```
 
 `TEST_URL` で接続先を変更可能。ブラウザテストはGeolocationを固定値にし、独立した2つのブラウザコンテキストで辞退・承諾前の接続禁止・承諾後の直接転送・複数枚転送・元データとの一致・受信データ破棄・切断を検証する。モバイル幅390pxのスクリーンショットは `/tmp/pico-drop-received.png` に出力する（`SCREENSHOT_PATH` で変更可能）。APIテストは不正Origin、トークン再利用、第三者操作、承諾前のsignaling/TURN拒否を確認する。

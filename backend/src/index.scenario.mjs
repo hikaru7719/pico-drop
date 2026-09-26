@@ -14,7 +14,7 @@ try {
 		(process.env.TEST_URL || 'http://localhost:5173') + '/api/health'
 	);
 	await page.addScriptTag({
-		path: new URL('./fixtures/api-browser.js', import.meta.url).pathname
+		path: new URL('./index.browser-fixture.js', import.meta.url).pathname
 	});
 	const result = await page.evaluate(() => window.runApiTests());
 	assert.equal(result.publicOnly, true);

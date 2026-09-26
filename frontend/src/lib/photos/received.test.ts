@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
-import { test, type TestContext } from 'node:test';
-import {
-	ReceivedPhotos,
-	type ReceivedPhoto
-} from '../frontend/src/lib/photos/received.ts';
-import { PHOTO_LIFETIME_MS } from '../shared/photos.ts';
+import { test, vi, afterEach, onTestFinished } from 'vitest';
+import { ReceivedPhotos, type ReceivedPhoto } from './received.ts';
+import { PHOTO_LIFETIME_MS } from '../../../../shared/photos.ts';
 
 const photoAccess = () => ({
 	token: 'secret',
@@ -17,13 +14,13 @@ class PhotosFixture {
 	revoked: string[] = [];
 	result: Promise<Response> = Promise.resolve(new Response('JPEG'));
 	collection: ReceivedPhotos;
-	constructor(t: TestContext) {
-		t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 10_000 });
-		this.mockIO(t);
+	constructor() {
+		vi.useFakeTimers({ toFake: ['Date', 'setTimeout'], now: 10_000 });
+		this.mockIO();
 		this.photos = [this.original()];
 		const access = photoAccess();
 		this.collection = new ReceivedPhotos(this.photos, access, this.callbacks());
-		t.after(() => this.collection.dispose());
+		onTestFinished(() => this.collection.dispose());
 	}
 
 	original(): ReceivedPhoto {
@@ -46,13 +43,13 @@ class PhotosFixture {
 		};
 	}
 
-	mockIO(t: TestContext) {
-		t.mock.method(URL, 'revokeObjectURL', (url: string) =>
+	mockIO() {
+		vi.spyOn(URL, 'revokeObjectURL').mockImplementation((url: string) =>
 			this.revoked.push(url)
 		);
-		t.mock.method(URL, 'createObjectURL', () => 'blob:derived');
-		t.mock.method(globalThis, 'fetch', (url: string, options?: RequestInit) =>
-			this.fetch(url, options)
+		vi.spyOn(URL, 'createObjectURL').mockImplementation(() => 'blob:derived');
+		vi.spyOn(globalThis, 'fetch').mockImplementation((url, options) =>
+			this.fetch(url instanceof Request ? url.url : url.toString(), options)
 		);
 	}
 
@@ -64,8 +61,8 @@ class PhotosFixture {
 	}
 }
 
-await test('JPEG conversion preserves the original and caches the result only in memory', async (t) => {
-	const fixture = new PhotosFixture(t);
+test('JPEG conversion preserves the original and caches the result only in memory', async () => {
+	const fixture = new PhotosFixture();
 	const original = fixture.photos[0].file;
 	await fixture.collection.convert(0, 'jpeg');
 	assert.equal(fixture.photos[0].file, original);
@@ -74,23 +71,23 @@ await test('JPEG conversion preserves the original and caches the result only in
 	await fixture.collection.convert(0, 'jpeg');
 	assert.equal(fixture.requests.length, 1);
 });
-await test('expiry clears originals and derivatives and revokes conversion access', async (t) => {
-	const fixture = new PhotosFixture(t);
+test('expiry clears originals and derivatives and revokes conversion access', async () => {
+	const fixture = new PhotosFixture();
 	await fixture.collection.convert(0, 'preview');
-	t.mock.timers.tick(PHOTO_LIFETIME_MS);
+	vi.advanceTimersByTime(PHOTO_LIFETIME_MS);
 	assert.equal(fixture.expired, true);
 	assert.deepEqual(fixture.photos, []);
 	assert.deepEqual(fixture.revoked, ['blob:original', 'blob:derived']);
 	assert.ok(fixture.requests.at(-1)?.url.includes('discard'));
 });
-await test('resume after a suspended timer checks the absolute deadline', (t) => {
-	const fixture = new PhotosFixture(t);
-	t.mock.timers.setTime(Date.now() + PHOTO_LIFETIME_MS);
+test('resume after a suspended timer checks the absolute deadline', () => {
+	const fixture = new PhotosFixture();
+	vi.setSystemTime(Date.now() + PHOTO_LIFETIME_MS);
 	assert.equal(fixture.collection.checkExpiry(), false);
 	assert.equal(fixture.photos.length, 0);
 });
-await test('a failed conversion retains the original for download', async (t) => {
-	const fixture = new PhotosFixture(t);
+test('a failed conversion retains the original for download', async () => {
+	const fixture = new PhotosFixture();
 	fixture.result = Promise.resolve(
 		new Response('Unavailable', { status: 503 })
 	);
@@ -99,8 +96,8 @@ await test('a failed conversion retains the original for download', async (t) =>
 	assert.ok(fixture.photos[0].problem);
 	assert.equal(fixture.photos[0].busy, false);
 });
-await test('discard aborts conversion and late responses cannot restore photos', async (t) => {
-	const fixture = new PhotosFixture(t);
+test('discard aborts conversion and late responses cannot restore photos', async () => {
+	const fixture = new PhotosFixture();
 	const resolve = pendingResponse(fixture);
 	const pending = fixture.collection.convert(0, 'preview');
 	fixture.collection.dispose();
@@ -127,3 +124,8 @@ function assertDiscarded(fixture: PhotosFixture) {
 	assert.deepEqual(fixture.photos, []);
 	assert.deepEqual(fixture.revoked, ['blob:original']);
 }
+
+afterEach(() => {
+	vi.restoreAllMocks();
+	vi.useRealTimers();
+});

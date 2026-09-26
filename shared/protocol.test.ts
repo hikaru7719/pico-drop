@@ -4,7 +4,7 @@ const deniedActions = [
 	['a', 'signal'],
 	['b', 'complete']
 ];
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
 	authorizeTransfer,
@@ -13,7 +13,7 @@ import {
 	nearby,
 	LIMITS,
 	type TransferState
-} from '../shared/protocol.ts';
+} from './protocol.ts';
 const photo = {
 	id: 'photo-1',
 	name: 'photo.jpg',
@@ -31,14 +31,14 @@ function transfer(): TransferState {
 	};
 }
 
-void test('only receiver can accept; no signaling or completion before acceptance', () => {
+test('only receiver can accept; no signaling or completion before acceptance', () => {
 	const t = transfer();
 	for (const [actor, action] of deniedActions) {
 		assert.throws(() => authorizeTransfer(t, actor, action));
 	}
 	authorizeTransfer(t, 'b', 'accept');
 });
-void test('accepted transfers restrict completion and duplicate approval', () => {
+test('accepted transfers restrict completion and duplicate approval', () => {
 	const t = { ...transfer(), started: true };
 	authorizeTransfer(t, 'a', 'signal');
 	authorizeTransfer(t, 'b', 'complete');
@@ -59,7 +59,7 @@ const invalidPhotos = [
 	[{ ...photo, size: -1 }],
 	[{ ...photo, name: '../x.jpg' }]
 ];
-void test('photo limits, MIME allowlist, unique IDs and safe names', () => {
+test('photo limits, MIME allowlist, unique IDs and safe names', () => {
 	assert.equal(validPhotos([photo]), true);
 	for (const files of invalidPhotos) {
 		assert.equal(validPhotos(files), false);
@@ -75,7 +75,7 @@ const invalidMessages = [
 	{ type: 'request', to: 'b', files: [] },
 	{ type: 'signal', id: 't', signal: { candidate: { candidate: 123 } } }
 ];
-void test('signaling validation rejects malformed messages and coordinates', () => {
+test('signaling validation rejects malformed messages and coordinates', () => {
 	for (const input of invalidMessages) {
 		assert.throws(() => parseClient(input));
 	}
@@ -89,7 +89,7 @@ const location = (latitude: number, longitude: number) => ({
 	longitude,
 	accuracy: 10
 });
-void test('nearby works across longitude boundary without returning coordinates', () => {
+test('nearby works across longitude boundary without returning coordinates', () => {
 	assert.equal(nearby(location(0, 179.999), location(0, -179.999)), true);
 	assert.equal(nearby(location(35, 139), location(36, 140)), false);
 });

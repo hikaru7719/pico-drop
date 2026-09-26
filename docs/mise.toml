@@ -9,3 +9,8 @@ run = "pnpm exec vite build"
 [tasks.preview]
 description = "ビルドしたアーキテクチャ資料をプレビューする"
 run = "pnpm exec vite preview --host 127.0.0.1 --port 4174 --strictPort"
+
+[tasks.test]
+description = "docsのVitestテストを実行する"
+dir = "{{ config_root }}/.."
+run = "pnpm exec vitest run --project docs"
