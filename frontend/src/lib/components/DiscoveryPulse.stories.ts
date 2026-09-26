@@ -9,4 +9,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Searching: Story = { name: '探索中' };
-export const Locating: Story = { name: '現在地を確認中', args: { locating: true } };
+export const Locating: Story = {
+	name: '現在地を確認中',
+	args: { locating: true }
+};

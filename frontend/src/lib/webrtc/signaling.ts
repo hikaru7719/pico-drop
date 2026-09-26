@@ -1,9 +1,17 @@
-import type { ClientMessage, ServerMessage, Session } from '../../../../shared/protocol.ts';
+import type {
+	ClientMessage,
+	ServerMessage,
+	Session
+} from '../../../../shared/protocol.ts';
 export class Signaling {
 	private ws: WebSocket;
 	private timer: ReturnType<typeof setTimeout>;
 	private closed = false;
-	constructor(session: Session, onMessage: (message: ServerMessage) => void, onClose: () => void) {
+	constructor(
+		session: Session,
+		onMessage: (message: ServerMessage) => void,
+		onClose: () => void
+	) {
 		const url = new URL('/api/ws', location.href);
 		url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
 		this.ws = new WebSocket(url);

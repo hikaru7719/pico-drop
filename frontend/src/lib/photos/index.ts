@@ -1,5 +1,9 @@
 /* eslint-disable no-control-regex -- Reject or sanitize control characters in photo names. */
-import { LIMITS, validPhotos, type PhotoMeta } from '../../../../shared/protocol.ts';
+import {
+	LIMITS,
+	validPhotos,
+	type PhotoMeta
+} from '../../../../shared/protocol.ts';
 
 export async function describePhotos(files: File[]): Promise<PhotoMeta[]> {
 	if (
@@ -13,7 +17,8 @@ export async function describePhotos(files: File[]): Promise<PhotoMeta[]> {
 			const b = new Uint8Array(await file.slice(0, 64).arrayBuffer());
 			let type = '';
 			if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) type = 'image/jpeg';
-			else if ([137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => b[i] === v)) type = 'image/png';
+			else if ([137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => b[i] === v))
+				type = 'image/png';
 			else if (
 				new TextDecoder().decode(b.slice(0, 4)) === 'RIFF' &&
 				new TextDecoder().decode(b.slice(8, 12)) === 'WEBP'
@@ -21,7 +26,8 @@ export async function describePhotos(files: File[]): Promise<PhotoMeta[]> {
 				type = 'image/webp';
 			else if (new TextDecoder().decode(b.slice(4, 8)) === 'ftyp') {
 				const brand = new TextDecoder().decode(b.slice(8, 12));
-				if (['heic', 'heix', 'hevc', 'hevx'].includes(brand)) type = 'image/heic';
+				if (['heic', 'heix', 'hevc', 'hevx'].includes(brand))
+					type = 'image/heic';
 				else if (
 					['mif1', 'msf1'].includes(brand) &&
 					['image/heic', 'image/heif'].includes(file.type)
@@ -29,16 +35,20 @@ export async function describePhotos(files: File[]): Promise<PhotoMeta[]> {
 					type = file.type;
 			}
 			if (!type)
-				throw new Error(`${file.name}: JPEG・PNG・WebP・HEIC/HEIFの写真を選んでください。`);
+				throw new Error(
+					`${file.name}: JPEG・PNG・WebP・HEIC/HEIFの写真を選んでください。`
+				);
 			return {
 				id: crypto.randomUUID(),
-				name: file.name.replace(/[\x00-\x1f/\\]/g, '_').slice(0, 100) || 'photo',
+				name:
+					file.name.replace(/[\x00-\x1f/\\]/g, '_').slice(0, 100) || 'photo',
 				size: file.size,
 				type
 			};
 		})
 	);
-	if (!validPhotos(metadata)) throw new Error('写真の形式・容量を確認してください。');
+	if (!validPhotos(metadata))
+		throw new Error('写真の形式・容量を確認してください。');
 	return metadata;
 }
 export function formatBytes(bytes: number) {

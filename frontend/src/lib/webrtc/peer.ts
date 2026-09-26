@@ -15,7 +15,10 @@ export class PhotoPeer {
 		this.pc.onicecandidate = (e) => {
 			if (e.candidate && !this.closed)
 				signal({
-					candidate: e.candidate.toJSON() as Extract<Signal, { candidate: unknown }>['candidate']
+					candidate: e.candidate.toJSON() as Extract<
+						Signal,
+						{ candidate: unknown }
+					>['candidate']
 				});
 		};
 		this.pc.ondatachannel = (e) => channel(e.channel);
@@ -26,12 +29,22 @@ export class PhotoPeer {
 				clearTimeout(this.disconnected);
 			}
 			if (state === 'failed')
-				fail(new Error('接続できませんでした。回線を確認して再試行してください。'));
+				fail(
+					new Error('接続できませんでした。回線を確認して再試行してください。')
+				);
 			if (state === 'disconnected')
-				this.disconnected = setTimeout(() => fail(new Error('相手との接続が切れました。')), 10_000);
+				this.disconnected = setTimeout(
+					() => fail(new Error('相手との接続が切れました。')),
+					10_000
+				);
 		};
 		this.timer = setTimeout(
-			() => fail(new Error('接続がタイムアウトしました。中継設定または回線を確認してください。')),
+			() =>
+				fail(
+					new Error(
+						'接続がタイムアウトしました。中継設定または回線を確認してください。'
+					)
+				),
 			45_000
 		);
 	}
@@ -39,22 +52,28 @@ export class PhotoPeer {
 		channel(this.pc.createDataChannel('photos', { ordered: true }));
 		await this.pc.setLocalDescription(await this.pc.createOffer());
 		if (!this.closed)
-			this.signal({ description: { type: 'offer', sdp: this.pc.localDescription!.sdp } });
+			this.signal({
+				description: { type: 'offer', sdp: this.pc.localDescription!.sdp }
+			});
 	}
 	async receive(signal: Signal) {
 		if (this.closed) return;
 		if ('candidate' in signal) {
-			if (this.pc.remoteDescription) await this.pc.addIceCandidate(signal.candidate);
+			if (this.pc.remoteDescription)
+				await this.pc.addIceCandidate(signal.candidate);
 			else this.candidates.push(signal.candidate);
 			return;
 		}
 		await this.pc.setRemoteDescription(signal.description);
-		for (const candidate of this.candidates) await this.pc.addIceCandidate(candidate);
+		for (const candidate of this.candidates)
+			await this.pc.addIceCandidate(candidate);
 		this.candidates = [];
 		if (signal.description.type === 'offer') {
 			await this.pc.setLocalDescription(await this.pc.createAnswer());
 			if (!this.closed)
-				this.signal({ description: { type: 'answer', sdp: this.pc.localDescription!.sdp } });
+				this.signal({
+					description: { type: 'answer', sdp: this.pc.localDescription!.sdp }
+				});
 		}
 	}
 	close() {

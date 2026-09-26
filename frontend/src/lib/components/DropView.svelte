@@ -3,7 +3,12 @@
 	import TransferProgress from './TransferProgress.svelte';
 	import PassphrasePicture from './PassphrasePicture.svelte';
 	import { formatBytes } from '$lib/photos';
-	import type { Device, PhotoMeta, ServerMessage, Session } from '../../../../shared/protocol';
+	import type {
+		Device,
+		PhotoMeta,
+		ServerMessage,
+		Session
+	} from '../../../../shared/protocol';
 	type Props = {
 		flowStarted?: boolean;
 		session?: Session | undefined;
@@ -38,7 +43,10 @@
 		chooseRecipient?: (device: Device) => void;
 		select?: (event: Event) => void;
 		invite?: (device: Device) => void;
-		action?: (type: 'accept' | 'reject' | 'confirm' | 'cancel', word?: string) => void;
+		action?: (
+			type: 'accept' | 'reject' | 'confirm' | 'cancel',
+			word?: string
+		) => void;
 		save?: () => void;
 		discard?: () => void;
 	};
@@ -52,7 +60,9 @@
 		discoverySection = $bindable(undefined),
 		discovering = $bindable(false),
 		searching = $bindable(false),
-		locationMessage = $bindable('位置情報を使って、近くでこのページを開いている人を探します。'),
+		locationMessage = $bindable(
+			'位置情報を使って、近くでこのページを開いている人を探します。'
+		),
 		selected = $bindable([]),
 		metadata = $bindable([]),
 		selecting = $bindable(false),
@@ -93,7 +103,11 @@
 		if (inFlow) flowStarted = true;
 	});
 	function centerDiscovery(event: TransitionEvent) {
-		if (event.target !== event.currentTarget || event.propertyName !== 'grid-template-rows') return;
+		if (
+			event.target !== event.currentTarget ||
+			event.propertyName !== 'grid-template-rows'
+		)
+			return;
 		if (searching || discovering)
 			discoverySection?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 	}
@@ -127,7 +141,9 @@
 		!!recipient && devices.some((device) => device.id === recipient?.id)
 	);
 	const sending = $derived(!!request && request.from.id === session?.id);
-	const total = $derived(request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0);
+	const total = $derived(
+		request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0
+	);
 	const selectedBytes = $derived(selected.reduce((sum, f) => sum + f.size, 0));
 </script>
 
@@ -141,13 +157,25 @@
 
 <main class:in-flow={inFlow}>
 	<header>
-		<a class="brand" href="/" aria-label="Pico Drop ホーム"
-			><span class="wordmark" aria-hidden="true">Pico Drop</span></a
+		<a
+			class="brand"
+			href="/"
+			aria-label="Pico Drop ホーム"
+			><span
+				class="wordmark"
+				aria-hidden="true">Pico Drop</span
+			></a
 		>
-		<div class="identity" role="status">
+		<div
+			class="identity"
+			role="status"
+		>
 			<span class="identity-label">この端末の名前</span>
 			<span class="badge"
-				><span class:online={connection === 'online'} class="dot" aria-hidden="true"
+				><span
+					class:online={connection === 'online'}
+					class="dot"
+					aria-hidden="true"
 				></span>{connection === 'online'
 					? session?.name
 					: connection === 'connecting'
@@ -158,7 +186,12 @@
 			>
 		</div>
 	</header>
-	<div class="intro-shell" class:collapsed={inFlow} aria-hidden={inFlow} inert={inFlow}>
+	<div
+		class="intro-shell"
+		class:collapsed={inFlow}
+		aria-hidden={inFlow}
+		inert={inFlow}
+	>
 		<div class="intro-clip">
 			<section class="intro">
 				<h1 aria-label={headline}>
@@ -168,7 +201,8 @@
 								aria-hidden="true"
 								>{#each [...word] as character, index}<span
 										class="headline-character"
-										class:last-character={offset + index === headline.length - 1}
+										class:last-character={offset + index ===
+											headline.length - 1}
 										style={`--type-delay: ${250 + (offset + index) * typingInterval}ms; --caret-duration: ${index === word.length - 1 && offset + index < headline.length - 1 ? typingInterval * 2 : typingInterval}ms`}
 										>{character}</span
 									>{/each}</span
@@ -179,17 +213,37 @@
 			</section>
 		</div>
 	</div>
-	{#if error}<div class="alert error" role="alert">{error}</div>{/if}
-	{#if notice}<div class="alert" role="status">{notice}</div>{/if}
-	{#if connection === 'offline'}<button class="primary reconnect" onclick={connect}
-			>再接続する</button
+	{#if error}<div
+			class="alert error"
+			role="alert"
+		>
+			{error}
+		</div>{/if}
+	{#if notice}<div
+			class="alert"
+			role="status"
+		>
+			{notice}
+		</div>{/if}
+	{#if connection === 'offline'}<button
+			class="primary reconnect"
+			onclick={connect}>再接続する</button
 		>{/if}
 	{#if !request && !(completed && received.length)}
 		<div class="workspace">
 			{#if recipient}
-				<section class="card photos" aria-labelledby="photos-heading">
+				<section
+					class="card photos"
+					aria-labelledby="photos-heading"
+				>
 					<div class="section-heading">
-						<h2 id="photos-heading" bind:this={photosHeading} tabindex="-1">写真を選んで送る</h2>
+						<h2
+							id="photos-heading"
+							bind:this={photosHeading}
+							tabindex="-1"
+						>
+							写真を選んで送る
+						</h2>
 					</div>
 					<div class="recipient-row">
 						<p class="description">送信先：{recipient?.name}</p>
@@ -201,13 +255,30 @@
 							}}>相手を選び直す</button
 						>
 					</div>
-					{#if !recipientAvailable}<p class="hint" role="status">
+					{#if !recipientAvailable}<p
+							class="hint"
+							role="status"
+						>
 							相手が見つかりません。相手の探索を確認するか、選び直してください。
 						</p>{/if}
-					<label class:disabled={!!request || requesting || selecting} class="picker"
-						><span class="photo-icon" aria-hidden="true"
-							><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8"
-								><rect x="7" y="9" width="34" height="30" rx="5" /><circle
+					<label
+						class:disabled={!!request || requesting || selecting}
+						class="picker"
+						><span
+							class="photo-icon"
+							aria-hidden="true"
+							><svg
+								viewBox="0 0 48 48"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								><rect
+									x="7"
+									y="9"
+									width="34"
+									height="30"
+									rx="5"
+								/><circle
 									cx="17"
 									cy="19"
 									r="3"
@@ -238,15 +309,20 @@
 						</div>
 						<ul class="file-list">
 							{#each selected as file, index}<li>
-									<span>{file.name}</span><small>{formatBytes(file.size)}</small>
+									<span>{file.name}</span><small>{formatBytes(file.size)}</small
+									>
 									<button
 										class="clear-selection"
 										aria-label={`${file.name}を選択から外す`}
 										title="この写真を選択から外す"
 										disabled={!!request || requesting || selecting}
 										onclick={() => {
-											selected = selected.filter((_, fileIndex) => fileIndex !== index);
-											metadata = metadata.filter((_, fileIndex) => fileIndex !== index);
+											selected = selected.filter(
+												(_, fileIndex) => fileIndex !== index
+											);
+											metadata = metadata.filter(
+												(_, fileIndex) => fileIndex !== index
+											);
 											if (input) input.value = '';
 										}}
 										><svg
@@ -277,9 +353,15 @@
 					>
 				</section>
 			{:else}
-				<section class="card" bind:this={discoverySection} aria-labelledby="nearby-heading">
+				<section
+					class="card"
+					bind:this={discoverySection}
+					aria-labelledby="nearby-heading"
+				>
 					<div class="section-heading">
-						<h2 id="nearby-heading">{devices.length ? '送る相手を選ぶ' : '近くの人を探す'}</h2>
+						<h2 id="nearby-heading">
+							{devices.length ? '送る相手を選ぶ' : '近くの人を探す'}
+						</h2>
 					</div>
 					<p class="description">
 						{discovering
@@ -312,19 +394,43 @@
 						</div>
 					{/if}
 					{#if discovering && locationMessage.includes('誤差')}
-						<p class="hint" role="status">{locationMessage}</p>
+						<p
+							class="hint"
+							role="status"
+						>
+							{locationMessage}
+						</p>
 					{:else if !discovering && !searching}
-						<p class="hint" role="status">{locationMessage}</p>
+						<p
+							class="hint"
+							role="status"
+						>
+							{locationMessage}
+						</p>
 					{/if}
 
 					{#if devices.length}<ul class="devices">
 							{#each devices as device}<li>
-									<span class="avatar" aria-hidden="true"
-										><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-											><rect x="6" y="2" width="12" height="20" rx="3" /><path d="M10 18h4" /></svg
+									<span
+										class="avatar"
+										aria-hidden="true"
+										><svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+											><rect
+												x="6"
+												y="2"
+												width="12"
+												height="20"
+												rx="3"
+											/><path d="M10 18h4" /></svg
 										></span
 									>
-									<div><strong>{device.name}</strong><small>近くで待機中</small></div>
+									<div>
+										<strong>{device.name}</strong><small>近くで待機中</small>
+									</div>
 									<button
 										aria-label={`${device.name}を選ぶ`}
 										disabled={requesting || !!received.length}
@@ -345,9 +451,15 @@
 		</div>
 	{/if}
 	{#if request}
-		<section class="card transfer" bind:this={transferSection} aria-labelledby="transfer-heading">
+		<section
+			class="card transfer"
+			bind:this={transferSection}
+			aria-labelledby="transfer-heading"
+		>
 			<h2 id="transfer-heading">
-				{sending ? `${request.to.name} へ送信` : `${request.from.name} から写真が届いています`}
+				{sending
+					? `${request.to.name} へ送信`
+					: `${request.from.name} から写真が届いています`}
 			</h2>
 			<p>{request.files.length}枚 · {formatBytes(total)}</p>
 			{#if phase === 'waiting'}
@@ -357,48 +469,80 @@
 						: 'この相手から写真を受け取りますか？承諾後に相手から聞いたあいことばを選びます。'}
 				</p>
 				{#if !sending}<div class="actions">
-						<button class="primary" onclick={() => action('accept')}>受け取る</button><button
-							onclick={() => action('reject')}>辞退する</button
-						>
+						<button
+							class="primary"
+							onclick={() => action('accept')}>受け取る</button
+						><button onclick={() => action('reject')}>辞退する</button>
 					</div>{/if}
 			{:else if phase === 'confirm'}
 				{#if request.confirmation.kind === 'tell'}
 					<p>このあいことばを、受け取る相手に伝えてください。</p>
-					<div class="passphrase" aria-label={`あいことば ${request.confirmation.word}`}>
-						<PassphrasePicture word={request.confirmation.word} />{request.confirmation.word}
+					<div
+						class="passphrase"
+						aria-label={`あいことば ${request.confirmation.word}`}
+					>
+						<PassphrasePicture word={request.confirmation.word} />{request
+							.confirmation.word}
 					</div>
-					<p class="hint" role="status">相手が同じあいことばを選ぶと、転送が始まります。</p>
+					<p
+						class="hint"
+						role="status"
+					>
+						相手が同じあいことばを選ぶと、転送が始まります。
+					</p>
 				{:else}
-					<p id="passphrase-prompt">送る相手から聞いたあいことばを選んでください。</p>
-					<div class="passphrase-options" role="group" aria-labelledby="passphrase-prompt">
+					<p id="passphrase-prompt">
+						送る相手から聞いたあいことばを選んでください。
+					</p>
+					<div
+						class="passphrase-options"
+						role="group"
+						aria-labelledby="passphrase-prompt"
+					>
 						{#each request.confirmation.options as word}<button
 								disabled={confirmed}
 								onclick={() => action('confirm', word)}
 								><PassphrasePicture {word} /><span>{word}</span></button
 							>{/each}
 					</div>
-					<p class="hint" role="status">
+					<p
+						class="hint"
+						role="status"
+					>
 						{confirmed
 							? 'あいことばを確認しています…'
 							: '選ぶと転送が始まります。違うものを選んだ場合は転送を中止します。'}
 					</p>
 				{/if}
 			{:else}
-				<TransferProgress {bytes} {total} {sending} connecting={phase === 'connecting'} />
+				<TransferProgress
+					{bytes}
+					{total}
+					{sending}
+					connecting={phase === 'connecting'}
+				/>
 				<p class="hint">完了するまで画面を開いたままにしてください。</p>
 				{#if relay === false}<p class="hint">
 						中継サーバーは未設定です。直接接続できない回線では転送に失敗することがあります。
 					</p>{/if}
 			{/if}
 			{#if sending || phase !== 'waiting'}
-				<button class="text-button" onclick={() => action('cancel')}
-					>{phase === 'confirm' ? 'あいことばが分からない・中止する' : '中止する'}</button
+				<button
+					class="text-button"
+					onclick={() => action('cancel')}
+					>{phase === 'confirm'
+						? 'あいことばが分からない・中止する'
+						: '中止する'}</button
 				>
 			{/if}
 		</section>
 	{/if}
 	{#if completed && received.length}
-		<section class="card received" bind:this={receivedSection} aria-labelledby="received-heading">
+		<section
+			class="card received"
+			bind:this={receivedSection}
+			aria-labelledby="received-heading"
+		>
 			<h2 id="received-heading">{received.length}枚の写真を受け取りました</h2>
 			<p class="description">
 				iPhoneでは共有シートから「画像を保存」を選んでください。ページを閉じると、受け取った写真は破棄されます。次の転送の前に、保存を確認して写真を破棄してください。
@@ -415,14 +559,19 @@
 								プレビュー非対応<br /><small>元の形式で保存できます</small>
 							</div>{/if}
 						<figcaption>
-							<a href={item.url} download={item.file.name}>{item.file.name}</a>
+							<a
+								href={item.url}
+								download={item.file.name}>{item.file.name}</a
+							>
 						</figcaption>
 					</figure>{/each}
 			</div>
 			<div class="actions">
-				<button class="primary" disabled={sharing} onclick={save}>写真に保存・共有</button><button
-					onclick={discard}>写真を破棄する</button
-				>
+				<button
+					class="primary"
+					disabled={sharing}
+					onclick={save}>写真に保存・共有</button
+				><button onclick={discard}>写真を破棄する</button>
 			</div>
 		</section>
 	{/if}

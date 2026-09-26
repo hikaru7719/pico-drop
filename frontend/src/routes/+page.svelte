@@ -29,13 +29,17 @@
 	}
 	let discovering = $state(false);
 	let searching = $state(false);
-	let locationMessage = $state('位置情報を使って、近くでこのページを開いている人を探します。');
+	let locationMessage = $state(
+		'位置情報を使って、近くでこのページを開いている人を探します。'
+	);
 	let selected = $state<File[]>([]);
 	let metadata = $state<PhotoMeta[]>([]);
 	let selecting = $state(false);
 	let requesting = $state(false);
 	let request = $state<RequestInfo>();
-	let phase = $state<'waiting' | 'confirm' | 'connecting' | 'transferring'>('waiting');
+	let phase = $state<'waiting' | 'confirm' | 'connecting' | 'transferring'>(
+		'waiting'
+	);
 	let confirmed = $state(false);
 	let bytes = $state(0);
 	let received = $state<{ file: File; url: string; preview: boolean }[]>([]);
@@ -60,7 +64,9 @@
 	let signalQueue = Promise.resolve();
 	let disposed = false;
 	const sending = $derived(!!request && request.from.id === session?.id);
-	const total = $derived(request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0);
+	const total = $derived(
+		request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0
+	);
 
 	function discard() {
 		for (const item of received) URL.revokeObjectURL(item.url);
@@ -102,7 +108,10 @@
 		signaling.send(message);
 	}
 	function fail(cause: unknown) {
-		error = cause instanceof Error ? cause.message : '処理に失敗しました。再試行してください。';
+		error =
+			cause instanceof Error
+				? cause.message
+				: '処理に失敗しました。再試行してください。';
 		if (request) {
 			try {
 				send({ type: 'cancel', id: request.id });
@@ -116,7 +125,10 @@
 	function touch() {
 		clearTimeout(watchdog);
 		watchdog = setTimeout(
-			() => fail(new Error('転送が止まりました。画面を開いたまま再試行してください。')),
+			() =>
+				fail(
+					new Error('転送が止まりました。画面を開いたまま再試行してください。')
+				),
 			60_000
 		);
 	}
@@ -173,7 +185,8 @@
 		const current = discoveryGeneration;
 		const centerCard = async () => {
 			await tick();
-			if (current !== discoveryGeneration || (!searching && !discovering)) return;
+			if (current !== discoveryGeneration || (!searching && !discovering))
+				return;
 			discoverySection?.scrollIntoView({
 				block: 'center',
 				behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -212,16 +225,19 @@
 				}, 30_000);
 		} catch (e) {
 			if (current !== generation || discovery !== discoveryGeneration) return;
-			locationMessage = e instanceof Error ? e.message : '位置情報を取得できません。';
+			locationMessage =
+				e instanceof Error ? e.message : '位置情報を取得できません。';
 			if (request) fail(e);
 			else disconnect();
 		} finally {
-			if (current === generation && discovery === discoveryGeneration) searching = false;
+			if (current === generation && discovery === discoveryGeneration)
+				searching = false;
 		}
 	}
 	function stopDiscovery() {
 		disconnect();
-		locationMessage = '探索を停止しました。再開すると、近くの端末に表示されます。';
+		locationMessage =
+			'探索を停止しました。再開すると、近くの端末に表示されます。';
 	}
 	async function select(event: Event) {
 		const files = Array.from((event.target as HTMLInputElement).files ?? []);
@@ -264,7 +280,10 @@
 			fail(e);
 		}
 	}
-	function action(type: 'accept' | 'reject' | 'confirm' | 'cancel', word?: string) {
+	function action(
+		type: 'accept' | 'reject' | 'confirm' | 'cancel',
+		word?: string
+	) {
 		if (!request) return;
 		try {
 			if (type === 'confirm') {
@@ -276,7 +295,8 @@
 			if (type === 'cancel' || type === 'reject') {
 				disconnect();
 				discard();
-				notice = type === 'reject' ? '受信を辞退しました。' : '転送を中止しました。';
+				notice =
+					type === 'reject' ? '受信を辞退しました。' : '転送を中止しました。';
 			}
 		} catch (e) {
 			fail(e);
@@ -318,7 +338,10 @@
 			notice = '';
 			relay = undefined;
 			watchdog = setTimeout(
-				() => fail(new Error('確認の有効期限が切れました。もう一度送信してください。')),
+				() =>
+					fail(
+						new Error('確認の有効期限が切れました。もう一度送信してください。')
+					),
 				LIMITS.requestMs + 1000
 			);
 			await tick();
@@ -381,7 +404,8 @@
 			error?: string;
 		};
 		if (signal.aborted || request?.id !== transfer.id) return;
-		if (!response.ok) throw new Error(config.error ?? '接続の準備に失敗しました。');
+		if (!response.ok)
+			throw new Error(config.error ?? '接続の準備に失敗しました。');
 		relay = config.relay;
 		const isSender = transfer.from.id === session.id;
 		let attached = false;
@@ -410,7 +434,8 @@
 				if (!signal.aborted) fail(new Error('写真の転送に失敗しました。'));
 			};
 			channel.onclose = () => {
-				if (!signal.aborted && !completed) fail(new Error('写真の転送が中断されました。'));
+				if (!signal.aborted && !completed)
+					fail(new Error('写真の転送が中断されました。'));
 			};
 			if (isSender) {
 				channel.onmessage = (event) => {
@@ -451,7 +476,8 @@
 				let queue = Promise.resolve();
 				let queuedBytes = 0;
 				channel.onmessage = (event) => {
-					const size = event.data instanceof ArrayBuffer ? event.data.byteLength : 0;
+					const size =
+						event.data instanceof ArrayBuffer ? event.data.byteLength : 0;
 					queuedBytes += size;
 					if (
 						size > LIMITS.chunk ||
@@ -484,7 +510,8 @@
 		peer = new PhotoPeer(
 			config.iceServers,
 			(s) => {
-				if (!signal.aborted) send({ type: 'signal', id: transfer.id, signal: s });
+				if (!signal.aborted)
+					send({ type: 'signal', id: transfer.id, signal: s });
 			},
 			attach,
 			(e) => {

@@ -8,7 +8,11 @@ export function locate(): Promise<Location> {
 		navigator.geolocation.getCurrentPosition(
 			({ coords }) => {
 				if (coords.accuracy > 10_000) {
-					reject(new Error('位置情報の誤差が大きすぎます。場所を変えて再試行してください。'));
+					reject(
+						new Error(
+							'位置情報の誤差が大きすぎます。場所を変えて再試行してください。'
+						)
+					);
 					return;
 				}
 				resolve({

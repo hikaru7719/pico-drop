@@ -30,15 +30,26 @@ const { createPage } = await import(
 	`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`
 );
 
-function setup(options: { pendingSession?: boolean; locationError?: boolean } = {}) {
+function setup(
+	options: { pendingSession?: boolean; locationError?: boolean } = {}
+) {
 	const events = new Map<string, (event?: unknown) => void>();
-	const sockets: { closed: boolean; messages: unknown[]; emit: (message: unknown) => void }[] = [];
+	const sockets: {
+		closed: boolean;
+		messages: unknown[];
+		emit: (message: unknown) => void;
+	}[] = [];
 	let sessions = 0;
 	let sessionSignal: AbortSignal | undefined;
 	let resolveSession: (value: unknown) => void = () => {};
 	let intervals = 0;
 	let mount: () => void = () => {};
-	const session = { id: 'self', name: 'Self', token: 'token', expiresAt: 9999999999999 };
+	const session = {
+		id: 'self',
+		name: 'Self',
+		token: 'token',
+		expiresAt: 9999999999999
+	};
 	const controller = createPage({
 		LIMITS,
 		onMount: (callback: () => void) => {
@@ -49,7 +60,8 @@ function setup(options: { pendingSession?: boolean; locationError?: boolean } = 
 			isSecureContext: true,
 			RTCPeerConnection: class {},
 			matchMedia: () => ({ matches: true }),
-			addEventListener: (name: string, callback: () => void) => events.set(name, callback),
+			addEventListener: (name: string, callback: () => void) =>
+				events.set(name, callback),
 			removeEventListener: (name: string) => events.delete(name)
 		},
 		createSession: async (signal: AbortSignal) => {
@@ -125,7 +137,10 @@ test('opening and restoring the page do not contact signaling', async () => {
 
 test('one click connects, authentication starts discovery, stop closes and restart reconnects', async () => {
 	const app = setup();
-	await Promise.all([app.controller.startDiscovery(), app.controller.startDiscovery()]);
+	await Promise.all([
+		app.controller.startDiscovery(),
+		app.controller.startDiscovery()
+	]);
 	assert.equal(app.sessions, 1);
 	assert.equal(app.controller.state.connection, 'connecting');
 	assert.equal(app.sockets[0].messages.length, 0);
@@ -133,7 +148,10 @@ test('one click connects, authentication starts discovery, stop closes and resta
 	await flush();
 	assert.equal(app.controller.state.discovering, true);
 	assert.equal(app.intervals, 1);
-	assert.equal((app.sockets[0].messages[0] as { type: string }).type, 'presence');
+	assert.equal(
+		(app.sockets[0].messages[0] as { type: string }).type,
+		'presence'
+	);
 	app.controller.stopDiscovery();
 	assert.equal(app.sockets[0].closed, true);
 	assert.equal(app.controller.state.connection, 'idle');

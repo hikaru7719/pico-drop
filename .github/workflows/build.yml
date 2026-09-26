@@ -31,5 +31,7 @@ jobs:
           version: '2026.8.10'
       - name: Setup
         run: mise run setup
+      - name: Check formatting
+        run: mise run format:check
       - name: Build
         run: mise run build

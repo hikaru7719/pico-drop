@@ -5,9 +5,16 @@
 		total,
 		connecting = false,
 		sending = true
-	}: { bytes: number; total: number; connecting?: boolean; sending?: boolean } = $props();
+	}: {
+		bytes: number;
+		total: number;
+		connecting?: boolean;
+		sending?: boolean;
+	} = $props();
 	const transferred = $derived(Math.max(0, Math.min(bytes, total)));
-	const percent = $derived(total > 0 ? Math.min(100, Math.floor((transferred / total) * 100)) : 0);
+	const percent = $derived(
+		total > 0 ? Math.min(100, Math.floor((transferred / total) * 100)) : 0
+	);
 	const verifying = $derived(!connecting && total > 0 && transferred === total);
 	const status = $derived(
 		connecting
@@ -20,10 +27,19 @@
 	);
 </script>
 
-<div class="transfer-progress" class:connecting class:verifying>
+<div
+	class="transfer-progress"
+	class:connecting
+	class:verifying
+>
 	<div class="progress-heading">
 		<div class="progress-copy">
-			<p class="status" role="status">{status}</p>
+			<p
+				class="status"
+				role="status"
+			>
+				{status}
+			</p>
 			<p class="detail">
 				{connecting
 					? '相手の端末とつないでいます'
@@ -34,8 +50,13 @@
 							: '元の画質のまま、この端末へ'}
 			</p>
 		</div>
-		<div class="percentage" aria-hidden="true">
-			{#if connecting}<span class="waiting">—</span>{:else}{percent}<span class="unit">%</span>{/if}
+		<div
+			class="percentage"
+			aria-hidden="true"
+		>
+			{#if connecting}<span class="waiting">—</span>{:else}{percent}<span
+					class="unit">%</span
+				>{/if}
 		</div>
 	</div>
 	<div
@@ -51,7 +72,10 @@
 				? '100%、データを確認中'
 				: `${percent}%、${formatBytes(transferred)} / ${formatBytes(total)}`}
 	>
-		<div class="fill" style:width={connecting ? '32%' : `${percent}%`}>
+		<div
+			class="fill"
+			style:width={connecting ? '32%' : `${percent}%`}
+		>
 			<span class="light"></span>
 		</div>
 	</div>
@@ -136,7 +160,12 @@
 	.light {
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(100deg, transparent 25%, #ffffff55 50%, transparent 75%);
+		background: linear-gradient(
+			100deg,
+			transparent 25%,
+			#ffffff55 50%,
+			transparent 75%
+		);
 		transform: translateX(-100%);
 		animation: sheen 2.6s ease-in-out infinite;
 	}

@@ -2,7 +2,10 @@
 <html lang="ja">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1"
+		/>
 		<title>Oxlint 未有効ルール一覧 — pico-drop</title>
 		<style>
 			:root {
@@ -215,29 +218,41 @@
 				· 使用バージョン：1.85.0
 			</p>
 			<div class="cards">
-				<div class="card"><strong>870</strong><span>公式・ローカルの全ルール</span></div>
+				<div class="card">
+					<strong>870</strong><span>公式・ローカルの全ルール</span>
+				</div>
 				<div class="card"><strong>759</strong><span>設定上未有効</span></div>
-				<div class="card"><strong>15</strong><span>設定済み・型検査待ち</span></div>
+				<div class="card">
+					<strong>15</strong><span>設定済み・型検査待ち</span>
+				</div>
 				<div class="card"><strong>96</strong><span>現在実行可能</span></div>
 			</div>
 			<section>
 				<h2>判定の前提</h2>
 				<p>
-					<code>.oxlintrc.json</code> は <code>eslint / typescript / oxc / unicorn</code> と
+					<code>.oxlintrc.json</code> は
+					<code>eslint / typescript / oxc / unicorn</code> と
 					<code>correctness: error</code> を指定しています。ルール単位で明示的に
 					<code>off</code> にしているものは <strong>0件</strong>です。
 				</p>
 				<pre><code>oxlint --deny-warnings frontend backend shared tests</code></pre>
 				<p>
-					<code>mise.toml</code> の lint コマンドに <code>--type-aware</code> はありません。<code
-						>--print-config</code
-					>
+					<code>mise.toml</code> の lint コマンドに
+					<code>--type-aware</code> はありません。<code>--print-config</code>
 					には111ルールが有効として出力されますが、うち15ルールは型情報が必要です。本表の「未有効」は、この15件も含めた<strong>774件</strong>を指します。
 				</p>
 				<ul>
-					<li><strong>カテゴリ未有効：</strong>correctness 以外のカテゴリ。598件。</li>
-					<li><strong>プラグイン未有効：</strong>現在指定している4種類以外。408件。</li>
-					<li><strong>型検査未有効：</strong>型情報が必要なルール。59件（うち15件は設定済み）。</li>
+					<li>
+						<strong>カテゴリ未有効：</strong>correctness 以外のカテゴリ。598件。
+					</li>
+					<li>
+						<strong>プラグイン未有効：</strong
+						>現在指定している4種類以外。408件。
+					</li>
+					<li>
+						<strong>型検査未有効：</strong
+						>型情報が必要なルール。59件（うち15件は設定済み）。
+					</li>
 				</ul>
 				<p class="muted">
 					理由は重複します。件数は診断数ではなくルール数です。「現在実行可能」は各ルールに適合するファイル・構文に対する意味で、すべてのファイルに96ルールが適用されるという意味ではありません。ignorePatterns
@@ -352,16 +367,19 @@
 					</li>
 					<li>
 						<code>import</code>・<code>promise</code>・<code>node</code>
-						など、利用コードに合うプラグインを追加する。SvelteKit のプロジェクトなので React /
-						Next.js / Vue 専用ルールは採用対象を確認する。
+						など、利用コードに合うプラグインを追加する。SvelteKit
+						のプロジェクトなので React / Next.js / Vue
+						専用ルールは採用対象を確認する。
 					</li>
 					<li>
-						型情報が必要なルールは、公式の Type-Aware Linting の導入手順を確認して
+						型情報が必要なルールは、公式の Type-Aware Linting
+						の導入手順を確認して
 						<code>--type-aware</code> を追加する。
 					</li>
 				</ol>
 				<p>
-					<code>-D all</code> は有効なプラグイン内のカテゴリをまとめて有効にしますが、<code
+					<code>-D all</code>
+					は有効なプラグイン内のカテゴリをまとめて有効にしますが、<code
 						>nursery</code
 					>
 					は対象外で、未有効のプラグインも自動では追加されません。nursery
@@ -420,7 +438,13 @@
 						</select></label
 					>
 				</div>
-				<p id="count" role="status" aria-live="polite">774 / 774 件</p>
+				<p
+					id="count"
+					role="status"
+					aria-live="polite"
+				>
+					774 / 774 件
+				</p>
 				<div
 					class="table-wrap"
 					tabindex="0"
@@ -447,7 +471,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/accessor-pairs"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/accessor-pairs"
 										><code>eslint/accessor-pairs</code></a
 									>
 								</td>
@@ -484,7 +509,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/arrow-body-style"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/arrow-body-style"
 										><code>eslint/arrow-body-style</code></a
 									>
 								</td>
@@ -502,7 +528,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/block-scoped-var"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/block-scoped-var"
 										><code>eslint/block-scoped-var</code></a
 									>
 								</td>
@@ -520,7 +547,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/capitalized-comments"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/capitalized-comments"
 										><code>eslint/capitalized-comments</code></a
 									>
 								</td>
@@ -557,7 +585,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/complexity"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/complexity"
 										><code>eslint/complexity</code></a
 									>
 								</td>
@@ -575,7 +604,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/curly"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/curly"
 										><code>eslint/curly</code></a
 									>
 								</td>
@@ -593,7 +623,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/default-case"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/default-case"
 										><code>eslint/default-case</code></a
 									>
 								</td>
@@ -611,7 +642,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/default-case-last"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/default-case-last"
 										><code>eslint/default-case-last</code></a
 									>
 								</td>
@@ -629,7 +661,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/default-param-last"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/default-param-last"
 										><code>eslint/default-param-last</code></a
 									>
 								</td>
@@ -647,7 +680,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/eqeqeq"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/eqeqeq"
 										><code>eslint/eqeqeq</code></a
 									>
 								</td>
@@ -665,7 +699,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/func-name-matching"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/func-name-matching"
 										><code>eslint/func-name-matching</code></a
 									>
 								</td>
@@ -683,7 +718,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/func-names"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/func-names"
 										><code>eslint/func-names</code></a
 									>
 								</td>
@@ -701,7 +737,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/func-style"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/func-style"
 										><code>eslint/func-style</code></a
 									>
 								</td>
@@ -738,7 +775,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/guard-for-in"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/guard-for-in"
 										><code>eslint/guard-for-in</code></a
 									>
 								</td>
@@ -756,7 +794,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/id-denylist"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/id-denylist"
 										><code>eslint/id-denylist</code></a
 									>
 								</td>
@@ -774,7 +813,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/id-length"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/id-length"
 										><code>eslint/id-length</code></a
 									>
 								</td>
@@ -792,7 +832,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/id-match"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/id-match"
 										><code>eslint/id-match</code></a
 									>
 								</td>
@@ -810,7 +851,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/init-declarations"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/init-declarations"
 										><code>eslint/init-declarations</code></a
 									>
 								</td>
@@ -847,7 +889,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-classes-per-file"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-classes-per-file"
 										><code>eslint/max-classes-per-file</code></a
 									>
 								</td>
@@ -865,7 +908,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-depth"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-depth"
 										><code>eslint/max-depth</code></a
 									>
 								</td>
@@ -883,7 +927,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-lines"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-lines"
 										><code>eslint/max-lines</code></a
 									>
 								</td>
@@ -920,7 +965,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-nested-callbacks"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-nested-callbacks"
 										><code>eslint/max-nested-callbacks</code></a
 									>
 								</td>
@@ -938,7 +984,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-params"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-params"
 										><code>eslint/max-params</code></a
 									>
 								</td>
@@ -956,7 +1003,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-statements"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-statements"
 										><code>eslint/max-statements</code></a
 									>
 								</td>
@@ -974,7 +1022,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/new-cap"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/new-cap"
 										><code>eslint/new-cap</code></a
 									>
 								</td>
@@ -992,7 +1041,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-alert"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-alert"
 										><code>eslint/no-alert</code></a
 									>
 								</td>
@@ -1010,7 +1060,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-array-constructor"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-array-constructor"
 										><code>eslint/no-array-constructor</code></a
 									>
 								</td>
@@ -1028,7 +1079,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-await-in-loop"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-await-in-loop"
 										><code>eslint/no-await-in-loop</code></a
 									>
 								</td>
@@ -1046,7 +1098,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-bitwise"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-bitwise"
 										><code>eslint/no-bitwise</code></a
 									>
 								</td>
@@ -1064,7 +1117,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-case-declarations"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-case-declarations"
 										><code>eslint/no-case-declarations</code></a
 									>
 								</td>
@@ -1082,7 +1136,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-console"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-console"
 										><code>eslint/no-console</code></a
 									>
 								</td>
@@ -1119,7 +1174,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-continue"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-continue"
 										><code>eslint/no-continue</code></a
 									>
 								</td>
@@ -1137,7 +1193,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-div-regex"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-div-regex"
 										><code>eslint/no-div-regex</code></a
 									>
 								</td>
@@ -1155,7 +1212,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-duplicate-imports"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-duplicate-imports"
 										><code>eslint/no-duplicate-imports</code></a
 									>
 								</td>
@@ -1173,7 +1231,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-else-return"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-else-return"
 										><code>eslint/no-else-return</code></a
 									>
 								</td>
@@ -1191,7 +1250,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-empty"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-empty"
 										><code>eslint/no-empty</code></a
 									>
 								</td>
@@ -1209,7 +1269,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-empty-function"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-empty-function"
 										><code>eslint/no-empty-function</code></a
 									>
 								</td>
@@ -1227,7 +1288,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-eq-null"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-eq-null"
 										><code>eslint/no-eq-null</code></a
 									>
 								</td>
@@ -1245,7 +1307,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-extend-native"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-extend-native"
 										><code>eslint/no-extend-native</code></a
 									>
 								</td>
@@ -1263,7 +1326,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-extra-bind"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-extra-bind"
 										><code>eslint/no-extra-bind</code></a
 									>
 								</td>
@@ -1281,7 +1345,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-extra-label"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-extra-label"
 										><code>eslint/no-extra-label</code></a
 									>
 								</td>
@@ -1299,7 +1364,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-fallthrough"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-fallthrough"
 										><code>eslint/no-fallthrough</code></a
 									>
 								</td>
@@ -1317,7 +1383,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-implicit-coercion"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-implicit-coercion"
 										><code>eslint/no-implicit-coercion</code></a
 									>
 								</td>
@@ -1335,7 +1402,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-implicit-globals"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-implicit-globals"
 										><code>eslint/no-implicit-globals</code></a
 									>
 								</td>
@@ -1353,7 +1421,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-implied-eval"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-implied-eval"
 										><code>eslint/no-implied-eval</code></a
 									>
 								</td>
@@ -1371,7 +1440,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-inline-comments"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-inline-comments"
 										><code>eslint/no-inline-comments</code></a
 									>
 								</td>
@@ -1408,7 +1478,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-label-var"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-label-var"
 										><code>eslint/no-label-var</code></a
 									>
 								</td>
@@ -1426,7 +1497,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-labels"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-labels"
 										><code>eslint/no-labels</code></a
 									>
 								</td>
@@ -1444,7 +1516,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-lone-blocks"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-lone-blocks"
 										><code>eslint/no-lone-blocks</code></a
 									>
 								</td>
@@ -1462,7 +1535,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-lonely-if"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-lonely-if"
 										><code>eslint/no-lonely-if</code></a
 									>
 								</td>
@@ -1480,7 +1554,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-loop-func"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-loop-func"
 										><code>eslint/no-loop-func</code></a
 									>
 								</td>
@@ -1498,7 +1573,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-magic-numbers"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-magic-numbers"
 										><code>eslint/no-magic-numbers</code></a
 									>
 								</td>
@@ -1516,7 +1592,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-multi-assign"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-multi-assign"
 										><code>eslint/no-multi-assign</code></a
 									>
 								</td>
@@ -1534,7 +1611,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-multi-str"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-multi-str"
 										><code>eslint/no-multi-str</code></a
 									>
 								</td>
@@ -1552,7 +1630,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-negated-condition"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-negated-condition"
 										><code>eslint/no-negated-condition</code></a
 									>
 								</td>
@@ -1570,7 +1649,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-nested-ternary"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-nested-ternary"
 										><code>eslint/no-nested-ternary</code></a
 									>
 								</td>
@@ -1588,7 +1668,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-new"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-new"
 										><code>eslint/no-new</code></a
 									>
 								</td>
@@ -1606,7 +1687,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-new-func"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-new-func"
 										><code>eslint/no-new-func</code></a
 									>
 								</td>
@@ -1624,7 +1706,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-new-wrappers"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-new-wrappers"
 										><code>eslint/no-new-wrappers</code></a
 									>
 								</td>
@@ -1661,7 +1744,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-param-reassign"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-param-reassign"
 										><code>eslint/no-param-reassign</code></a
 									>
 								</td>
@@ -1679,7 +1763,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-plusplus"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-plusplus"
 										><code>eslint/no-plusplus</code></a
 									>
 								</td>
@@ -1716,7 +1801,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-proto"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-proto"
 										><code>eslint/no-proto</code></a
 									>
 								</td>
@@ -1753,7 +1839,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-redeclare"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-redeclare"
 										><code>eslint/no-redeclare</code></a
 									>
 								</td>
@@ -1771,7 +1858,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-regex-spaces"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-regex-spaces"
 										><code>eslint/no-regex-spaces</code></a
 									>
 								</td>
@@ -1865,7 +1953,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-return-assign"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-return-assign"
 										><code>eslint/no-return-assign</code></a
 									>
 								</td>
@@ -1883,7 +1972,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-script-url"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-script-url"
 										><code>eslint/no-script-url</code></a
 									>
 								</td>
@@ -1901,7 +1991,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-self-compare"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-self-compare"
 										><code>eslint/no-self-compare</code></a
 									>
 								</td>
@@ -1919,7 +2010,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-sequences"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-sequences"
 										><code>eslint/no-sequences</code></a
 									>
 								</td>
@@ -1937,7 +2029,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-shadow"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-shadow"
 										><code>eslint/no-shadow</code></a
 									>
 								</td>
@@ -1974,7 +2067,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-ternary"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-ternary"
 										><code>eslint/no-ternary</code></a
 									>
 								</td>
@@ -1992,7 +2086,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-throw-literal"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-throw-literal"
 										><code>eslint/no-throw-literal</code></a
 									>
 								</td>
@@ -2010,7 +2105,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-undef"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-undef"
 										><code>eslint/no-undef</code></a
 									>
 								</td>
@@ -2028,7 +2124,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-undefined"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-undefined"
 										><code>eslint/no-undefined</code></a
 									>
 								</td>
@@ -2046,7 +2143,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-underscore-dangle"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-underscore-dangle"
 										><code>eslint/no-underscore-dangle</code></a
 									>
 								</td>
@@ -2102,7 +2200,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unneeded-ternary"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unneeded-ternary"
 										><code>eslint/no-unneeded-ternary</code></a
 									>
 								</td>
@@ -2120,7 +2219,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unreachable-loop"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unreachable-loop"
 										><code>eslint/no-unreachable-loop</code></a
 									>
 								</td>
@@ -2138,7 +2238,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-use-before-define"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-use-before-define"
 										><code>eslint/no-use-before-define</code></a
 									>
 								</td>
@@ -2175,7 +2276,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-useless-call"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-useless-call"
 										><code>eslint/no-useless-call</code></a
 									>
 								</td>
@@ -2212,7 +2314,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-useless-concat"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-useless-concat"
 										><code>eslint/no-useless-concat</code></a
 									>
 								</td>
@@ -2249,7 +2352,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-useless-return"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-useless-return"
 										><code>eslint/no-useless-return</code></a
 									>
 								</td>
@@ -2267,7 +2371,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-var"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-var"
 										><code>eslint/no-var</code></a
 									>
 								</td>
@@ -2285,7 +2390,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-void"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-void"
 										><code>eslint/no-void</code></a
 									>
 								</td>
@@ -2303,7 +2409,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-warning-comments"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-warning-comments"
 										><code>eslint/no-warning-comments</code></a
 									>
 								</td>
@@ -2321,7 +2428,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/object-shorthand"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/object-shorthand"
 										><code>eslint/object-shorthand</code></a
 									>
 								</td>
@@ -2339,7 +2447,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/one-var"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/one-var"
 										><code>eslint/one-var</code></a
 									>
 								</td>
@@ -2357,7 +2466,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/operator-assignment"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/operator-assignment"
 										><code>eslint/operator-assignment</code></a
 									>
 								</td>
@@ -2394,7 +2504,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-const"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-const"
 										><code>eslint/prefer-const</code></a
 									>
 								</td>
@@ -2412,7 +2523,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-destructuring"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-destructuring"
 										><code>eslint/prefer-destructuring</code></a
 									>
 								</td>
@@ -2506,7 +2618,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-object-spread"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-object-spread"
 										><code>eslint/prefer-object-spread</code></a
 									>
 								</td>
@@ -2562,7 +2675,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-rest-params"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-rest-params"
 										><code>eslint/prefer-rest-params</code></a
 									>
 								</td>
@@ -2580,7 +2694,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-spread"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-spread"
 										><code>eslint/prefer-spread</code></a
 									>
 								</td>
@@ -2598,7 +2713,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-template"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/prefer-template"
 										><code>eslint/prefer-template</code></a
 									>
 								</td>
@@ -2635,7 +2751,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/radix"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/radix"
 										><code>eslint/radix</code></a
 									>
 								</td>
@@ -2653,7 +2770,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/require-await"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/require-await"
 										><code>eslint/require-await</code></a
 									>
 								</td>
@@ -2690,7 +2808,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/sort-imports"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/sort-imports"
 										><code>eslint/sort-imports</code></a
 									>
 								</td>
@@ -2708,7 +2827,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/sort-keys"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/sort-keys"
 										><code>eslint/sort-keys</code></a
 									>
 								</td>
@@ -2726,7 +2846,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/sort-vars"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/sort-vars"
 										><code>eslint/sort-vars</code></a
 									>
 								</td>
@@ -2744,7 +2865,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/symbol-description"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/symbol-description"
 										><code>eslint/symbol-description</code></a
 									>
 								</td>
@@ -2762,7 +2884,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/unicode-bom"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/unicode-bom"
 										><code>eslint/unicode-bom</code></a
 									>
 								</td>
@@ -2780,7 +2903,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/vars-on-top"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/vars-on-top"
 										><code>eslint/vars-on-top</code></a
 									>
 								</td>
@@ -2798,7 +2922,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/yoda"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/eslint/yoda"
 										><code>eslint/yoda</code></a
 									>
 								</td>
@@ -2835,7 +2960,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/default"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/default"
 										><code>import/default</code></a
 									>
 								</td>
@@ -2853,7 +2979,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/export"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/export"
 										><code>import/export</code></a
 									>
 								</td>
@@ -2871,7 +2998,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/exports-last"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/exports-last"
 										><code>import/exports-last</code></a
 									>
 								</td>
@@ -2889,7 +3017,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/extensions"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/extensions"
 										><code>import/extensions</code></a
 									>
 								</td>
@@ -2907,7 +3036,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/first"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/first"
 										><code>import/first</code></a
 									>
 								</td>
@@ -2925,7 +3055,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/group-exports"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/group-exports"
 										><code>import/group-exports</code></a
 									>
 								</td>
@@ -2943,7 +3074,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/max-dependencies"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/max-dependencies"
 										><code>import/max-dependencies</code></a
 									>
 								</td>
@@ -2961,7 +3093,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/named"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/named"
 										><code>import/named</code></a
 									>
 								</td>
@@ -2979,7 +3112,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/namespace"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/namespace"
 										><code>import/namespace</code></a
 									>
 								</td>
@@ -2997,7 +3131,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/newline-after-import"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/newline-after-import"
 										><code>import/newline-after-import</code></a
 									>
 								</td>
@@ -3015,7 +3150,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-absolute-path"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-absolute-path"
 										><code>import/no-absolute-path</code></a
 									>
 								</td>
@@ -3033,7 +3169,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-amd"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-amd"
 										><code>import/no-amd</code></a
 									>
 								</td>
@@ -3070,7 +3207,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-commonjs"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-commonjs"
 										><code>import/no-commonjs</code></a
 									>
 								</td>
@@ -3088,7 +3226,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-cycle"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-cycle"
 										><code>import/no-cycle</code></a
 									>
 								</td>
@@ -3106,7 +3245,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-default-export"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-default-export"
 										><code>import/no-default-export</code></a
 									>
 								</td>
@@ -3124,7 +3264,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-duplicates"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-duplicates"
 										><code>import/no-duplicates</code></a
 									>
 								</td>
@@ -3142,7 +3283,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-dynamic-require"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-dynamic-require"
 										><code>import/no-dynamic-require</code></a
 									>
 								</td>
@@ -3179,7 +3321,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-mutable-exports"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-mutable-exports"
 										><code>import/no-mutable-exports</code></a
 									>
 								</td>
@@ -3197,7 +3340,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-named-as-default"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-named-as-default"
 										><code>import/no-named-as-default</code></a
 									>
 								</td>
@@ -3234,7 +3378,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-named-default"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-named-default"
 										><code>import/no-named-default</code></a
 									>
 								</td>
@@ -3252,7 +3397,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-named-export"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-named-export"
 										><code>import/no-named-export</code></a
 									>
 								</td>
@@ -3270,7 +3416,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-namespace"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-namespace"
 										><code>import/no-namespace</code></a
 									>
 								</td>
@@ -3288,7 +3435,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-nodejs-modules"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-nodejs-modules"
 										><code>import/no-nodejs-modules</code></a
 									>
 								</td>
@@ -3325,7 +3473,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-self-import"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-self-import"
 										><code>import/no-self-import</code></a
 									>
 								</td>
@@ -3343,7 +3492,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-unassigned-import"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/no-unassigned-import"
 										><code>import/no-unassigned-import</code></a
 									>
 								</td>
@@ -3399,7 +3549,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/import/unambiguous"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/import/unambiguous"
 										><code>import/unambiguous</code></a
 									>
 								</td>
@@ -3417,7 +3568,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/consistent-test-it"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/consistent-test-it"
 										><code>jest/consistent-test-it</code></a
 									>
 								</td>
@@ -3435,7 +3587,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/expect-expect"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/expect-expect"
 										><code>jest/expect-expect</code></a
 									>
 								</td>
@@ -3453,7 +3606,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/max-expects"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/max-expects"
 										><code>jest/max-expects</code></a
 									>
 								</td>
@@ -3471,7 +3625,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/max-nested-describe"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/max-nested-describe"
 										><code>jest/max-nested-describe</code></a
 									>
 								</td>
@@ -3489,7 +3644,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-alias-methods"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-alias-methods"
 										><code>jest/no-alias-methods</code></a
 									>
 								</td>
@@ -3507,7 +3663,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-commented-out-tests"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-commented-out-tests"
 										><code>jest/no-commented-out-tests</code></a
 									>
 								</td>
@@ -3525,7 +3682,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-conditional-expect"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-conditional-expect"
 										><code>jest/no-conditional-expect</code></a
 									>
 								</td>
@@ -3543,7 +3701,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-conditional-in-test"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-conditional-in-test"
 										><code>jest/no-conditional-in-test</code></a
 									>
 								</td>
@@ -3599,7 +3758,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-disabled-tests"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-disabled-tests"
 										><code>jest/no-disabled-tests</code></a
 									>
 								</td>
@@ -3617,7 +3777,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-done-callback"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-done-callback"
 										><code>jest/no-done-callback</code></a
 									>
 								</td>
@@ -3635,7 +3796,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-duplicate-hooks"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-duplicate-hooks"
 										><code>jest/no-duplicate-hooks</code></a
 									>
 								</td>
@@ -3653,7 +3815,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-export"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-export"
 										><code>jest/no-export</code></a
 									>
 								</td>
@@ -3671,7 +3834,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-focused-tests"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-focused-tests"
 										><code>jest/no-focused-tests</code></a
 									>
 								</td>
@@ -3689,7 +3853,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-hooks"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-hooks"
 										><code>jest/no-hooks</code></a
 									>
 								</td>
@@ -3707,7 +3872,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-identical-title"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-identical-title"
 										><code>jest/no-identical-title</code></a
 									>
 								</td>
@@ -3744,7 +3910,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-jasmine-globals"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-jasmine-globals"
 										><code>jest/no-jasmine-globals</code></a
 									>
 								</td>
@@ -3762,7 +3929,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-large-snapshots"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-large-snapshots"
 										><code>jest/no-large-snapshots</code></a
 									>
 								</td>
@@ -3780,7 +3948,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-mocks-import"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-mocks-import"
 										><code>jest/no-mocks-import</code></a
 									>
 								</td>
@@ -3817,7 +3986,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-restricted-matchers"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-restricted-matchers"
 										><code>jest/no-restricted-matchers</code></a
 									>
 								</td>
@@ -3835,7 +4005,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-standalone-expect"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-standalone-expect"
 										><code>jest/no-standalone-expect</code></a
 									>
 								</td>
@@ -3853,7 +4024,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-test-prefixes"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/no-test-prefixes"
 										><code>jest/no-test-prefixes</code></a
 									>
 								</td>
@@ -3966,7 +4138,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-called-with"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-called-with"
 										><code>jest/prefer-called-with</code></a
 									>
 								</td>
@@ -4003,7 +4176,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-each"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-each"
 										><code>jest/prefer-each</code></a
 									>
 								</td>
@@ -4078,7 +4252,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-expect-resolves"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-expect-resolves"
 										><code>jest/prefer-expect-resolves</code></a
 									>
 								</td>
@@ -4096,7 +4271,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-hooks-in-order"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-hooks-in-order"
 										><code>jest/prefer-hooks-in-order</code></a
 									>
 								</td>
@@ -4114,7 +4290,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-hooks-on-top"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-hooks-on-top"
 										><code>jest/prefer-hooks-on-top</code></a
 									>
 								</td>
@@ -4151,7 +4328,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-jest-mocked"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-jest-mocked"
 										><code>jest/prefer-jest-mocked</code></a
 									>
 								</td>
@@ -4169,7 +4347,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-lowercase-title"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-lowercase-title"
 										><code>jest/prefer-lowercase-title</code></a
 									>
 								</td>
@@ -4225,7 +4404,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-snapshot-hint"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-snapshot-hint"
 										><code>jest/prefer-snapshot-hint</code></a
 									>
 								</td>
@@ -4243,7 +4423,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-spy-on"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-spy-on"
 										><code>jest/prefer-spy-on</code></a
 									>
 								</td>
@@ -4261,7 +4442,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-strict-equal"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-strict-equal"
 										><code>jest/prefer-strict-equal</code></a
 									>
 								</td>
@@ -4279,7 +4461,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-to-be"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-to-be"
 										><code>jest/prefer-to-be</code></a
 									>
 								</td>
@@ -4297,7 +4480,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-to-contain"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-to-contain"
 										><code>jest/prefer-to-contain</code></a
 									>
 								</td>
@@ -4353,7 +4537,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-to-have-length"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-to-have-length"
 										><code>jest/prefer-to-have-length</code></a
 									>
 								</td>
@@ -4371,7 +4556,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-todo"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/prefer-todo"
 										><code>jest/prefer-todo</code></a
 									>
 								</td>
@@ -4389,7 +4575,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/require-hook"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/require-hook"
 										><code>jest/require-hook</code></a
 									>
 								</td>
@@ -4464,7 +4651,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/valid-expect"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/valid-expect"
 										><code>jest/valid-expect</code></a
 									>
 								</td>
@@ -4501,7 +4689,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jest/valid-title"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jest/valid-title"
 										><code>jest/valid-title</code></a
 									>
 								</td>
@@ -4519,7 +4708,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/check-access"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/check-access"
 										><code>jsdoc/check-access</code></a
 									>
 								</td>
@@ -4537,7 +4727,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/check-property-names"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/check-property-names"
 										><code>jsdoc/check-property-names</code></a
 									>
 								</td>
@@ -4555,7 +4746,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/check-tag-names"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/check-tag-names"
 										><code>jsdoc/check-tag-names</code></a
 									>
 								</td>
@@ -4573,7 +4765,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/empty-tags"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/empty-tags"
 										><code>jsdoc/empty-tags</code></a
 									>
 								</td>
@@ -4591,7 +4784,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/implements-on-classes"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/implements-on-classes"
 										><code>jsdoc/implements-on-classes</code></a
 									>
 								</td>
@@ -4609,7 +4803,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/no-blank-blocks"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/no-blank-blocks"
 										><code>jsdoc/no-blank-blocks</code></a
 									>
 								</td>
@@ -4627,7 +4822,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/no-defaults"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/no-defaults"
 										><code>jsdoc/no-defaults</code></a
 									>
 								</td>
@@ -4645,7 +4841,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-param"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-param"
 										><code>jsdoc/require-param</code></a
 									>
 								</td>
@@ -4682,7 +4879,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-param-name"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-param-name"
 										><code>jsdoc/require-param-name</code></a
 									>
 								</td>
@@ -4700,7 +4898,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-param-type"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-param-type"
 										><code>jsdoc/require-param-type</code></a
 									>
 								</td>
@@ -4718,7 +4917,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-property"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-property"
 										><code>jsdoc/require-property</code></a
 									>
 								</td>
@@ -4755,7 +4955,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-property-name"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-property-name"
 										><code>jsdoc/require-property-name</code></a
 									>
 								</td>
@@ -4773,7 +4974,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-property-type"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-property-type"
 										><code>jsdoc/require-property-type</code></a
 									>
 								</td>
@@ -4791,7 +4993,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-returns"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-returns"
 										><code>jsdoc/require-returns</code></a
 									>
 								</td>
@@ -4828,7 +5031,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-returns-type"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-returns-type"
 										><code>jsdoc/require-returns-type</code></a
 									>
 								</td>
@@ -4865,7 +5069,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-throws-type"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-throws-type"
 										><code>jsdoc/require-throws-type</code></a
 									>
 								</td>
@@ -4883,7 +5088,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-yields"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-yields"
 										><code>jsdoc/require-yields</code></a
 									>
 								</td>
@@ -4920,7 +5126,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-yields-type"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsdoc/require-yields-type"
 										><code>jsdoc/require-yields-type</code></a
 									>
 								</td>
@@ -4938,7 +5145,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/alt-text"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/alt-text"
 										><code>jsx-a11y/alt-text</code></a
 									>
 								</td>
@@ -4975,7 +5183,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/anchor-has-content"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/anchor-has-content"
 										><code>jsx-a11y/anchor-has-content</code></a
 									>
 								</td>
@@ -4993,7 +5202,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/anchor-is-valid"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/anchor-is-valid"
 										><code>jsx-a11y/anchor-is-valid</code></a
 									>
 								</td>
@@ -5030,7 +5240,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/aria-props"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/aria-props"
 										><code>jsx-a11y/aria-props</code></a
 									>
 								</td>
@@ -5048,7 +5259,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/aria-proptypes"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/aria-proptypes"
 										><code>jsx-a11y/aria-proptypes</code></a
 									>
 								</td>
@@ -5066,7 +5278,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/aria-role"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/aria-role"
 										><code>jsx-a11y/aria-role</code></a
 									>
 								</td>
@@ -5103,7 +5316,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/autocomplete-valid"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/autocomplete-valid"
 										><code>jsx-a11y/autocomplete-valid</code></a
 									>
 								</td>
@@ -5178,7 +5392,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/html-has-lang"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/html-has-lang"
 										><code>jsx-a11y/html-has-lang</code></a
 									>
 								</td>
@@ -5196,7 +5411,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/iframe-has-title"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/iframe-has-title"
 										><code>jsx-a11y/iframe-has-title</code></a
 									>
 								</td>
@@ -5214,7 +5430,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/img-redundant-alt"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/img-redundant-alt"
 										><code>jsx-a11y/img-redundant-alt</code></a
 									>
 								</td>
@@ -5270,7 +5487,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/lang"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/lang"
 										><code>jsx-a11y/lang</code></a
 									>
 								</td>
@@ -5288,7 +5506,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/media-has-caption"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/media-has-caption"
 										><code>jsx-a11y/media-has-caption</code></a
 									>
 								</td>
@@ -5325,7 +5544,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/no-access-key"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/no-access-key"
 										><code>jsx-a11y/no-access-key</code></a
 									>
 								</td>
@@ -5362,7 +5582,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/no-autofocus"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/no-autofocus"
 										><code>jsx-a11y/no-autofocus</code></a
 									>
 								</td>
@@ -5401,7 +5622,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/no-interactive-element-to-noninteractive-role"
-										><code>jsx-a11y/no-interactive-element-to-noninteractive-role</code></a
+										><code
+											>jsx-a11y/no-interactive-element-to-noninteractive-role</code
+										></a
 									>
 								</td>
 								<td>jsx-a11y</td>
@@ -5420,7 +5643,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/no-noninteractive-element-interactions"
-										><code>jsx-a11y/no-noninteractive-element-interactions</code></a
+										><code
+											>jsx-a11y/no-noninteractive-element-interactions</code
+										></a
 									>
 								</td>
 								<td>jsx-a11y</td>
@@ -5439,7 +5664,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/no-noninteractive-element-to-interactive-role"
-										><code>jsx-a11y/no-noninteractive-element-to-interactive-role</code></a
+										><code
+											>jsx-a11y/no-noninteractive-element-to-interactive-role</code
+										></a
 									>
 								</td>
 								<td>jsx-a11y</td>
@@ -5475,7 +5702,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/no-redundant-roles"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/no-redundant-roles"
 										><code>jsx-a11y/no-redundant-roles</code></a
 									>
 								</td>
@@ -5569,7 +5797,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/scope"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/jsx-a11y/scope"
 										><code>jsx-a11y/scope</code></a
 									>
 								</td>
@@ -5606,7 +5835,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/google-font-display"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/google-font-display"
 										><code>nextjs/google-font-display</code></a
 									>
 								</td>
@@ -5643,7 +5873,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/inline-script-id"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/inline-script-id"
 										><code>nextjs/inline-script-id</code></a
 									>
 								</td>
@@ -5661,7 +5892,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/next-script-for-ga"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/next-script-for-ga"
 										><code>nextjs/next-script-for-ga</code></a
 									>
 								</td>
@@ -5719,7 +5951,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-before-interactive-script-outside-document"
-										><code>nextjs/no-before-interactive-script-outside-document</code></a
+										><code
+											>nextjs/no-before-interactive-script-outside-document</code
+										></a
 									>
 								</td>
 								<td>nextjs</td>
@@ -5736,7 +5970,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-css-tags"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-css-tags"
 										><code>nextjs/no-css-tags</code></a
 									>
 								</td>
@@ -5773,7 +6008,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-duplicate-head"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-duplicate-head"
 										><code>nextjs/no-duplicate-head</code></a
 									>
 								</td>
@@ -5791,7 +6027,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-head-element"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-head-element"
 										><code>nextjs/no-head-element</code></a
 									>
 								</td>
@@ -5847,7 +6084,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-img-element"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-img-element"
 										><code>nextjs/no-img-element</code></a
 									>
 								</td>
@@ -5865,7 +6103,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-page-custom-font"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-page-custom-font"
 										><code>nextjs/no-page-custom-font</code></a
 									>
 								</td>
@@ -5921,7 +6160,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-sync-scripts"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-sync-scripts"
 										><code>nextjs/no-sync-scripts</code></a
 									>
 								</td>
@@ -5958,7 +6198,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-typos"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/nextjs/no-typos"
 										><code>nextjs/no-typos</code></a
 									>
 								</td>
@@ -5995,7 +6236,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/callback-return"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/callback-return"
 										><code>node/callback-return</code></a
 									>
 								</td>
@@ -6013,7 +6255,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/exports-style"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/exports-style"
 										><code>node/exports-style</code></a
 									>
 								</td>
@@ -6031,7 +6274,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/global-require"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/global-require"
 										><code>node/global-require</code></a
 									>
 								</td>
@@ -6049,7 +6293,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/handle-callback-err"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/handle-callback-err"
 										><code>node/handle-callback-err</code></a
 									>
 								</td>
@@ -6067,7 +6312,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-exports-assign"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-exports-assign"
 										><code>node/no-exports-assign</code></a
 									>
 								</td>
@@ -6085,7 +6331,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-mixed-requires"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-mixed-requires"
 										><code>node/no-mixed-requires</code></a
 									>
 								</td>
@@ -6103,7 +6350,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-new-require"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-new-require"
 										><code>node/no-new-require</code></a
 									>
 								</td>
@@ -6121,7 +6369,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-path-concat"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-path-concat"
 										><code>node/no-path-concat</code></a
 									>
 								</td>
@@ -6139,7 +6388,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-process-env"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-process-env"
 										><code>node/no-process-env</code></a
 									>
 								</td>
@@ -6157,7 +6407,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-sync"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-sync"
 										><code>node/no-sync</code></a
 									>
 								</td>
@@ -6175,7 +6426,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-top-level-await"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/node/no-top-level-await"
 										><code>node/no-top-level-await</code></a
 									>
 								</td>
@@ -6193,7 +6445,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/approx-constant"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/approx-constant"
 										><code>oxc/approx-constant</code></a
 									>
 								</td>
@@ -6211,7 +6464,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/bad-bitwise-operator"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/bad-bitwise-operator"
 										><code>oxc/bad-bitwise-operator</code></a
 									>
 								</td>
@@ -6229,7 +6483,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/branches-sharing-code"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/branches-sharing-code"
 										><code>oxc/branches-sharing-code</code></a
 									>
 								</td>
@@ -6247,7 +6502,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/misrefactored-assign-op"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/misrefactored-assign-op"
 										><code>oxc/misrefactored-assign-op</code></a
 									>
 								</td>
@@ -6265,7 +6521,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-accumulating-spread"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-accumulating-spread"
 										><code>oxc/no-accumulating-spread</code></a
 									>
 								</td>
@@ -6283,7 +6540,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-async-await"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-async-await"
 										><code>oxc/no-async-await</code></a
 									>
 								</td>
@@ -6320,7 +6578,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-barrel-file"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-barrel-file"
 										><code>oxc/no-barrel-file</code></a
 									>
 								</td>
@@ -6338,7 +6597,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-const-enum"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-const-enum"
 										><code>oxc/no-const-enum</code></a
 									>
 								</td>
@@ -6356,7 +6616,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-map-spread"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-map-spread"
 										><code>oxc/no-map-spread</code></a
 									>
 								</td>
@@ -6374,7 +6635,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-optional-chaining"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/oxc/no-optional-chaining"
 										><code>oxc/no-optional-chaining</code></a
 									>
 								</td>
@@ -6430,7 +6692,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/promise/always-return"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/promise/always-return"
 										><code>promise/always-return</code></a
 									>
 								</td>
@@ -6448,7 +6711,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/promise/avoid-new"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/promise/avoid-new"
 										><code>promise/avoid-new</code></a
 									>
 								</td>
@@ -6466,7 +6730,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/promise/catch-or-return"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/promise/catch-or-return"
 										><code>promise/catch-or-return</code></a
 									>
 								</td>
@@ -6522,7 +6787,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/promise/no-nesting"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/promise/no-nesting"
 										><code>promise/no-nesting</code></a
 									>
 								</td>
@@ -6540,7 +6806,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/promise/no-new-statics"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/promise/no-new-statics"
 										><code>promise/no-new-statics</code></a
 									>
 								</td>
@@ -6596,7 +6863,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/promise/no-return-wrap"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/promise/no-return-wrap"
 										><code>promise/no-return-wrap</code></a
 									>
 								</td>
@@ -6614,7 +6882,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/promise/param-names"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/promise/param-names"
 										><code>promise/param-names</code></a
 									>
 								</td>
@@ -6670,7 +6939,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/promise/prefer-catch"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/promise/prefer-catch"
 										><code>promise/prefer-catch</code></a
 									>
 								</td>
@@ -6688,7 +6958,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/promise/spec-only"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/promise/spec-only"
 										><code>promise/spec-only</code></a
 									>
 								</td>
@@ -6706,7 +6977,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/promise/valid-params"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/promise/valid-params"
 										><code>promise/valid-params</code></a
 									>
 								</td>
@@ -6800,7 +7072,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/button-has-type"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/button-has-type"
 										><code>react/button-has-type</code></a
 									>
 								</td>
@@ -6818,7 +7091,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/capitalized-calls"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/capitalized-calls"
 										><code>react/capitalized-calls</code></a
 									>
 								</td>
@@ -6855,7 +7129,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/display-name"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/display-name"
 										><code>react/display-name</code></a
 									>
 								</td>
@@ -6873,7 +7148,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/error-boundaries"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/error-boundaries"
 										><code>react/error-boundaries</code></a
 									>
 								</td>
@@ -6891,7 +7167,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/exhaustive-deps"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/exhaustive-deps"
 										><code>react/exhaustive-deps</code></a
 									>
 								</td>
@@ -6947,7 +7224,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/forbid-dom-props"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/forbid-dom-props"
 										><code>react/forbid-dom-props</code></a
 									>
 								</td>
@@ -6965,7 +7243,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/forbid-elements"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/forbid-elements"
 										><code>react/forbid-elements</code></a
 									>
 								</td>
@@ -6983,7 +7262,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/forward-ref-uses-ref"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/forward-ref-uses-ref"
 										><code>react/forward-ref-uses-ref</code></a
 									>
 								</td>
@@ -7020,7 +7300,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/globals"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/globals"
 										><code>react/globals</code></a
 									>
 								</td>
@@ -7038,7 +7319,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/hook-use-state"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/hook-use-state"
 										><code>react/hook-use-state</code></a
 									>
 								</td>
@@ -7056,7 +7338,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/hooks"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/hooks"
 										><code>react/hooks</code></a
 									>
 								</td>
@@ -7093,7 +7376,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/immutability"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/immutability"
 										><code>react/immutability</code></a
 									>
 								</td>
@@ -7111,7 +7395,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/incompatible-library"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/incompatible-library"
 										><code>react/incompatible-library</code></a
 									>
 								</td>
@@ -7129,7 +7414,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/invariant"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/invariant"
 										><code>react/invariant</code></a
 									>
 								</td>
@@ -7147,7 +7433,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-boolean-value"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-boolean-value"
 										><code>react/jsx-boolean-value</code></a
 									>
 								</td>
@@ -7203,7 +7490,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-fragments"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-fragments"
 										><code>react/jsx-fragments</code></a
 									>
 								</td>
@@ -7221,7 +7509,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-handler-names"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-handler-names"
 										><code>react/jsx-handler-names</code></a
 									>
 								</td>
@@ -7239,7 +7528,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-key"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-key"
 										><code>react/jsx-key</code></a
 									>
 								</td>
@@ -7257,7 +7547,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-max-depth"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-max-depth"
 										><code>react/jsx-max-depth</code></a
 									>
 								</td>
@@ -7332,7 +7623,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-no-literals"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-no-literals"
 										><code>react/jsx-no-literals</code></a
 									>
 								</td>
@@ -7350,7 +7642,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-no-script-url"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-no-script-url"
 										><code>react/jsx-no-script-url</code></a
 									>
 								</td>
@@ -7368,7 +7661,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-no-target-blank"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-no-target-blank"
 										><code>react/jsx-no-target-blank</code></a
 									>
 								</td>
@@ -7386,7 +7680,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-no-undef"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-no-undef"
 										><code>react/jsx-no-undef</code></a
 									>
 								</td>
@@ -7423,7 +7718,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-pascal-case"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/jsx-pascal-case"
 										><code>react/jsx-pascal-case</code></a
 									>
 								</td>
@@ -7479,7 +7775,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/memo-dependencies"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/memo-dependencies"
 										><code>react/memo-dependencies</code></a
 									>
 								</td>
@@ -7497,7 +7794,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-array-index-key"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-array-index-key"
 										><code>react/no-array-index-key</code></a
 									>
 								</td>
@@ -7515,7 +7813,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-children-prop"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-children-prop"
 										><code>react/no-children-prop</code></a
 									>
 								</td>
@@ -7533,7 +7832,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-clone-element"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-clone-element"
 										><code>react/no-clone-element</code></a
 									>
 								</td>
@@ -7551,7 +7851,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-danger"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-danger"
 										><code>react/no-danger</code></a
 									>
 								</td>
@@ -7664,7 +7965,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-find-dom-node"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-find-dom-node"
 										><code>react/no-find-dom-node</code></a
 									>
 								</td>
@@ -7682,7 +7984,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-is-mounted"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-is-mounted"
 										><code>react/no-is-mounted</code></a
 									>
 								</td>
@@ -7700,7 +8003,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-multi-comp"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-multi-comp"
 										><code>react/no-multi-comp</code></a
 									>
 								</td>
@@ -7718,7 +8022,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-namespace"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-namespace"
 										><code>react/no-namespace</code></a
 									>
 								</td>
@@ -7755,7 +8060,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-react-children"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-react-children"
 										><code>react/no-react-children</code></a
 									>
 								</td>
@@ -7811,7 +8117,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-set-state"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-set-state"
 										><code>react/no-set-state</code></a
 									>
 								</td>
@@ -7829,7 +8136,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-string-refs"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-string-refs"
 										><code>react/no-string-refs</code></a
 									>
 								</td>
@@ -7847,7 +8155,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-this-in-sfc"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-this-in-sfc"
 										><code>react/no-this-in-sfc</code></a
 									>
 								</td>
@@ -7865,7 +8174,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-unescaped-entities"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-unescaped-entities"
 										><code>react/no-unescaped-entities</code></a
 									>
 								</td>
@@ -7883,7 +8193,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-unknown-property"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-unknown-property"
 										><code>react/no-unknown-property</code></a
 									>
 								</td>
@@ -7901,7 +8212,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-unsafe"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/no-unsafe"
 										><code>react/no-unsafe</code></a
 									>
 								</td>
@@ -7976,7 +8288,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/prefer-es6-class"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/prefer-es6-class"
 										><code>react/prefer-es6-class</code></a
 									>
 								</td>
@@ -8032,7 +8345,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/purity"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/purity"
 										><code>react/purity</code></a
 									>
 								</td>
@@ -8050,7 +8364,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/react-in-jsx-scope"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/react-in-jsx-scope"
 										><code>react/react-in-jsx-scope</code></a
 									>
 								</td>
@@ -8068,7 +8383,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/refs"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/refs"
 										><code>react/refs</code></a
 									>
 								</td>
@@ -8086,7 +8402,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/require-render-return"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/require-render-return"
 										><code>react/require-render-return</code></a
 									>
 								</td>
@@ -8104,7 +8421,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/rule-suppression"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/rule-suppression"
 										><code>react/rule-suppression</code></a
 									>
 								</td>
@@ -8122,7 +8440,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/rules-of-hooks"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/rules-of-hooks"
 										><code>react/rules-of-hooks</code></a
 									>
 								</td>
@@ -8140,7 +8459,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/self-closing-comp"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/self-closing-comp"
 										><code>react/self-closing-comp</code></a
 									>
 								</td>
@@ -8158,7 +8478,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/set-state-in-effect"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/set-state-in-effect"
 										><code>react/set-state-in-effect</code></a
 									>
 								</td>
@@ -8176,7 +8497,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/set-state-in-render"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/set-state-in-render"
 										><code>react/set-state-in-render</code></a
 									>
 								</td>
@@ -8194,7 +8516,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/state-in-constructor"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/state-in-constructor"
 										><code>react/state-in-constructor</code></a
 									>
 								</td>
@@ -8212,7 +8535,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/static-components"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/static-components"
 										><code>react/static-components</code></a
 									>
 								</td>
@@ -8230,7 +8554,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/style-prop-object"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/style-prop-object"
 										><code>react/style-prop-object</code></a
 									>
 								</td>
@@ -8248,7 +8573,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/syntax"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/syntax"
 										><code>react/syntax</code></a
 									>
 								</td>
@@ -8266,7 +8592,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/todo"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/todo"
 										><code>react/todo</code></a
 									>
 								</td>
@@ -8284,7 +8611,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/unsupported-syntax"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/unsupported-syntax"
 										><code>react/unsupported-syntax</code></a
 									>
 								</td>
@@ -8302,7 +8630,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/use-memo"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/use-memo"
 										><code>react/use-memo</code></a
 									>
 								</td>
@@ -8339,7 +8668,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/react/void-use-memo"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/react/void-use-memo"
 										><code>react/void-use-memo</code></a
 									>
 								</td>
@@ -8376,7 +8706,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/array-type"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/array-type"
 										><code>typescript/array-type</code></a
 									>
 								</td>
@@ -8394,7 +8725,8 @@
 								data-configured="true"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/await-thenable"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/await-thenable"
 										><code>typescript/await-thenable</code></a
 									>
 								</td>
@@ -8412,7 +8744,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/ban-ts-comment"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/ban-ts-comment"
 										><code>typescript/ban-ts-comment</code></a
 									>
 								</td>
@@ -8449,7 +8782,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/ban-types"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/ban-types"
 										><code>typescript/ban-types</code></a
 									>
 								</td>
@@ -8619,7 +8953,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/dot-notation"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/dot-notation"
 										><code>typescript/dot-notation</code></a
 									>
 								</td>
@@ -8713,7 +9048,8 @@
 								data-configured="true"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-array-delete"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-array-delete"
 										><code>typescript/no-array-delete</code></a
 									>
 								</td>
@@ -8788,7 +9124,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-deprecated"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-deprecated"
 										><code>typescript/no-deprecated</code></a
 									>
 								</td>
@@ -8882,7 +9219,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-explicit-any"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-explicit-any"
 										><code>typescript/no-explicit-any</code></a
 									>
 								</td>
@@ -8938,7 +9276,8 @@
 								data-configured="true"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-for-in-array"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-for-in-array"
 										><code>typescript/no-for-in-array</code></a
 									>
 								</td>
@@ -8956,7 +9295,8 @@
 								data-configured="true"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-implied-eval"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-implied-eval"
 										><code>typescript/no-implied-eval</code></a
 									>
 								</td>
@@ -9088,7 +9428,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-mixed-enums"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-mixed-enums"
 										><code>typescript/no-mixed-enums</code></a
 									>
 								</td>
@@ -9106,7 +9447,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-namespace"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-namespace"
 										><code>typescript/no-namespace</code></a
 									>
 								</td>
@@ -9126,7 +9468,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-non-null-asserted-nullish-coalescing"
-										><code>typescript/no-non-null-asserted-nullish-coalescing</code></a
+										><code
+											>typescript/no-non-null-asserted-nullish-coalescing</code
+										></a
 									>
 								</td>
 								<td>typescript</td>
@@ -9221,7 +9565,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-unnecessary-boolean-literal-compare"
-										><code>typescript/no-unnecessary-boolean-literal-compare</code></a
+										><code
+											>typescript/no-unnecessary-boolean-literal-compare</code
+										></a
 									>
 								</td>
 								<td>typescript</td>
@@ -9278,7 +9624,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-unnecessary-template-expression"
-										><code>typescript/no-unnecessary-template-expression</code></a
+										><code
+											>typescript/no-unnecessary-template-expression</code
+										></a
 									>
 								</td>
 								<td>typescript</td>
@@ -9428,7 +9776,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-unsafe-call"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-unsafe-call"
 										><code>typescript/no-unsafe-call</code></a
 									>
 								</td>
@@ -9503,7 +9852,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-unsafe-return"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-unsafe-return"
 										><code>typescript/no-unsafe-return</code></a
 									>
 								</td>
@@ -9578,7 +9928,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-var-requires"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/no-var-requires"
 										><code>typescript/no-var-requires</code></a
 									>
 								</td>
@@ -9598,7 +9949,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/non-nullable-type-assertion-style"
-										><code>typescript/non-nullable-type-assertion-style</code></a
+										><code
+											>typescript/non-nullable-type-assertion-style</code
+										></a
 									>
 								</td>
 								<td>typescript</td>
@@ -9615,7 +9968,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/only-throw-error"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/only-throw-error"
 										><code>typescript/only-throw-error</code></a
 									>
 								</td>
@@ -9671,7 +10025,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/prefer-find"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/prefer-find"
 										><code>typescript/prefer-find</code></a
 									>
 								</td>
@@ -9689,7 +10044,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/prefer-for-of"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/prefer-for-of"
 										><code>typescript/prefer-for-of</code></a
 									>
 								</td>
@@ -9726,7 +10082,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/prefer-includes"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/prefer-includes"
 										><code>typescript/prefer-includes</code></a
 									>
 								</td>
@@ -9820,7 +10177,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/prefer-readonly"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/prefer-readonly"
 										><code>typescript/prefer-readonly</code></a
 									>
 								</td>
@@ -10009,7 +10367,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/require-await"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/require-await"
 										><code>typescript/require-await</code></a
 									>
 								</td>
@@ -10065,7 +10424,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/return-await"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/return-await"
 										><code>typescript/return-await</code></a
 									>
 								</td>
@@ -10140,7 +10500,8 @@
 								data-configured="true"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/unbound-method"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/unbound-method"
 										><code>typescript/unbound-method</code></a
 									>
 								</td>
@@ -10179,7 +10540,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/typescript/use-unknown-in-catch-callback-variable"
-										><code>typescript/use-unknown-in-catch-callback-variable</code></a
+										><code
+											>typescript/use-unknown-in-catch-callback-variable</code
+										></a
 									>
 								</td>
 								<td>typescript</td>
@@ -10196,7 +10559,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/catch-error-name"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/catch-error-name"
 										><code>unicorn/catch-error-name</code></a
 									>
 								</td>
@@ -10214,7 +10578,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/consistent-assert"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/consistent-assert"
 										><code>unicorn/consistent-assert</code></a
 									>
 								</td>
@@ -10346,7 +10711,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/empty-brace-spaces"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/empty-brace-spaces"
 										><code>unicorn/empty-brace-spaces</code></a
 									>
 								</td>
@@ -10364,7 +10730,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/error-message"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/error-message"
 										><code>unicorn/error-message</code></a
 									>
 								</td>
@@ -10382,7 +10749,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/escape-case"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/escape-case"
 										><code>unicorn/escape-case</code></a
 									>
 								</td>
@@ -10438,7 +10806,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/filename-case"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/filename-case"
 										><code>unicorn/filename-case</code></a
 									>
 								</td>
@@ -10456,7 +10825,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/import-style"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/import-style"
 										><code>unicorn/import-style</code></a
 									>
 								</td>
@@ -10474,7 +10844,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/max-nested-calls"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/max-nested-calls"
 										><code>unicorn/max-nested-calls</code></a
 									>
 								</td>
@@ -10492,7 +10863,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/new-for-builtins"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/new-for-builtins"
 										><code>unicorn/new-for-builtins</code></a
 									>
 								</td>
@@ -10605,7 +10977,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-array-for-each"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-array-for-each"
 										><code>unicorn/no-array-for-each</code></a
 									>
 								</td>
@@ -10642,7 +11015,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-array-reduce"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-array-reduce"
 										><code>unicorn/no-array-reduce</code></a
 									>
 								</td>
@@ -10660,7 +11034,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-array-reverse"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-array-reverse"
 										><code>unicorn/no-array-reverse</code></a
 									>
 								</td>
@@ -10678,7 +11053,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-array-sort"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-array-sort"
 										><code>unicorn/no-array-sort</code></a
 									>
 								</td>
@@ -10734,7 +11110,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-console-spaces"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-console-spaces"
 										><code>unicorn/no-console-spaces</code></a
 									>
 								</td>
@@ -10752,7 +11129,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-document-cookie"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-document-cookie"
 										><code>unicorn/no-document-cookie</code></a
 									>
 								</td>
@@ -10770,7 +11148,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-hex-escape"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-hex-escape"
 										><code>unicorn/no-hex-escape</code></a
 									>
 								</td>
@@ -10807,7 +11186,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-instanceof-array"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-instanceof-array"
 										><code>unicorn/no-instanceof-array</code></a
 									>
 								</td>
@@ -10863,7 +11243,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-lonely-if"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-lonely-if"
 										><code>unicorn/no-lonely-if</code></a
 									>
 								</td>
@@ -10938,7 +11319,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-nested-ternary"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-nested-ternary"
 										><code>unicorn/no-nested-ternary</code></a
 									>
 								</td>
@@ -10956,7 +11338,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-new-buffer"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-new-buffer"
 										><code>unicorn/no-new-buffer</code></a
 									>
 								</td>
@@ -10974,7 +11357,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-null"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-null"
 										><code>unicorn/no-null</code></a
 									>
 								</td>
@@ -11011,7 +11395,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-process-exit"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-process-exit"
 										><code>unicorn/no-process-exit</code></a
 									>
 								</td>
@@ -11048,7 +11433,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-this-assignment"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-this-assignment"
 										><code>unicorn/no-this-assignment</code></a
 									>
 								</td>
@@ -11066,7 +11452,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-typeof-undefined"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-typeof-undefined"
 										><code>unicorn/no-typeof-undefined</code></a
 									>
 								</td>
@@ -11160,7 +11547,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-unreadable-iife"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-unreadable-iife"
 										><code>unicorn/no-unreadable-iife</code></a
 									>
 								</td>
@@ -11199,7 +11587,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-useless-error-capture-stack-trace"
-										><code>unicorn/no-useless-error-capture-stack-trace</code></a
+										><code
+											>unicorn/no-useless-error-capture-stack-trace</code
+										></a
 									>
 								</td>
 								<td>unicorn</td>
@@ -11292,7 +11682,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-zero-fractions"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/no-zero-fractions"
 										><code>unicorn/no-zero-fractions</code></a
 									>
 								</td>
@@ -11310,7 +11701,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/number-literal-case"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/number-literal-case"
 										><code>unicorn/number-literal-case</code></a
 									>
 								</td>
@@ -11366,7 +11758,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-array-find"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-array-find"
 										><code>unicorn/prefer-array-find</code></a
 									>
 								</td>
@@ -11384,7 +11777,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-array-flat"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-array-flat"
 										><code>unicorn/prefer-array-flat</code></a
 									>
 								</td>
@@ -11440,7 +11834,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-array-some"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-array-some"
 										><code>unicorn/prefer-array-some</code></a
 									>
 								</td>
@@ -11458,7 +11853,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-at"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-at"
 										><code>unicorn/prefer-at</code></a
 									>
 								</td>
@@ -11514,7 +11910,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-class-fields"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-class-fields"
 										><code>unicorn/prefer-class-fields</code></a
 									>
 								</td>
@@ -11551,7 +11948,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-code-point"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-code-point"
 										><code>unicorn/prefer-code-point</code></a
 									>
 								</td>
@@ -11569,7 +11967,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-date-now"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-date-now"
 										><code>unicorn/prefer-date-now</code></a
 									>
 								</td>
@@ -11682,7 +12081,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-event-target"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-event-target"
 										><code>unicorn/prefer-event-target</code></a
 									>
 								</td>
@@ -11700,7 +12100,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-export-from"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-export-from"
 										><code>unicorn/prefer-export-from</code></a
 									>
 								</td>
@@ -11718,7 +12119,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-global-this"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-global-this"
 										><code>unicorn/prefer-global-this</code></a
 									>
 								</td>
@@ -11755,7 +12157,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-includes"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-includes"
 										><code>unicorn/prefer-includes</code></a
 									>
 								</td>
@@ -11794,7 +12197,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-logical-operator-over-ternary"
-										><code>unicorn/prefer-logical-operator-over-ternary</code></a
+										><code
+											>unicorn/prefer-logical-operator-over-ternary</code
+										></a
 									>
 								</td>
 								<td>unicorn</td>
@@ -11811,7 +12216,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-math-min-max"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-math-min-max"
 										><code>unicorn/prefer-math-min-max</code></a
 									>
 								</td>
@@ -11829,7 +12235,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-math-trunc"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-math-trunc"
 										><code>unicorn/prefer-math-trunc</code></a
 									>
 								</td>
@@ -11885,7 +12292,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-module"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-module"
 										><code>unicorn/prefer-module</code></a
 									>
 								</td>
@@ -12093,7 +12501,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-regexp-test"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-regexp-test"
 										><code>unicorn/prefer-regexp-test</code></a
 									>
 								</td>
@@ -12130,7 +12539,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-set-has"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-set-has"
 										><code>unicorn/prefer-set-has</code></a
 									>
 								</td>
@@ -12148,7 +12558,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-single-call"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-single-call"
 										><code>unicorn/prefer-single-call</code></a
 									>
 								</td>
@@ -12166,7 +12577,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-spread"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-spread"
 										><code>unicorn/prefer-spread</code></a
 									>
 								</td>
@@ -12184,7 +12596,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-string-raw"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-string-raw"
 										><code>unicorn/prefer-string-raw</code></a
 									>
 								</td>
@@ -12221,7 +12634,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-string-slice"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-string-slice"
 										><code>unicorn/prefer-string-slice</code></a
 									>
 								</td>
@@ -12277,7 +12691,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-ternary"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-ternary"
 										><code>unicorn/prefer-ternary</code></a
 									>
 								</td>
@@ -12314,7 +12729,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-type-error"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/prefer-type-error"
 										><code>unicorn/prefer-type-error</code></a
 									>
 								</td>
@@ -12332,7 +12748,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/relative-url-style"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/relative-url-style"
 										><code>unicorn/relative-url-style</code></a
 									>
 								</td>
@@ -12409,7 +12826,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/require-number-to-fixed-digits-argument"
-										><code>unicorn/require-number-to-fixed-digits-argument</code></a
+										><code
+											>unicorn/require-number-to-fixed-digits-argument</code
+										></a
 									>
 								</td>
 								<td>unicorn</td>
@@ -12445,7 +12864,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/switch-case-braces"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/switch-case-braces"
 										><code>unicorn/switch-case-braces</code></a
 									>
 								</td>
@@ -12501,7 +12921,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/throw-new-error"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/unicorn/throw-new-error"
 										><code>unicorn/throw-new-error</code></a
 									>
 								</td>
@@ -12519,7 +12940,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/consistent-each-for"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/consistent-each-for"
 										><code>vitest/consistent-each-for</code></a
 									>
 								</td>
@@ -12556,7 +12978,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/consistent-test-it"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/consistent-test-it"
 										><code>vitest/consistent-test-it</code></a
 									>
 								</td>
@@ -12574,7 +12997,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/consistent-vitest-vi"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/consistent-vitest-vi"
 										><code>vitest/consistent-vitest-vi</code></a
 									>
 								</td>
@@ -12592,7 +13016,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/expect-expect"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/expect-expect"
 										><code>vitest/expect-expect</code></a
 									>
 								</td>
@@ -12610,7 +13035,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/hoisted-apis-on-top"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/hoisted-apis-on-top"
 										><code>vitest/hoisted-apis-on-top</code></a
 									>
 								</td>
@@ -12628,7 +13054,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/max-expects"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/max-expects"
 										><code>vitest/max-expects</code></a
 									>
 								</td>
@@ -12646,7 +13073,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/max-nested-describe"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/max-nested-describe"
 										><code>vitest/max-nested-describe</code></a
 									>
 								</td>
@@ -12664,7 +13092,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-alias-methods"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-alias-methods"
 										><code>vitest/no-alias-methods</code></a
 									>
 								</td>
@@ -12739,7 +13168,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-conditional-tests"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-conditional-tests"
 										><code>vitest/no-conditional-tests</code></a
 									>
 								</td>
@@ -12757,7 +13187,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-disabled-tests"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-disabled-tests"
 										><code>vitest/no-disabled-tests</code></a
 									>
 								</td>
@@ -12775,7 +13206,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-duplicate-hooks"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-duplicate-hooks"
 										><code>vitest/no-duplicate-hooks</code></a
 									>
 								</td>
@@ -12793,7 +13225,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-focused-tests"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-focused-tests"
 										><code>vitest/no-focused-tests</code></a
 									>
 								</td>
@@ -12811,7 +13244,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-hooks"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-hooks"
 										><code>vitest/no-hooks</code></a
 									>
 								</td>
@@ -12829,7 +13263,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-identical-title"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-identical-title"
 										><code>vitest/no-identical-title</code></a
 									>
 								</td>
@@ -12847,7 +13282,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-import-node-test"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-import-node-test"
 										><code>vitest/no-import-node-test</code></a
 									>
 								</td>
@@ -12903,7 +13339,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-large-snapshots"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-large-snapshots"
 										><code>vitest/no-large-snapshots</code></a
 									>
 								</td>
@@ -12921,7 +13358,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-mocks-import"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-mocks-import"
 										><code>vitest/no-mocks-import</code></a
 									>
 								</td>
@@ -12977,7 +13415,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-standalone-expect"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-standalone-expect"
 										><code>vitest/no-standalone-expect</code></a
 									>
 								</td>
@@ -12995,7 +13434,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-test-prefixes"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/no-test-prefixes"
 										><code>vitest/no-test-prefixes</code></a
 									>
 								</td>
@@ -13108,7 +13548,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-called-once"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-called-once"
 										><code>vitest/prefer-called-once</code></a
 									>
 								</td>
@@ -13126,7 +13567,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-called-times"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-called-times"
 										><code>vitest/prefer-called-times</code></a
 									>
 								</td>
@@ -13144,7 +13586,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-called-with"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-called-with"
 										><code>vitest/prefer-called-with</code></a
 									>
 								</td>
@@ -13200,7 +13643,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-each"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-each"
 										><code>vitest/prefer-each</code></a
 									>
 								</td>
@@ -13313,7 +13757,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-hooks-on-top"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-hooks-on-top"
 										><code>vitest/prefer-hooks-on-top</code></a
 									>
 								</td>
@@ -13426,7 +13871,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-snapshot-hint"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-snapshot-hint"
 										><code>vitest/prefer-snapshot-hint</code></a
 									>
 								</td>
@@ -13444,7 +13890,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-spy-on"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-spy-on"
 										><code>vitest/prefer-spy-on</code></a
 									>
 								</td>
@@ -13481,7 +13928,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-strict-equal"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-strict-equal"
 										><code>vitest/prefer-strict-equal</code></a
 									>
 								</td>
@@ -13499,7 +13947,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-to-be"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-to-be"
 										><code>vitest/prefer-to-be</code></a
 									>
 								</td>
@@ -13517,7 +13966,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-to-be-falsy"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-to-be-falsy"
 										><code>vitest/prefer-to-be-falsy</code></a
 									>
 								</td>
@@ -13535,7 +13985,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-to-be-object"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-to-be-object"
 										><code>vitest/prefer-to-be-object</code></a
 									>
 								</td>
@@ -13553,7 +14004,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-to-be-truthy"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-to-be-truthy"
 										><code>vitest/prefer-to-be-truthy</code></a
 									>
 								</td>
@@ -13571,7 +14023,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-to-contain"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-to-contain"
 										><code>vitest/prefer-to-contain</code></a
 									>
 								</td>
@@ -13627,7 +14080,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-todo"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/prefer-todo"
 										><code>vitest/prefer-todo</code></a
 									>
 								</td>
@@ -13664,7 +14118,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/require-hook"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/require-hook"
 										><code>vitest/require-hook</code></a
 									>
 								</td>
@@ -13684,7 +14139,9 @@
 								<td>
 									<a
 										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/require-local-test-context-for-concurrent-snapshots"
-										><code>vitest/require-local-test-context-for-concurrent-snapshots</code></a
+										><code
+											>vitest/require-local-test-context-for-concurrent-snapshots</code
+										></a
 									>
 								</td>
 								<td>vitest</td>
@@ -13720,7 +14177,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/require-test-timeout"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/require-test-timeout"
 										><code>vitest/require-test-timeout</code></a
 									>
 								</td>
@@ -13795,7 +14253,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/valid-expect"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/valid-expect"
 										><code>vitest/valid-expect</code></a
 									>
 								</td>
@@ -13832,7 +14291,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/valid-title"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/valid-title"
 										><code>vitest/valid-title</code></a
 									>
 								</td>
@@ -13850,7 +14310,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/warn-todo"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vitest/warn-todo"
 										><code>vitest/warn-todo</code></a
 									>
 								</td>
@@ -13944,7 +14405,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/max-props"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/max-props"
 										><code>vue/max-props</code></a
 									>
 								</td>
@@ -13962,7 +14424,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/next-tick-style"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/next-tick-style"
 										><code>vue/next-tick-style</code></a
 									>
 								</td>
@@ -14170,7 +14633,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-dupe-keys"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-dupe-keys"
 										><code>vue/no-dupe-keys</code></a
 									>
 								</td>
@@ -14207,7 +14671,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-expose-after-await"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-expose-after-await"
 										><code>vue/no-expose-after-await</code></a
 									>
 								</td>
@@ -14263,7 +14728,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-multiple-slot-args"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-multiple-slot-args"
 										><code>vue/no-multiple-slot-args</code></a
 									>
 								</td>
@@ -14319,7 +14785,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-reserved-keys"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-reserved-keys"
 										><code>vue/no-reserved-keys</code></a
 									>
 								</td>
@@ -14337,7 +14804,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-reserved-props"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-reserved-props"
 										><code>vue/no-reserved-props</code></a
 									>
 								</td>
@@ -14412,7 +14880,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-watch-after-await"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/no-watch-after-await"
 										><code>vue/no-watch-after-await</code></a
 									>
 								</td>
@@ -14430,7 +14899,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/prefer-import-from-vue"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/prefer-import-from-vue"
 										><code>vue/prefer-import-from-vue</code></a
 									>
 								</td>
@@ -14448,7 +14918,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/prop-name-casing"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/prop-name-casing"
 										><code>vue/prop-name-casing</code></a
 									>
 								</td>
@@ -14466,7 +14937,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-default-export"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-default-export"
 										><code>vue/require-default-export</code></a
 									>
 								</td>
@@ -14484,7 +14956,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-default-prop"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-default-prop"
 										><code>vue/require-default-prop</code></a
 									>
 								</td>
@@ -14502,7 +14975,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-direct-export"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-direct-export"
 										><code>vue/require-direct-export</code></a
 									>
 								</td>
@@ -14539,7 +15013,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-prop-types"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-prop-types"
 										><code>vue/require-prop-types</code></a
 									>
 								</td>
@@ -14557,7 +15032,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-render-return"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-render-return"
 										><code>vue/require-render-return</code></a
 									>
 								</td>
@@ -14594,7 +15070,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-typed-ref"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/require-typed-ref"
 										><code>vue/require-typed-ref</code></a
 									>
 								</td>
@@ -14650,7 +15127,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/valid-define-emits"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/valid-define-emits"
 										><code>vue/valid-define-emits</code></a
 									>
 								</td>
@@ -14668,7 +15146,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/valid-define-options"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/valid-define-options"
 										><code>vue/valid-define-options</code></a
 									>
 								</td>
@@ -14686,7 +15165,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/valid-define-props"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/valid-define-props"
 										><code>vue/valid-define-props</code></a
 									>
 								</td>
@@ -14704,7 +15184,8 @@
 								data-configured="false"
 							>
 								<td>
-									<a href="https://oxc.rs/docs/guide/usage/linter/rules/vue/valid-next-tick"
+									<a
+										href="https://oxc.rs/docs/guide/usage/linter/rules/vue/valid-next-tick"
 										><code>vue/valid-next-tick</code></a
 									>
 								</td>
@@ -14718,7 +15199,12 @@
 						</tbody>
 					</table>
 				</div>
-				<p id="empty" hidden>条件に一致するルールはありません。</p>
+				<p
+					id="empty"
+					hidden
+				>
+					条件に一致するルールはありません。
+				</p>
 				<p class="muted">
 					「提案」は通常の --fix
 					と区別されます。「危険な自動修正」「危険な提案」は挙動を変更し得ます。「未実装」は修正機能が未実装であり、ルール自体は利用可能です。
@@ -14733,24 +15219,37 @@
 				</p>
 				<ul>
 					<li>
-						<a href="https://oxc.rs/docs/guide/usage/linter/rules">公式ルール一覧</a
+						<a href="https://oxc.rs/docs/guide/usage/linter/rules"
+							>公式ルール一覧</a
 						>：ルールID・追加バージョンの照合元
 					</li>
 					<li>
-						<a href="https://oxc.rs/docs/guide/usage/linter/config">公式設定ガイド</a
+						<a href="https://oxc.rs/docs/guide/usage/linter/config"
+							>公式設定ガイド</a
 						>：カテゴリ・ルール・プラグイン設定
 					</li>
-					<li><a href="https://oxc.rs/docs/guide/usage/linter/plugins">公式プラグイン一覧</a></li>
 					<li>
-						<a href="https://oxc.rs/docs/guide/usage/linter/type-aware">公式 Type-Aware Linting</a>
+						<a href="https://oxc.rs/docs/guide/usage/linter/plugins"
+							>公式プラグイン一覧</a
+						>
 					</li>
-					<li><a href="https://oxc.rs/docs/guide/usage/linter/cli">公式 CLI リファレンス</a></li>
+					<li>
+						<a href="https://oxc.rs/docs/guide/usage/linter/type-aware"
+							>公式 Type-Aware Linting</a
+						>
+					</li>
+					<li>
+						<a href="https://oxc.rs/docs/guide/usage/linter/cli"
+							>公式 CLI リファレンス</a
+						>
+					</li>
 				</ul>
 				<pre><code>mise exec -- oxlint --version
 mise exec -- oxlint --rules --format json
 mise exec -- oxlint --print-config</code></pre>
 				<p class="muted">
-					カテゴリ・型情報の要否・修正機能はローカル CLI の登録情報、実効設定は --print-config
+					カテゴリ・型情報の要否・修正機能はローカル CLI の登録情報、実効設定は
+					--print-config
 					を使用。プロジェクトの設定・実行コマンドを変更した際は再集計してください。
 				</p>
 			</section>
@@ -14776,7 +15275,8 @@ mise exec -- oxlint --print-config</code></pre>
 					row.hidden = !matches;
 					if (matches) visible++;
 				}
-				document.querySelector('#count').textContent = `${visible} / ${entries.length} 件`;
+				document.querySelector('#count').textContent =
+					`${visible} / ${entries.length} 件`;
 				document.querySelector('#empty').hidden = visible !== 0;
 			}
 			for (const control of [query, plugin, category, reason])

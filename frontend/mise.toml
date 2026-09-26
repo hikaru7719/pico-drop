@@ -14,7 +14,10 @@ run = "wrangler types"
 [tasks.check]
 description = "Workers型とSvelte/TypeScriptを検査する"
 depends = ["//frontend:sync"]
-run = ["wrangler types --check", "pnpm exec svelte-check --tsgo --tsconfig ./tsconfig.json"]
+run = [
+	"wrangler types --check",
+	"pnpm exec svelte-check --tsgo --tsconfig ./tsconfig.json"
+]
 
 [tasks."check:watch"]
 description = "Svelte/TypeScriptを継続的に検査する"

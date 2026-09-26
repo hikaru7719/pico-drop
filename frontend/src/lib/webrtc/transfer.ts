@@ -2,13 +2,15 @@ import { describePhotos } from '../photos/index.ts';
 import { LIMITS, record, type PhotoMeta } from '../../../../shared/protocol.ts';
 
 export async function digest(data: ArrayBuffer): Promise<string> {
-	return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', data)), (b) =>
-		b.toString(16).padStart(2, '0')
+	return Array.from(
+		new Uint8Array(await crypto.subtle.digest('SHA-256', data)),
+		(b) => b.toString(16).padStart(2, '0')
 	).join('');
 }
 function drain(channel: RTCDataChannel, signal: AbortSignal) {
 	if (signal.aborted) return Promise.reject(new Error('中止しました。'));
-	if (channel.readyState !== 'open') return Promise.reject(new Error('接続が切れました。'));
+	if (channel.readyState !== 'open')
+		return Promise.reject(new Error('接続が切れました。'));
 	if (channel.bufferedAmount <= 256 * 1024) return Promise.resolve();
 	return new Promise<void>((resolve, reject) => {
 		const finish = (error?: Error) => {
@@ -21,7 +23,10 @@ function drain(channel: RTCDataChannel, signal: AbortSignal) {
 		};
 		const low = () => finish();
 		const closed = () => finish(new Error('転送が中断されました。'));
-		const timer = setTimeout(() => finish(new Error('送信がタイムアウトしました。')), 30_000);
+		const timer = setTimeout(
+			() => finish(new Error('送信がタイムアウトしました。')),
+			30_000
+		);
 		channel.addEventListener('bufferedamountlow', low);
 		channel.addEventListener('close', closed);
 		signal.addEventListener('abort', closed, { once: true });
@@ -87,7 +92,8 @@ export class PhotoReceiver {
 			this.progress(this.total);
 			return;
 		}
-		if (typeof data !== 'string' || data.length > 1024) throw new Error('不正な転送データです。');
+		if (typeof data !== 'string' || data.length > 1024)
+			throw new Error('不正な転送データです。');
 		const m: unknown = JSON.parse(data);
 		if (!record(m)) throw new Error('不正な転送データです。');
 		if (
@@ -113,7 +119,8 @@ export class PhotoReceiver {
 			if ((await digest(await file.arrayBuffer())) !== this.hash)
 				throw new Error('写真の検証に失敗しました。もう一度送信してください。');
 			const [detected] = await describePhotos([file]);
-			if (detected.type !== meta.type) throw new Error('写真の形式が一致しません。');
+			if (detected.type !== meta.type)
+				throw new Error('写真の形式が一致しません。');
 			if (this.ended) return;
 			this.photo(file);
 			this.chunks = [];
@@ -122,7 +129,11 @@ export class PhotoReceiver {
 			this.index++;
 			return;
 		}
-		if (m.type === 'done' && !this.active && this.index === this.metadata.length) {
+		if (
+			m.type === 'done' &&
+			!this.active &&
+			this.index === this.metadata.length
+		) {
 			this.ended = true;
 			this.complete();
 			return;

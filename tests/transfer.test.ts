@@ -1,9 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PhotoReceiver, digest, sendPhotos } from '../frontend/src/lib/webrtc/transfer.ts';
-import { describePhotos, formatBytes, sharePhotos } from '../frontend/src/lib/photos/index.ts';
+import {
+	PhotoReceiver,
+	digest,
+	sendPhotos
+} from '../frontend/src/lib/webrtc/transfer.ts';
+import {
+	describePhotos,
+	formatBytes,
+	sharePhotos
+} from '../frontend/src/lib/photos/index.ts';
 const data = new Uint8Array([255, 216, 255, 224, 1, 2, 3, 4]).buffer;
-const meta = { id: 'p', name: 'photo.jpg', type: 'image/jpeg', size: data.byteLength };
+const meta = {
+	id: 'p',
+	name: 'photo.jpg',
+	type: 'image/jpeg',
+	size: data.byteLength
+};
 test('multiple photos are received byte-for-byte and complete only after final marker', async () => {
 	const files: File[] = [];
 	let complete = false;
@@ -16,7 +29,9 @@ test('multiple photos are received byte-for-byte and complete only after final m
 		}
 	);
 	for (const id of ['p', 'p2']) {
-		await r.consume(JSON.stringify({ type: 'file', id, sha256: await digest(data) }));
+		await r.consume(
+			JSON.stringify({ type: 'file', id, sha256: await digest(data) })
+		);
 		await r.consume(data.slice(0, 4));
 		await r.consume(data.slice(4));
 		assert.equal(complete, false);
@@ -38,14 +53,20 @@ test('receiver rejects oversized, early, truncated and corrupt data', async () =
 	await assert.rejects(make().consume(data));
 	await assert.rejects(make().consume('{"type":"done"}'));
 	let r = make();
-	await r.consume(JSON.stringify({ type: 'file', id: 'p', sha256: await digest(data) }));
+	await r.consume(
+		JSON.stringify({ type: 'file', id: 'p', sha256: await digest(data) })
+	);
 	await assert.rejects(r.consume(new ArrayBuffer(9)));
 	r = make();
-	await r.consume(JSON.stringify({ type: 'file', id: 'p', sha256: '0'.repeat(64) }));
+	await r.consume(
+		JSON.stringify({ type: 'file', id: 'p', sha256: '0'.repeat(64) })
+	);
 	await r.consume(data);
 	await assert.rejects(r.consume('{"type":"file-end","id":"p"}'));
 	r = make();
-	await r.consume(JSON.stringify({ type: 'file', id: 'p', sha256: await digest(data) }));
+	await r.consume(
+		JSON.stringify({ type: 'file', id: 'p', sha256: await digest(data) })
+	);
 	await r.consume(data.slice(0, 4));
 	await assert.rejects(r.consume('{"type":"file-end","id":"p"}'));
 	r = make();
@@ -64,7 +85,13 @@ test('sender respects cancellation and channel backpressure', async () => {
 		}
 	} as unknown as RTCDataChannel;
 	await assert.rejects(
-		sendPhotos(channel, [new File([data], 'photo.jpg')], [meta], controller.signal, () => {})
+		sendPhotos(
+			channel,
+			[new File([data], 'photo.jpg')],
+			[meta],
+			controller.signal,
+			() => {}
+		)
 	);
 	assert.equal(sends, 0);
 	const live = new AbortController();
@@ -89,21 +116,30 @@ test('sender respects cancellation and channel backpressure', async () => {
 	await assert.rejects(pending);
 });
 test('photo classification uses file bytes and preserves HEIC, rejects renamed non-photos', async () => {
-	const [jpeg] = await describePhotos([new File([data], 'camera.heic', { type: 'image/heic' })]);
+	const [jpeg] = await describePhotos([
+		new File([data], 'camera.heic', { type: 'image/heic' })
+	]);
 	assert.equal(jpeg.type, 'image/jpeg');
 	await assert.rejects(
-		describePhotos([new File(['not a photo'], 'fake.jpg', { type: 'image/jpeg' })])
+		describePhotos([
+			new File(['not a photo'], 'fake.jpg', { type: 'image/jpeg' })
+		])
 	);
 	const heic = new Uint8Array(24);
 	heic.set(new TextEncoder().encode('ftypheic'), 4);
-	const [meta] = await describePhotos([new File([heic], 'camera.heic', { type: 'image/heic' })]);
+	const [meta] = await describePhotos([
+		new File([heic], 'camera.heic', { type: 'image/heic' })
+	]);
 	assert.equal(meta.type, 'image/heic');
 	assert.equal(meta.name, 'camera.heic');
 });
 
 test('share cancellation and completion remain distinct from confirmed photo-library saving', async () => {
 	const files = [new File([data], 'photo.jpg', { type: 'image/jpeg' })];
-	Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+	Object.defineProperty(navigator, 'canShare', {
+		configurable: true,
+		value: () => true
+	});
 	Object.defineProperty(navigator, 'share', {
 		configurable: true,
 		value: async () => {
@@ -111,9 +147,15 @@ test('share cancellation and completion remain distinct from confirmed photo-lib
 		}
 	});
 	assert.equal(await sharePhotos(files), 'cancelled');
-	Object.defineProperty(navigator, 'share', { configurable: true, value: async () => {} });
+	Object.defineProperty(navigator, 'share', {
+		configurable: true,
+		value: async () => {}
+	});
 	assert.equal(await sharePhotos(files), 'shared');
-	Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false });
+	Object.defineProperty(navigator, 'canShare', {
+		configurable: true,
+		value: () => false
+	});
 	assert.equal(await sharePhotos(files), 'unsupported');
 });
 

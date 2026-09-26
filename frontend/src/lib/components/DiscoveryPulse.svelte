@@ -3,14 +3,19 @@
 </script>
 
 <div class="discovery">
-	<div class="scene" aria-hidden="true">
+	<div
+		class="scene"
+		aria-hidden="true"
+	>
 		<div class="halo"></div>
 		<div class="ripple"></div>
 		<div class="ripple second"></div>
 		<div class="ripple third"></div>
 		<div class="source"><span></span></div>
 	</div>
-	<p role="status">{locating ? '現在地を確認しています' : '近くの人を探しています'}</p>
+	<p role="status">
+		{locating ? '現在地を確認しています' : '近くの人を探しています'}
+	</p>
 	<small
 		>{locating
 			? '位置情報の利用を許可してください。'
@@ -38,7 +43,12 @@
 		width: 88%;
 		aspect-ratio: 1;
 		border-radius: 50%;
-		background: radial-gradient(circle, #0071e30b 0%, #0071e305 40%, transparent 70%);
+		background: radial-gradient(
+			circle,
+			#0071e30b 0%,
+			#0071e305 40%,
+			transparent 70%
+		);
 	}
 	.ripple {
 		position: absolute;

@@ -10,7 +10,12 @@ import {
 	LIMITS,
 	type TransferState
 } from '../shared/protocol.ts';
-const photo = { id: 'photo-1', name: 'photo.jpg', type: 'image/jpeg', size: 10 };
+const photo = {
+	id: 'photo-1',
+	name: 'photo.jpg',
+	type: 'image/jpeg',
+	size: 10
+};
 function transfer(): TransferState {
 	return {
 		id: 't',
@@ -60,13 +65,22 @@ test('photo limits, MIME allowlist, unique IDs and safe names', () => {
 test('signaling validation rejects malformed messages and coordinates', () => {
 	for (const input of [
 		null,
-		{ type: 'presence', location: { latitude: 91, longitude: 0, accuracy: 10 } },
-		{ type: 'presence', location: { latitude: 0, longitude: 0, accuracy: Infinity } },
+		{
+			type: 'presence',
+			location: { latitude: 91, longitude: 0, accuracy: 10 }
+		},
+		{
+			type: 'presence',
+			location: { latitude: 0, longitude: 0, accuracy: Infinity }
+		},
 		{ type: 'request', to: 'b', files: [] },
 		{ type: 'signal', id: 't', signal: { candidate: { candidate: 123 } } }
 	])
 		assert.throws(() => parseClient(input));
-	assert.equal(parseClient({ type: 'presence', location: null }).type, 'presence');
+	assert.equal(
+		parseClient({ type: 'presence', location: null }).type,
+		'presence'
+	);
 });
 test('nearby works across longitude boundary without returning coordinates', () => {
 	assert.equal(
@@ -96,5 +110,8 @@ test('passphrase challenge contains eight unique cards including the answer', ()
 test('confirmation requires a bounded nonempty word', () => {
 	for (const word of [undefined, null, 5, '', 'x'.repeat(33)])
 		assert.throws(() => parseClient({ type: 'confirm', id: 't', word }));
-	assert.equal(parseClient({ type: 'confirm', id: 't', word: 'さくら' }).type, 'confirm');
+	assert.equal(
+		parseClient({ type: 'confirm', id: 't', word: 'さくら' }).type,
+		'confirm'
+	);
 });

@@ -2,34 +2,52 @@
 <html lang="ja">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1"
+		/>
 		<meta
 			name="description"
 			content="pico-dropのアーキテクチャ。Cloudflareで接続を調整し、WebRTCで写真を端末間転送する仕組み。"
 		/>
 		<title>Architecture — pico-drop</title>
-		<link rel="stylesheet" href="style.css" />
+		<link
+			rel="stylesheet"
+			href="style.css"
+		/>
 	</head>
 	<body>
 		<header class="topbar">
-			<a class="brand" href="#">pico-drop<span class="dot">●</span></a
+			<a
+				class="brand"
+				href="#"
+				>pico-drop<span class="dot">●</span></a
 			><span>ENGINEERING / 01</span>
 		</header>
 		<main>
-			<section class="hero" aria-labelledby="title">
+			<section
+				class="hero"
+				aria-labelledby="title"
+			>
 				<p class="eyebrow">SYSTEM ARCHITECTURE · 2026.09.24</p>
-				<h1 id="title">写真は、端末から端末へ。<br /><span>接続の調整は、Cloudflareで。</span></h1>
+				<h1 id="title">
+					写真は、端末から端末へ。<br /><span
+						>接続の調整は、Cloudflareで。</span
+					>
+				</h1>
 				<p class="intro">
 					近くにいる人へ、ブラウザから写真を渡す。pico-dropは、相手の発見と接続の調整をサーバーが担い、写真本体はWebRTC
 					DataChannelで転送する構成です。
 				</p>
 				<div class="tags">
-					<span>SvelteKit + TypeScript</span><span>Workers + Durable Objects</span
-					><span>WebRTC + TURN</span>
+					<span>SvelteKit + TypeScript</span
+					><span>Workers + Durable Objects</span><span>WebRTC + TURN</span>
 				</div>
 				<nav aria-label="目次">
-					<a href="#overview">01 全体構成 ↗</a><a href="#flow">02 転送の流れ ↗</a
-					><a href="#data">03 データの境界 ↗</a><a href="#code">04 コード構成 ↗</a
+					<a href="#overview">01 全体構成 ↗</a
+					><a href="#flow">02 転送の流れ ↗</a
+					><a href="#data">03 データの境界 ↗</a
+					><a href="#code">04 コード構成 ↗</a
 					><a href="#durable-objects">05 Durable Objects ↗</a>
 				</nav>
 			</section>
@@ -62,8 +80,12 @@
 					<div class="data-path">
 						← WebRTC DataChannel →<small>写真のバイト列 · P2Pを優先</small>
 					</div>
-					<div class="relay">直接接続できない場合：Cloudflare TURNで暗号化通信を中継</div>
-					<div class="control-path">↕ HTTPS / WebSocket · セッション、送信要求、SDP / ICE ↕</div>
+					<div class="relay">
+						直接接続できない場合：Cloudflare TURNで暗号化通信を中継
+					</div>
+					<div class="control-path">
+						↕ HTTPS / WebSocket · セッション、送信要求、SDP / ICE ↕
+					</div>
 					<div class="cloud">
 						<div class="node">
 							<small>WEB / FRONTEND WORKER</small>
@@ -81,8 +103,8 @@
 							<small>STATE / DURABLE OBJECT</small>
 							<h3>NearbyHub</h3>
 							<p>
-								匿名セッション · Nearby候補 · Accept / あいことば確認<br />WebSocket signaling ·
-								転送状態 · TURN資格情報の発行
+								匿名セッション · Nearby候補 · Accept / あいことば確認<br />WebSocket
+								signaling · 転送状態 · TURN資格情報の発行
 							</p>
 							<span>MVPは単一Hub（idFromName('mvp')）</span>
 						</div>
@@ -104,7 +126,8 @@
 					<li>
 						<h3>匿名セッションを作成</h3>
 						<p>
-							<code>POST /api/session</code> でID・表示名・秘密トークンを取得。<code>/api/ws</code>
+							<code>POST /api/session</code>
+							でID・表示名・秘密トークンを取得。<code>/api/ws</code>
 							に接続し、最初のメッセージで認証します。
 						</p>
 					</li>
@@ -290,13 +313,19 @@
 						<tbody>
 							<tr>
 								<td>リクエストの行き先</td>
-								<td>複数の実行インスタンスで処理。毎回同じメモリに届く保証はない</td>
-								<td>同じ名前空間・IDへの呼び出しは、同じ論理オブジェクトへ届く</td>
+								<td>
+									複数の実行インスタンスで処理。毎回同じメモリに届く保証はない
+								</td>
+								<td>
+									同じ名前空間・IDへの呼び出しは、同じ論理オブジェクトへ届く
+								</td>
 							</tr>
 							<tr>
 								<td>状態の管理</td>
 								<td>インスタンスの変数を、全端末共通の状態としては使えない</td>
-								<td>オブジェクトごとのメモリと、再起動後も残る専用ストレージを持つ</td>
+								<td>
+									オブジェクトごとのメモリと、再起動後も残る専用ストレージを持つ
+								</td>
 							</tr>
 							<tr>
 								<td>このアプリでの担当</td>
@@ -363,7 +392,8 @@
 						<p>
 							<code>ctx.acceptWebSocket()</code>
 							で受けた接続は、DOが休止しても維持されます。イベントで復帰するとメモリ内の変数は再初期化されるため、接続ごとの情報は
-							<code>serializeAttachment()</code> で保持し、復帰時に読み出します。
+							<code>serializeAttachment()</code>
+							で保持し、復帰時に読み出します。
 						</p>
 					</article>
 					<article>
@@ -389,7 +419,8 @@
 			</section>
 
 			<footer>
-				<span>pico-drop / Share photos nearby.</span><span>Architecture notes · 01</span>
+				<span>pico-drop / Share photos nearby.</span
+				><span>Architecture notes · 01</span>
 			</footer>
 		</main>
 	</body>

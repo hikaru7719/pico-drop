@@ -1,10 +1,14 @@
 // Run against `mise run dev`. Playwright may be supplied by the local tool runtime.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const { chromium } = await import(
+	process.env.PLAYWRIGHT_MODULE || 'playwright'
+);
 const browser = await chromium.launch({
 	headless: true,
-	...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {})
+	...(process.env.CHROME_PATH
+		? { executablePath: process.env.CHROME_PATH }
+		: {})
 });
 const baseURL = process.env.TEST_URL || 'http://localhost:5173';
 const contexts = [];
@@ -29,14 +33,21 @@ async function device() {
 	const page = await context.newPage();
 	page.on('pageerror', (e) => errors.push(e.message));
 	await page.goto(baseURL);
-	await page.getByRole('button', { name: '近くの人を探す', exact: true }).waitFor();
+	await page
+		.getByRole('button', { name: '近くの人を探す', exact: true })
+		.waitFor();
 	assert.equal(await page.locator('input[type=file]').count(), 0);
-	await page.getByRole('button', { name: '近くの人を探す', exact: true }).click();
+	await page
+		.getByRole('button', { name: '近くの人を探す', exact: true })
+		.click();
 	return page;
 }
 try {
 	const a = await device();
-	await a.getByRole('status').filter({ hasText: '近くの人を探しています' }).waitFor();
+	await a
+		.getByRole('status')
+		.filter({ hasText: '近くの人を探しています' })
+		.waitFor();
 	await a.waitForFunction(() => {
 		const card = document
 			.querySelector('[aria-labelledby="nearby-heading"]')
@@ -53,9 +64,20 @@ try {
 			document.querySelector('.intro-shell').getBoundingClientRect().height < 1
 		);
 	});
-	assert.equal(await a.getByRole('heading', { name: 'Photos, Right Nearby.' }).count(), 0);
-	assert.equal(await a.getByRole('button', { name: 'もう一度探す', exact: true }).count(), 0);
-	assert.equal(await a.getByRole('button', { name: '近くの人を探す', exact: true }).count(), 0);
+	assert.equal(
+		await a.getByRole('heading', { name: 'Photos, Right Nearby.' }).count(),
+		0
+	);
+	assert.equal(
+		await a.getByRole('button', { name: 'もう一度探す', exact: true }).count(),
+		0
+	);
+	assert.equal(
+		await a
+			.getByRole('button', { name: '近くの人を探す', exact: true })
+			.count(),
+		0
+	);
 	await a.screenshot({ path: '/tmp/pico-drop-discovery.png', fullPage: true });
 	await a.emulateMedia({ reducedMotion: 'reduce' });
 	assert.equal(
@@ -74,9 +96,14 @@ try {
 		.getByRole('button', { name: /を選ぶ$/ })
 		.first()
 		.click({ timeout: 5000 });
-	await a.getByRole('heading', { name: '写真を選んで送る', exact: true }).waitFor();
+	await a
+		.getByRole('heading', { name: '写真を選んで送る', exact: true })
+		.waitFor();
 	assert.equal(await b.locator('input[type=file]').count(), 0);
-	assert.equal(await a.getByRole('button', { name: '送る', exact: true }).isEnabled(), false);
+	assert.equal(
+		await a.getByRole('button', { name: '送る', exact: true }).isEnabled(),
+		false
+	);
 	await a.getByRole('button', { name: '相手を選び直す', exact: true }).click();
 	assert.equal(await a.locator('input[type=file]').count(), 0);
 	await a
@@ -103,11 +130,20 @@ try {
 		{ name: 'trip.jpg', mimeType: 'image/jpeg', buffer: photo },
 		{ name: 'friends.jpg', mimeType: 'image/jpeg', buffer: photo }
 	]);
-	await a.getByRole('button', { name: 'trip.jpgを選択から外す', exact: true }).click();
-	assert.deepEqual(await a.locator('.file-list li > span').allTextContents(), ['friends.jpg']);
-	await a.getByRole('button', { name: 'friends.jpgを選択から外す', exact: true }).click();
+	await a
+		.getByRole('button', { name: 'trip.jpgを選択から外す', exact: true })
+		.click();
+	assert.deepEqual(await a.locator('.file-list li > span').allTextContents(), [
+		'friends.jpg'
+	]);
+	await a
+		.getByRole('button', { name: 'friends.jpgを選択から外す', exact: true })
+		.click();
 	assert.equal(await a.locator('.file-list li').count(), 0);
-	assert.equal(await a.getByRole('button', { name: '送る', exact: true }).isEnabled(), false);
+	assert.equal(
+		await a.getByRole('button', { name: '送る', exact: true }).isEnabled(),
+		false
+	);
 	await a.locator('input[type=file]').setInputFiles([
 		{ name: 'trip.jpg', mimeType: 'image/jpeg', buffer: photo },
 		{ name: 'friends.jpg', mimeType: 'image/jpeg', buffer: photo }
@@ -122,7 +158,9 @@ try {
 	await a.locator('.passphrase').waitFor();
 
 	const answer = (await a.locator('.passphrase').textContent()).trim();
-	const options = await b.locator('.passphrase-options button').allTextContents();
+	const options = await b
+		.locator('.passphrase-options button')
+		.allTextContents();
 	assert.equal(options.length, 8);
 	await b
 		.getByRole('button', {
@@ -162,16 +200,27 @@ try {
 		createHash('sha256').update(photo).digest('hex'),
 		createHash('sha256').update(photo).digest('hex')
 	]);
-	assert.equal(await b.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+	assert.equal(
+		await b.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+		true
+	);
 	await b.screenshot({
 		path: process.env.SCREENSHOT_PATH || '/tmp/pico-drop-received.png',
 		fullPage: true
 	});
 	await b.evaluate(() => {
-		Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false });
+		Object.defineProperty(navigator, 'canShare', {
+			configurable: true,
+			value: () => false
+		});
 	});
-	await b.getByRole('button', { name: '写真に保存・共有', exact: true }).click();
-	await b.getByRole('status').filter({ hasText: '共有に対応していません' }).waitFor();
+	await b
+		.getByRole('button', { name: '写真に保存・共有', exact: true })
+		.click();
+	await b
+		.getByRole('status')
+		.filter({ hasText: '共有に対応していません' })
+		.waitFor();
 	assert.equal(await b.locator('.gallery a').count(), 2);
 	await a.getByRole('button', { name: '送る', exact: true }).click();
 	await a.getByRole('alert').filter({ hasText: '辞退' }).waitFor();

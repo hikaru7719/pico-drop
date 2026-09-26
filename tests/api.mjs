@@ -1,16 +1,24 @@
 import assert from 'node:assert/strict';
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const { chromium } = await import(
+	process.env.PLAYWRIGHT_MODULE || 'playwright'
+);
 const browser = await chromium.launch({
 	headless: true,
-	...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {})
+	...(process.env.CHROME_PATH
+		? { executablePath: process.env.CHROME_PATH }
+		: {})
 });
 try {
 	const page = await browser.newPage();
-	await page.goto((process.env.TEST_URL || 'http://localhost:5173') + '/api/health');
+	await page.goto(
+		(process.env.TEST_URL || 'http://localhost:5173') + '/api/health'
+	);
 	const result = await page.evaluate(async () => {
 		const sockets = [];
 		const open = async (token) => {
-			const ws = new WebSocket(location.origin.replace('http', 'ws') + '/api/ws');
+			const ws = new WebSocket(
+				location.origin.replace('http', 'ws') + '/api/ws'
+			);
 			sockets.push(ws);
 			const queue = [];
 			let waiter;
@@ -27,7 +35,10 @@ try {
 					const m =
 						queue.shift() ||
 						(await new Promise((resolve, reject) => {
-							const timeout = setTimeout(() => reject(new Error('Timed out: ' + type)), 5000);
+							const timeout = setTimeout(
+								() => reject(new Error('Timed out: ' + type)),
+								5000
+							);
 							waiter = (m) => {
 								clearTimeout(timeout);
 								resolve(m);
@@ -43,7 +54,8 @@ try {
 			ws.send(JSON.stringify({ type: 'auth', token }));
 			return { ws, next, send: (m) => ws.send(JSON.stringify(m)) };
 		};
-		const session = async () => await (await fetch('/api/session', { method: 'POST' })).json();
+		const session = async () =>
+			await (await fetch('/api/session', { method: 'POST' })).json();
 		try {
 			const sa = await session(),
 				sb = await session(),
@@ -58,12 +70,17 @@ try {
 			a.send({ type: 'presence', location });
 			b.send({ type: 'presence', location });
 			let devices = [];
-			while (!devices.some((d) => d.id === sb.id)) devices = (await a.next('nearby')).devices;
-			const publicOnly = devices.every((d) => Object.keys(d).sort().join(',') === 'id,name');
+			while (!devices.some((d) => d.id === sb.id))
+				devices = (await a.next('nearby')).devices;
+			const publicOnly = devices.every(
+				(d) => Object.keys(d).sort().join(',') === 'id,name'
+			);
 			b.send({ type: 'presence', location: null });
-			while (devices.some((d) => d.id === sb.id)) devices = (await a.next('nearby')).devices;
+			while (devices.some((d) => d.id === sb.id))
+				devices = (await a.next('nearby')).devices;
 			b.send({ type: 'presence', location });
-			while (!devices.some((d) => d.id === sb.id)) devices = (await a.next('nearby')).devices;
+			while (!devices.some((d) => d.id === sb.id))
+				devices = (await a.next('nearby')).devices;
 			a.send({
 				type: 'request',
 				to: sb.id,
@@ -125,11 +142,17 @@ try {
 			b.send({
 				type: 'confirm',
 				id: wrongRequest.id,
-				word: choices.confirmation.options.find((word) => word !== wrongRequest.confirmation.word)
+				word: choices.confirmation.options.find(
+					(word) => word !== wrongRequest.confirmation.word
+				)
 			});
 			const wrongSenderEnd = (await a.next('ended')).reason;
 			const wrongReceiverEnd = (await b.next('ended')).reason;
-			b.send({ type: 'confirm', id: wrongRequest.id, word: wrongRequest.confirmation.word });
+			b.send({
+				type: 'confirm',
+				id: wrongRequest.id,
+				word: wrongRequest.confirmation.word
+			});
 			const retryAfterWrong = (await b.next('error')).message;
 			const invalid = await open('0'.repeat(64));
 			const invalidCode = await new Promise((resolve) => {

@@ -1,4 +1,5 @@
 /* eslint-disable no-control-regex -- Reject or sanitize control characters in photo names. */
+
 export const PASSPHRASES = [
 	'さくら',
 	'りんご',
@@ -9,16 +10,28 @@ export const PASSPHRASES = [
 	'ぺんぎん',
 	'にじ'
 ] as const;
-export type Confirmation = { kind: 'tell'; word: string } | { kind: 'choose'; options: string[] };
+
+export type Confirmation =
+	| {
+			kind: 'tell';
+			word: string;
+	  }
+	| {
+			kind: 'choose';
+			options: string[];
+	  };
+
 export function createPassphrase() {
 	const options: string[] = [...PASSPHRASES];
 	for (let i = options.length - 1; i > 0; i--) {
 		const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
 		[options[i], options[j]] = [options[j], options[i]];
 	}
-	const word = options[crypto.getRandomValues(new Uint32Array(1))[0] % options.length];
+	const word =
+		options[crypto.getRandomValues(new Uint32Array(1))[0] % options.length];
 	return { word, options };
 }
+
 export const LIMITS = {
 	files: 10,
 	bytes: 50 * 1024 * 1024,
@@ -28,12 +41,37 @@ export const LIMITS = {
 	requestMs: 120_000,
 	transferMs: 10 * 60_000
 };
-export type PhotoMeta = { id: string; name: string; type: string; size: number };
-export type Location = { latitude: number; longitude: number; accuracy: number };
-export type Device = { id: string; name: string };
-export type Session = Device & { token: string; expiresAt: number };
+
+export type PhotoMeta = {
+	id: string;
+	name: string;
+	type: string;
+	size: number;
+};
+
+export type Location = {
+	latitude: number;
+	longitude: number;
+	accuracy: number;
+};
+
+export type Device = {
+	id: string;
+	name: string;
+};
+
+export type Session = Device & {
+	token: string;
+	expiresAt: number;
+};
+
 export type Signal =
-	| { description: { type: 'offer' | 'answer'; sdp: string } }
+	| {
+			description: {
+				type: 'offer' | 'answer';
+				sdp: string;
+			};
+	  }
 	| {
 			candidate: {
 				candidate: string;
@@ -42,16 +80,45 @@ export type Signal =
 				usernameFragment?: string | null;
 			};
 	  };
+
 export type ClientMessage =
-	| { type: 'auth'; token: string }
-	| { type: 'presence'; location: Location | null }
-	| { type: 'request'; to: string; files: PhotoMeta[] }
-	| { type: 'accept' | 'reject' | 'cancel' | 'complete'; id: string }
-	| { type: 'confirm'; id: string; word: string }
-	| { type: 'signal'; id: string; signal: Signal };
+	| {
+			type: 'auth';
+			token: string;
+	  }
+	| {
+			type: 'presence';
+			location: Location | null;
+	  }
+	| {
+			type: 'request';
+			to: string;
+			files: PhotoMeta[];
+	  }
+	| {
+			type: 'accept' | 'reject' | 'cancel' | 'complete';
+			id: string;
+	  }
+	| {
+			type: 'confirm';
+			id: string;
+			word: string;
+	  }
+	| {
+			type: 'signal';
+			id: string;
+			signal: Signal;
+	  };
+
 export type ServerMessage =
-	| { type: 'ready'; device: Device }
-	| { type: 'nearby'; devices: Device[] }
+	| {
+			type: 'ready';
+			device: Device;
+	  }
+	| {
+			type: 'nearby';
+			devices: Device[];
+	  }
 	| {
 			type: 'requested';
 			id: string;
@@ -60,19 +127,38 @@ export type ServerMessage =
 			files: PhotoMeta[];
 			confirmation: Confirmation;
 	  }
-	| { type: 'accepted' | 'start'; id: string }
+	| {
+			type: 'accepted' | 'start';
+			id: string;
+	  }
 	| {
 			type: 'ended';
 			id: string;
-			reason: 'rejected' | 'cancelled' | 'disconnected' | 'timeout' | 'complete' | 'mismatch';
+			reason:
+				| 'rejected'
+				| 'cancelled'
+				| 'disconnected'
+				| 'timeout'
+				| 'complete'
+				| 'mismatch';
 	  }
-	| { type: 'signal'; id: string; signal: Signal }
-	| { type: 'error'; message: string };
+	| {
+			type: 'signal';
+			id: string;
+			signal: Signal;
+	  }
+	| {
+			type: 'error';
+			message: string;
+	  };
+
 export function record(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+
 export function validPhotos(value: unknown): value is PhotoMeta[] {
-	if (!Array.isArray(value) || value.length < 1 || value.length > LIMITS.files) return false;
+	if (!Array.isArray(value) || value.length < 1 || value.length > LIMITS.files)
+		return false;
 	const ids = new Set<string>();
 	let total = 0;
 	for (const file of value) {
@@ -86,7 +172,13 @@ export function validPhotos(value: unknown): value is PhotoMeta[] {
 			file.name.length > 100 ||
 			/[\x00-\x1f/\\]/.test(file.name) ||
 			typeof file.type !== 'string' ||
-			!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(file.type) ||
+			![
+				'image/jpeg',
+				'image/png',
+				'image/webp',
+				'image/heic',
+				'image/heif'
+			].includes(file.type) ||
 			!Number.isSafeInteger(file.size) ||
 			(file.size as number) <= 0
 		)
@@ -96,6 +188,7 @@ export function validPhotos(value: unknown): value is PhotoMeta[] {
 	}
 	return total <= LIMITS.bytes;
 }
+
 export function validLocation(value: unknown): value is Location {
 	return (
 		record(value) &&
@@ -111,6 +204,7 @@ export function validLocation(value: unknown): value is Location {
 		value.accuracy <= 10_000
 	);
 }
+
 export function nearby(a: Location, b: Location): boolean {
 	const rad = Math.PI / 180;
 	const h =
@@ -123,15 +217,20 @@ export function nearby(a: Location, b: Location): boolean {
 		300 + Math.min(a.accuracy, 500) + Math.min(b.accuracy, 500)
 	);
 }
+
 export function parseClient(value: unknown): ClientMessage {
-	if (!record(value) || typeof value.type !== 'string') throw new Error('不正なメッセージです。');
+	if (!record(value) || typeof value.type !== 'string')
+		throw new Error('不正なメッセージです。');
 	if (
 		value.type === 'auth' &&
 		typeof value.token === 'string' &&
 		/^[a-f0-9]{64}$/.test(value.token)
 	)
 		return value as ClientMessage;
-	if (value.type === 'presence' && (value.location === null || validLocation(value.location)))
+	if (
+		value.type === 'presence' &&
+		(value.location === null || validLocation(value.location))
+	)
 		return value as ClientMessage;
 	if (
 		value.type === 'request' &&
@@ -163,15 +262,19 @@ export function parseClient(value: unknown): ClientMessage {
 				record(s.candidate) &&
 				typeof s.candidate.candidate === 'string' &&
 				s.candidate.candidate.length < 2000 &&
-				(s.candidate.sdpMid == null || typeof s.candidate.sdpMid === 'string') &&
-				(s.candidate.sdpMLineIndex == null || Number.isInteger(s.candidate.sdpMLineIndex)) &&
-				(s.candidate.usernameFragment == null || typeof s.candidate.usernameFragment === 'string')
+				(s.candidate.sdpMid == null ||
+					typeof s.candidate.sdpMid === 'string') &&
+				(s.candidate.sdpMLineIndex == null ||
+					Number.isInteger(s.candidate.sdpMLineIndex)) &&
+				(s.candidate.usernameFragment == null ||
+					typeof s.candidate.usernameFragment === 'string')
 			)
 				return value as ClientMessage;
 		}
 	}
 	throw new Error('不正なメッセージです。');
 }
+
 export type TransferState = {
 	id: string;
 	from: Device;
@@ -182,6 +285,7 @@ export type TransferState = {
 	started: boolean;
 	expiresAt: number;
 };
+
 export function authorizeTransfer(
 	t: TransferState,
 	actor: string,
@@ -191,7 +295,10 @@ export function authorizeTransfer(
 	if (t.expiresAt <= now || ![t.from.id, t.to.id].includes(actor))
 		throw new Error('転送が期限切れ、または操作できません。');
 	if (
-		(action === 'accept' || action === 'reject' || action === 'complete' || action === 'confirm') &&
+		(action === 'accept' ||
+			action === 'reject' ||
+			action === 'complete' ||
+			action === 'confirm') &&
 		actor !== t.to.id
 	)
 		throw new Error('受信者のみ操作できます。');

@@ -15,7 +15,11 @@ npm.package_manager = "npm"
 
 [tasks.setup]
 description = "依存パッケージをインストールし、開発用の型を生成する"
-run = ["pnpm install --frozen-lockfile", { task = "//:gen" }, { task = "//frontend:sync" }]
+run = [
+	"pnpm install --frozen-lockfile",
+	{ task = "//:gen" },
+	{ task = "//frontend:sync" }
+]
 
 [tasks.dev]
 description = "フロントエンドとバックエンドを並列起動する"
@@ -42,12 +46,14 @@ description = "oxlintの自動修正を適用する"
 run = "oxlint --deny-warnings --fix frontend backend shared tests"
 
 [tasks.format]
-description = "oxfmtで整形する"
+description = "sharedを含むリポジトリ全体をoxfmtで整形する"
+dir = "{{ config_root }}"
 env.NODE_PATH = "{{ config_root }}/node_modules"
 run = "oxfmt --write ."
 
 [tasks."format:check"]
-description = "oxfmtで整形を検査する"
+description = "sharedを含むリポジトリ全体の整形を検査する"
+dir = "{{ config_root }}"
 env.NODE_PATH = "{{ config_root }}/node_modules"
 run = "oxfmt --check ."
 
