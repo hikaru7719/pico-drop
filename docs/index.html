@@ -179,15 +179,22 @@
 						<h3>写真本体を扱う場所</h3>
 						<p>
 							元のFile、受信チャンク、プレビュー用Object
-							URLを保持。画面を開いて転送し、終了時に不要なバッファやURLを解放します。
+							URLを保持。受信完了から10分、破棄、ページ離脱時に原本・プレビュー・JPEGの参照を解放します。端末に保存済みの写真は残ります。
 						</p>
 					</article>
 					<article>
 						<span class="card-label">DURABLE OBJECT</span>
 						<h3>接続を再開できる状態</h3>
 						<p>
-							セッション、転送メタデータ、期限付きレート制限をDOストレージに保存。位置・presence等はWebSocket
+							セッション、転送メタデータ、受信者の変換権限、期限付きレート制限をDOストレージに保存。位置・presence等はWebSocket
 							attachmentで保持し、Hibernation後にも利用します。期限切れをalarmで削除します。
+						</p>
+					</article>
+					<article>
+						<span class="card-label">IMAGES BINDING</span>
+						<h3>HEICのプレビュー・JPEG変換</h3>
+						<p>
+							利用者の操作で原本をWorkerへ送り、Imagesで変換。公開URLや画像ストレージは使わず、結果はブラウザ内だけに保持します。原本は変更しません。
 						</p>
 					</article>
 					<article>
@@ -201,7 +208,7 @@
 				<div class="table-wrap">
 					<table>
 						<caption>
-							現行コードの制限値（shared/protocol.ts）
+							現行コードの制限値（shared/protocol.ts・shared/photos.ts）
 						</caption>
 						<thead>
 							<tr>
@@ -225,6 +232,13 @@
 								<td>受信待ち / 転送</td>
 								<td>2分 / 10分</td>
 								<td>要求・転送状態の有効期限</td>
+							</tr>
+							<tr>
+								<td>受信写真 / HEIC変換</td>
+								<td>10分 / 1枚20 MiBまで</td>
+								<td>
+									期限は閲覧・変換とも共通。写真・モードごとに最大3回の試行
+								</td>
 							</tr>
 							<tr>
 								<td>Nearby</td>

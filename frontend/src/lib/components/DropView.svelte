@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { isHeic, type ConversionMode } from '../../../../shared/photos.ts';
+	import type { ReceivedPhoto } from '$lib/photos/received';
 	import DiscoveryPulse from './DiscoveryPulse.svelte';
 	import TransferProgress from './TransferProgress.svelte';
 	import { formatBytes } from '$lib/photos';
@@ -26,7 +28,11 @@
 		request?: Extract<ServerMessage, { type: 'requested' }> | undefined;
 		phase?: 'waiting' | 'connecting' | 'transferring';
 		bytes?: number;
-		received?: { file: File; url: string; preview: boolean }[];
+		received?: ReceivedPhoto[];
+		photosExpireAt?: number;
+		convertPhoto?: (index: number, mode: ConversionMode) => void;
+		shareJpeg?: (index: number) => void;
+		checkPhotoExpiry?: () => boolean;
 		completed?: boolean;
 		notice?: string;
 		error?: string;
@@ -82,6 +88,10 @@
 		invite = () => {},
 		action = () => {},
 		save = () => {},
+		photosExpireAt,
+		convertPhoto = () => {},
+		shareJpeg = () => {},
+		checkPhotoExpiry = () => true,
 		discard = () => {}
 	}: Props = $props();
 	const inFlow = $derived(
@@ -511,24 +521,65 @@
 		>
 			<h2 id="received-heading">{received.length}枚の写真を受け取りました</h2>
 			<p class="description">
-				iPhoneでは共有シートから「画像を保存」を選んでください。ページを閉じると、受け取った写真は破棄されます。次の転送の前に、保存を確認して写真を破棄してください。
+				iPhoneでは共有シートから「画像を保存」を選んでください。受信完了から10分、またはページを閉じると写真は破棄されます。保存済みの写真は端末に残ります。次の転送の前に、保存を確認して写真を破棄してください。
 			</p>
+			{#if photosExpireAt}<p class="hint">
+					保存期限：{new Date(photosExpireAt).toLocaleTimeString('ja-JP')}
+				</p>{/if}
+			{#if received.some((photo) => isHeic(photo.file.type))}
+				<p class="hint">
+					HEICのプレビュー・JPEG変換を押すと、その写真をCloudflareへ送って処理します。サーバーへの写真保存は行いません。JPEGは画質が変わり、撮影情報は引き継がれない場合があります。原本はそのまま保存できます。
+				</p>
+			{/if}
 			<div class="gallery">
-				{#each received as item}<figure>
+				{#each received as item, index}<figure>
 						{#if item.preview}<img
-								src={item.url}
+								src={item.previewUrl ?? item.url}
 								alt={item.file.name}
 								onerror={() => {
 									item.preview = false;
 								}}
 							/>{:else}<div class="no-preview">
-								プレビュー非対応<br /><small>元の形式で保存できます</small>
+								プレビュー未表示<br /><small>原本は保存できます</small>
 							</div>{/if}
 						<figcaption>
 							<a
 								href={item.url}
-								download={item.file.name}>{item.file.name}</a
+								onclick={(event) => {
+									if (!checkPhotoExpiry()) {
+										event.preventDefault();
+									}
+								}}
+								download={item.file.name}>{item.file.name}（原本）</a
 							>
+							{#if isHeic(item.file.type)}
+								{#if !item.previewUrl}<button
+										disabled={item.busy}
+										onclick={() => convertPhoto(index, 'preview')}
+										>プレビューを表示</button
+									>{/if}
+								{#if !item.jpegUrl}<button
+										disabled={item.busy}
+										onclick={() => convertPhoto(index, 'jpeg')}
+										>JPEGに変換する</button
+									>{/if}
+								{#if item.busy}<p role="status">変換中…</p>{/if}
+								{#if item.problem}<p role="status">{item.problem}</p>{/if}
+								{#if item.jpegUrl && item.jpeg}
+									<a
+										href={item.jpegUrl}
+										download={item.jpeg.name}
+										onclick={(event) => {
+											if (!checkPhotoExpiry()) {
+												event.preventDefault();
+											}
+										}}>JPEGをダウンロード</a
+									>
+									<button onclick={() => shareJpeg(index)}
+										>JPEGを保存・共有</button
+									>
+								{/if}
+							{/if}
 						</figcaption>
 					</figure>{/each}
 			</div>
@@ -1013,6 +1064,10 @@
 		gap: 10px;
 		font-size: 12px;
 		padding: 4px 0 12px;
+	}
+	figcaption button {
+		padding: 12px 8px;
+		font-size: 12px;
 	}
 	figcaption a {
 		text-align: center;

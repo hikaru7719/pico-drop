@@ -1,3 +1,9 @@
+import {
+	createPhotoAccess,
+	consumePhoto,
+	revokePhoto
+} from './photo-access.ts';
+import { photoRequest } from './images.ts';
 import { DurableObject } from 'cloudflare:workers';
 import {
 	LIMITS,
@@ -57,14 +63,20 @@ const device = (session: Device): Device => ({
 	id: session.id,
 	name: session.name
 });
+const API_PATHS = [
+	'/api/session',
+	'/api/ws',
+	'/api/ice',
+	'/api/photos/convert',
+	'/api/photos/discard'
+];
 function requestError(request: Request, url: URL) {
 	if (request.headers.get('Origin') !== url.origin) {
 		return json({ error: 'Origin not allowed' }, 403);
 	}
-	if (!['/api/session', '/api/ws', '/api/ice'].includes(url.pathname)) {
-		return json({ error: 'Not found' }, 404);
-	}
-	return null;
+	return API_PATHS.includes(url.pathname)
+		? null
+		: json({ error: 'Not found' }, 404);
 }
 
 export default {
@@ -73,12 +85,16 @@ export default {
 		if (url.pathname === '/api/health') {
 			return json({ status: 'ok', service: 'pico-drop-backend' });
 		}
-		return (
-			requestError(request, url) ??
-			env.HUB.get(env.HUB.idFromName('mvp')).fetch(request)
-		);
+		return requestError(request, url) ?? routeRequest(request, env);
 	}
 } satisfies ExportedHandler<Bindings>;
+
+function routeRequest(request: Request, env: Bindings) {
+	const hub = env.HUB.get(env.HUB.idFromName('mvp'));
+	return new URL(request.url).pathname.startsWith('/api/photos/')
+		? photoRequest(request, env.IMAGES, hub)
+		: hub.fetch(request);
+}
 
 function randomToken() {
 	return Array.from(crypto.getRandomValues(new Uint8Array(32)), (x) =>
@@ -126,6 +142,18 @@ function sessionExpired(a: Attachment, now: number) {
 	);
 }
 export class NearbyHub extends DurableObject<Bindings> {
+	async consumePhoto(token: string, id: string, mode: string) {
+		return this.ctx.blockConcurrencyWhile(() =>
+			consumePhoto(this.ctx.storage, { token, id, mode })
+		);
+	}
+
+	async revokePhoto(token: string) {
+		await this.ctx.blockConcurrencyWhile(() =>
+			revokePhoto(this.ctx.storage, token)
+		);
+	}
+
 	async fetch(request: Request): Promise<Response> {
 		const path = new URL(request.url).pathname;
 		const upgrade =
@@ -309,24 +337,34 @@ export class NearbyHub extends DurableObject<Bindings> {
 			ws.serializeAttachment(a);
 		}
 	}
-	notifyEnd(participant: Device, id: string, reason: EndReason) {
+	notifyEnd(
+		participant: Device,
+		message: Extract<ServerMessage, { type: 'ended' }>
+	) {
 		const ws = this.socket(participant.id);
-		if (!ws) {
-			return;
+		if (ws) {
+			this.clearTransfer(ws, message.id);
+			send(ws, message);
 		}
-		this.clearTransfer(ws, id);
-		send(ws, { type: 'ended', id, reason });
 	}
 
 	async end(id: string, reason: EndReason) {
-		const t = await this.ctx.storage.get<TransferState>('transfer:' + id);
-		if (!t) {
-			return;
+		const transfer = await this.ctx.storage.get<TransferState>(
+			'transfer:' + id
+		);
+		if (transfer) {
+			await this.finishTransfer(transfer, reason);
 		}
-		await this.ctx.storage.delete('transfer:' + id);
-		for (const participant of [t.from, t.to]) {
-			this.notifyEnd(participant, id, reason);
-		}
+	}
+
+	async finishTransfer(t: TransferState, reason: EndReason) {
+		const photoAccess =
+			reason === 'complete'
+				? await createPhotoAccess(this.ctx.storage, t.files)
+				: undefined;
+		await this.ctx.storage.delete('transfer:' + t.id);
+		this.notifyEnd(t.from, { type: 'ended', id: t.id, reason });
+		this.notifyEnd(t.to, { type: 'ended', id: t.id, reason, photoAccess });
 	}
 
 	async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {

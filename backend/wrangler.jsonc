@@ -3,6 +3,7 @@
 	"name": "pico-drop-backend",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-09-24",
+	"images": { "binding": "IMAGES" },
 	"durable_objects": {
 		"bindings": [
 			{

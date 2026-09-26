@@ -1,4 +1,10 @@
 <script lang="ts">
+	import {
+		ReceivedPhotos,
+		releasePhoto,
+		type ReceivedPhoto
+	} from '$lib/photos/received';
+	import type { PhotoAccess, ConversionMode } from '../../../shared/photos.ts';
 	import { onMount, tick } from 'svelte';
 	import DropView from '$lib/components/DropView.svelte';
 	import {
@@ -39,7 +45,9 @@
 	let request = $state<RequestInfo>();
 	let phase = $state<'waiting' | 'connecting' | 'transferring'>('waiting');
 	let bytes = $state(0);
-	let received = $state<{ file: File; url: string; preview: boolean }[]>([]);
+	let received = $state<ReceivedPhoto[]>([]);
+	let photoCollection: ReceivedPhotos | undefined;
+	let photosExpireAt = $state<number>();
 	let completed = $state(false);
 	let notice = $state('');
 	let error = $state('');
@@ -89,8 +97,11 @@
 			'このブラウザは写真の共有に対応していません。各写真の「ダウンロード」を使ってください。'
 	};
 	function discard() {
+		photoCollection?.dispose();
+		photoCollection = undefined;
+		photosExpireAt = undefined;
 		for (const item of received) {
-			URL.revokeObjectURL(item.url);
+			releasePhoto(item);
 		}
 		received = [];
 		completed = false;
@@ -152,8 +163,13 @@
 		error = errorMessage(cause);
 		cancelRequest();
 		disconnect('offline');
+		retainOrDiscard();
+	}
+	function retainOrDiscard() {
 		if (!completed) {
 			discard();
+		} else if (received.length && !photoCollection) {
+			retainPhotos();
 		}
 	}
 	function errorMessage(cause: unknown) {
@@ -487,11 +503,16 @@
 		discard();
 	}
 
-	async function ended(
-		reason: Extract<ServerMessage, { type: 'ended' }>['reason']
-	) {
+	type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
+	async function ended(reason: EndReason, access?: PhotoAccess) {
 		transferOutcome(reason);
+		if (reason === 'complete' && received.length) {
+			retainPhotos(access);
+		}
 		disconnect();
+		return showReceived();
+	}
+	async function showReceived() {
 		if (completed && received.length) {
 			await tick();
 			receivedSection?.scrollIntoView({ block: 'start' });
@@ -518,7 +539,7 @@
 			return peer?.receive(message.signal);
 		}
 		if (message.type === 'ended') {
-			return ended(message.reason);
+			return ended(message.reason, message.photoAccess);
 		}
 	}
 
@@ -571,7 +592,11 @@
 	}
 	function receivedPhoto(file: File) {
 		const preview = !['image/heic', 'image/heif'].includes(file.type);
-		received = [...received, { file, url: URL.createObjectURL(file), preview }];
+		const id = request?.files[received.length]?.id;
+		received = [
+			...received,
+			{ file, id, url: URL.createObjectURL(file), preview }
+		];
 	}
 	class TransferConnection {
 		private attached = false;
@@ -795,17 +820,64 @@
 		}
 	}
 	async function save() {
+		if (!photoCollection?.checkExpiry()) {
+			return;
+		}
 		sharing = true;
 		error = '';
 		await tryShare();
 	}
 
+	function photosExpired() {
+		completed = false;
+		photosExpireAt = undefined;
+		notice =
+			'受信から10分経過したため、写真を破棄しました。保存済みの写真は端末に残ります。';
+	}
+	function retainPhotos(access?: PhotoAccess) {
+		photoCollection = new ReceivedPhotos(received, access, {
+			changed: updateReceived,
+			expired: photosExpired
+		});
+		photosExpireAt = photoCollection.expiresAt;
+	}
+	function updateReceived(photos: ReceivedPhoto[]) {
+		received = photos;
+	}
+	function checkPhotoExpiry() {
+		return photoCollection?.checkExpiry() ?? false;
+	}
+	async function convertPhoto(index: number, mode: ConversionMode) {
+		await photoCollection?.convert(index, mode);
+	}
+	async function shareJpeg(index: number) {
+		if (!photoCollection?.checkExpiry()) {
+			return;
+		}
+		const jpeg = received[index]?.jpeg;
+		if (jpeg) {
+			await shareConverted(jpeg);
+		}
+	}
+	async function shareConverted(jpeg: File) {
+		try {
+			notice = shareMessages[await sharePhotos([jpeg])];
+		} catch {
+			error = '共有できませんでした。JPEGをダウンロードしてください。';
+		}
+	}
 	function leave() {
+		selected = [];
+		metadata = [];
+		if (input) {
+			input.value = '';
+		}
 		disposed = true;
 		disconnect();
 		discard();
 	}
 	function resume(e: PageTransitionEvent) {
+		checkPhotoExpiry();
 		if (e.persisted) {
 			disposed = false;
 		}
@@ -814,10 +886,14 @@
 		leave();
 		window.removeEventListener('pagehide', leave);
 		window.removeEventListener('pageshow', resume);
+		window.removeEventListener('focus', checkPhotoExpiry);
+		window.removeEventListener('visibilitychange', checkPhotoExpiry);
 	}
 	onMount(() => {
 		window.addEventListener('pagehide', leave);
 		window.addEventListener('pageshow', resume);
+		window.addEventListener('focus', checkPhotoExpiry);
+		window.addEventListener('visibilitychange', checkPhotoExpiry);
 		return unmount;
 	});
 </script>
@@ -858,4 +934,8 @@
 	{action}
 	{save}
 	{discard}
+	{photosExpireAt}
+	{convertPhoto}
+	{shareJpeg}
+	{checkPhotoExpiry}
 />

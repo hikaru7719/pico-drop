@@ -1,3 +1,4 @@
+import type { PhotoAccess } from './photos.ts';
 /* eslint-disable no-control-regex -- Reject or sanitize control characters in photo names. */
 
 export const LIMITS = {
@@ -95,6 +96,7 @@ export type ServerMessage =
 	  }
 	| {
 			type: 'ended';
+			photoAccess?: PhotoAccess;
 			id: string;
 			reason:
 				| 'rejected'
