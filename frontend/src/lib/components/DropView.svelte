@@ -717,7 +717,7 @@
 	.headline-character {
 		display: inline-block;
 		position: relative;
-		animation: type-character 1ms steps(1, end) var(--type-delay) both;
+		animation: type-character 1ms step-start var(--type-delay) both;
 	}
 	.headline-character::after {
 		content: '';
