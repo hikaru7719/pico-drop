@@ -42,4 +42,5 @@ jobs:
           : "${CLOUDFLARE_API_TOKEN:?Set the CLOUDFLARE_API_TOKEN secret}"
           : "${CLOUDFLARE_ACCOUNT_ID:?Set the CLOUDFLARE_ACCOUNT_ID secret}"
           mise run //backend:deploy
-          mise run //frontend:deploy
+          # Deploy the artifact from the Build step without rebuilding it.
+          (cd frontend && mise exec -- wrangler deploy)
