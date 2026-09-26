@@ -42,6 +42,14 @@ async function device() {
 		.click();
 	return page;
 }
+async function reconnect(a, b) {
+	await a.getByRole('button', { name: '近くの人を探す', exact: true }).click();
+	await b.getByRole('button', { name: '近くの人を探す', exact: true }).click();
+	await a
+		.getByRole('button', { name: /を選ぶ$/ })
+		.first()
+		.click();
+}
 try {
 	const a = await device();
 	await a
@@ -152,36 +160,13 @@ try {
 	await b.getByRole('button', { name: '辞退する', exact: true }).click();
 	await a.getByRole('alert').filter({ hasText: '辞退' }).waitFor();
 	assert.equal(await a.evaluate(() => window.peerCount), 0);
-	// A wrong card ends the request, without creating a WebRTC peer.
+	// Receiver acceptance starts the transfer directly; no peer exists before approval.
+	await reconnect(a, b);
 	await a.getByRole('button', { name: '送る', exact: true }).click();
-	await b.getByRole('button', { name: '受け取る', exact: true }).click();
-	await a.locator('.passphrase').waitFor();
-
-	const answer = (await a.locator('.passphrase').textContent()).trim();
-	const options = await b
-		.locator('.passphrase-options button')
-		.allTextContents();
-	assert.equal(options.length, 8);
-	await b
-		.getByRole('button', {
-			name: options.find((word) => word.trim() !== answer).trim(),
-			exact: true
-		})
-		.click();
-	await a.getByRole('alert').filter({ hasText: 'あいことばが違う' }).waitFor();
-	await b.getByRole('alert').filter({ hasText: 'あいことばが違う' }).waitFor();
+	await b.getByRole('button', { name: '受け取る', exact: true }).waitFor();
 	assert.equal(await a.evaluate(() => window.peerCount), 0);
 	assert.equal(await b.evaluate(() => window.peerCount), 0);
-	// Only the receiver choosing the sender's word can initiate a transfer.
-	await a.getByRole('button', { name: '送る', exact: true }).click();
 	await b.getByRole('button', { name: '受け取る', exact: true }).click();
-	await a.locator('.passphrase').waitFor();
-	await b.locator('.passphrase-options').waitFor();
-	const word = (await a.locator('.passphrase').textContent()).trim();
-	assert.equal(await b.locator('.passphrase').count(), 0);
-	assert.equal(await a.evaluate(() => window.peerCount), 0);
-	assert.equal(await b.evaluate(() => window.peerCount), 0);
-	await b.getByRole('button', { name: word, exact: true }).click();
 	await b
 		.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true })
 		.waitFor({ timeout: 60_000 });
@@ -222,19 +207,17 @@ try {
 		.filter({ hasText: '共有に対応していません' })
 		.waitFor();
 	assert.equal(await b.locator('.gallery a').count(), 2);
-	await a.getByRole('button', { name: '送る', exact: true }).click();
-	await a.getByRole('alert').filter({ hasText: '辞退' }).waitFor();
-	assert.equal(await b.locator('.gallery a').count(), 2);
 	await b.getByRole('button', { name: '写真を破棄する', exact: true }).click();
 	assert.equal(await b.locator('.gallery a').count(), 0);
 	// Peer disconnect while awaiting approval must release the sender's transfer.
+	await reconnect(a, b);
 	await a.getByRole('button', { name: '送る', exact: true }).click();
 	await b.getByRole('button', { name: '受け取る', exact: true }).waitFor();
 	await b.close();
 	await a.getByRole('alert').filter({ hasText: '接続が切れました' }).waitFor();
 	assert.deepEqual(errors, []);
 	console.log(
-		'PASS: two-browser discovery, reject, wrong-passphrase cancellation, receiver passphrase gate, multi-photo WebRTC, SHA-256 match, mobile layout, share fallback, unsaved-photo retention, discard, disconnect'
+		'PASS: two-browser discovery, reject, direct transfer after receiver acceptance, multi-photo WebRTC, SHA-256 match, mobile layout, share fallback, unsaved-photo retention, discard, disconnect'
 	);
 } finally {
 	for (const context of contexts) await context.close();

@@ -194,8 +194,7 @@ for (const reason of ['complete', 'cancelled']) {
 			id: 'transfer',
 			from: app.session,
 			to: { id: 'other', name: 'Other' },
-			files: [],
-			confirmation: { kind: 'tell', word: 'さくら' }
+			files: []
 		});
 		await app.controller.handle({ type: 'ended', id: 'transfer', reason });
 		assert.equal(app.sockets[0].closed, true);

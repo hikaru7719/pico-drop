@@ -1,7 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import {
 	LIMITS,
-	createPassphrase,
 	nearby,
 	parseClient,
 	authorizeTransfer,
@@ -313,14 +312,11 @@ export class NearbyHub extends DurableObject<Bindings> {
 						);
 					if (a.transfer || b.transfer)
 						throw new Error('転送中です。完了後にお試しください。');
-					const challenge = createPassphrase();
 					const t: TransferState = {
 						id: crypto.randomUUID(),
 						from: { id: a.session.id, name: a.session.name },
 						to: { id: b.session!.id, name: b.session!.name },
 						files: m.files,
-						passphrase: challenge.word,
-						accepted: false,
 						started: false,
 						expiresAt: Date.now() + LIMITS.requestMs
 					};
@@ -336,14 +332,8 @@ export class NearbyHub extends DurableObject<Bindings> {
 						to: t.to,
 						files: t.files
 					};
-					send(ws, {
-						...message,
-						confirmation: { kind: 'tell', word: challenge.word }
-					});
-					send(other, {
-						...message,
-						confirmation: { kind: 'choose', options: challenge.options }
-					});
+					send(ws, message);
+					send(other, message);
 					return;
 				}
 				if (!('id' in m) || a.transfer !== m.id)
@@ -374,21 +364,14 @@ export class NearbyHub extends DurableObject<Bindings> {
 						send(other, { type: 'signal', id: t.id, signal: m.signal });
 					return;
 				}
-				if (m.type === 'accept') t.accepted = true;
-				if (m.type === 'confirm' && m.word !== t.passphrase) {
-					await this.end(t.id, 'mismatch');
-					return;
-				}
-				const start = t.accepted && m.type === 'confirm' && !t.started;
-				if (start) {
+				if (m.type === 'accept') {
 					t.started = true;
 					t.expiresAt = Date.now() + LIMITS.transferMs;
-				}
-				await this.ctx.storage.put('transfer:' + t.id, t);
-				for (const device of [t.from, t.to]) {
-					const other = this.socket(device.id);
-					if (other && (m.type === 'accept' || start))
-						send(other, { type: start ? 'start' : 'accepted', id: t.id });
+					await this.ctx.storage.put('transfer:' + t.id, t);
+					for (const device of [t.from, t.to]) {
+						const other = this.socket(device.id);
+						if (other) send(other, { type: 'start', id: t.id });
+					}
 				}
 			} catch (e) {
 				send(ws, {

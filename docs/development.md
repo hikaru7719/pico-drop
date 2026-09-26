@@ -11,7 +11,7 @@ Node.js・pnpm・Wrangler・oxfmt・oxlintはmiseで管理する。開発・ビ�
 
 ## MVP実装
 
-匿名セッション、DO WebSocket Hibernation、Nearby、受信承諾・あいことば、複数枚転送、保存UIを実装済み。通信の型・検証は `shared/protocol.ts`、ブラウザの通信は `frontend/src/lib/webrtc/` に分離しています。
+匿名セッション、DO WebSocket Hibernation、Nearby、受信承諾、複数枚転送、保存UIを実装済み。通信の型・検証は `shared/protocol.ts`、ブラウザの通信は `frontend/src/lib/webrtc/` に分離しています。
 
 詳細な暫定値、実行方法と未検証事項は [MVP実装メモ](mvp.md) を参照してください。写真本体はDataChannelのみで転送し、座標は期限付きのWebSocket attachmentだけに保持します。
 

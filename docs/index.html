@@ -67,7 +67,7 @@
 						<div class="node">
 							<small>SENDER</small>
 							<h3>送信側ブラウザ</h3>
-							<p>写真選択 / 位置取得 / あいことば確認</p>
+							<p>写真選択 / 位置取得 / 受信承諾</p>
 							<span>SvelteKit UI</span>
 						</div>
 						<div class="node">
@@ -103,7 +103,7 @@
 							<small>STATE / DURABLE OBJECT</small>
 							<h3>NearbyHub</h3>
 							<p>
-								匿名セッション · Nearby候補 · Accept / あいことば確認<br />WebSocket
+								匿名セッション · Nearby候補 · Accept / Reject<br />WebSocket
 								signaling · 転送状態 · TURN資格情報の発行
 							</p>
 							<span>MVPは単一Hub（idFromName('mvp')）</span>
@@ -120,7 +120,7 @@
 			<section id="flow">
 				<div class="section-title">
 					<p class="eyebrow">02 / TRANSFER LIFECYCLE</p>
-					<h2>承諾と照合を、転送の前に。</h2>
+					<h2>受信承諾を、転送の前に。</h2>
 				</div>
 				<ol class="steps">
 					<li>
@@ -140,7 +140,7 @@
 					<li>
 						<h3>写真を選び、受信を承諾</h3>
 						<p>
-							まず送るのは名前・形式・サイズなどのメタデータ。受信者がAcceptし、送信者から聞いたあいことばを8枚の絵付きカードから正しく選ぶとHubがstartを通知します。誤答の場合は転送を中止します。
+							まず送るのは名前・形式・サイズなどのメタデータ。受信者がAcceptするとHubがstartを通知し、転送を開始します。
 						</p>
 					</li>
 					<li>
@@ -330,7 +330,7 @@
 							<tr>
 								<td>このアプリでの担当</td>
 								<td>APIの入口、Origin検証、Hubへの転送</td>
-								<td>接続中の端末、受信承諾、あいことば、転送状態の調整</td>
+								<td>接続中の端末、受信承諾、転送状態の調整</td>
 							</tr>
 						</tbody>
 					</table>
@@ -346,24 +346,24 @@
 				<div
 					class="diagram"
 					role="img"
-					aria-label="送信者のrequestと受信者のaccept・confirmを、同じNearbyHub mvpが受け取る。受信承諾と受信者のあいことば選択が正しく完了すると、両端末にstartを通知する。"
+					aria-label="送信者のrequestと受信者のacceptを、同じNearbyHub mvpが受け取る。受信者が承諾すると、両端末にstartを通知する。"
 				>
 					<div class="endpoints">
 						<div class="node">
 							<small>SENDER → HUB</small>
 							<h3>送信者</h3>
-							<p>request：送りたい写真の情報<br />あいことばを相手に伝える</p>
+							<p>request：送りたい写真の情報</p>
 						</div>
 						<div class="node">
 							<small>RECEIVER → HUB</small>
 							<h3>受信者</h3>
-							<p>accept：受信を承諾<br />confirm：選択したあいことば</p>
+							<p>accept：受信を承諾</p>
 						</div>
 					</div>
 					<div class="connector">↓ 同じHubに両者の操作を集約 ↓</div>
 					<div class="node hub">
 						<small>NEARBY HUB / mvp</small>
-						<h3>承諾済み ＋ 受信者のあいことばが一致</h3>
+						<h3>受信者が承諾済み</h3>
 						<p>
 							転送状態を更新し、両端末にstartを通知。<br />その後のSDP・ICE候補も、相手のWebSocketに届けます。
 						</p>

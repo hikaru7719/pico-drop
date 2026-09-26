@@ -37,10 +37,7 @@
 	let selecting = $state(false);
 	let requesting = $state(false);
 	let request = $state<RequestInfo>();
-	let phase = $state<'waiting' | 'confirm' | 'connecting' | 'transferring'>(
-		'waiting'
-	);
-	let confirmed = $state(false);
+	let phase = $state<'waiting' | 'connecting' | 'transferring'>('waiting');
 	let bytes = $state(0);
 	let received = $state<{ file: File; url: string; preview: boolean }[]>([]);
 	let completed = $state(false);
@@ -83,7 +80,6 @@
 		clearTimeout(requestTimer);
 		request = undefined;
 		requesting = false;
-		confirmed = false;
 	}
 	function disconnect(state: 'idle' | 'offline' = 'idle') {
 		generation++;
@@ -280,18 +276,11 @@
 			fail(e);
 		}
 	}
-	function action(
-		type: 'accept' | 'reject' | 'confirm' | 'cancel',
-		word?: string
-	) {
+	function action(type: 'accept' | 'reject' | 'cancel') {
 		if (!request) return;
 		try {
-			if (type === 'confirm') {
-				if (!word || confirmed) return;
-				send({ type, id: request.id, word });
-			} else send({ type, id: request.id });
-			if (type === 'accept') phase = 'confirm';
-			if (type === 'confirm') confirmed = true;
+			send({ type, id: request.id });
+			if (type === 'accept') phase = 'connecting';
 			if (type === 'cancel' || type === 'reject') {
 				disconnect();
 				discard();
@@ -333,7 +322,6 @@
 			request = message;
 			bytes = 0;
 			phase = 'waiting';
-			confirmed = false;
 			error = '';
 			notice = '';
 			relay = undefined;
@@ -349,10 +337,6 @@
 			return;
 		}
 		if (!request || message.id !== request.id) return;
-		if (message.type === 'accepted') {
-			phase = 'confirm';
-			return;
-		}
 		if (message.type === 'start') {
 			phase = 'connecting';
 			touch();
@@ -372,8 +356,6 @@
 			} else {
 				const messages = {
 					rejected: '相手が受信を辞退しました。',
-					mismatch:
-						'あいことばが違うため転送を中止しました。相手を確認して、もう一度送信してください。',
 					cancelled: '転送を中止しました。',
 					disconnected: '相手との接続が切れました。再試行してください。',
 					timeout: '有効期限が切れました。もう一度送信してください。'
@@ -575,7 +557,6 @@
 	bind:requesting
 	bind:request
 	bind:phase
-	bind:confirmed
 	bind:bytes
 	bind:received
 	bind:completed

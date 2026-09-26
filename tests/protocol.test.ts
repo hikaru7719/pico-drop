@@ -2,8 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
 	authorizeTransfer,
-	createPassphrase,
-	PASSPHRASES,
 	parseClient,
 	validPhotos,
 	nearby,
@@ -22,24 +20,17 @@ function transfer(): TransferState {
 		from: { id: 'a', name: 'A' },
 		to: { id: 'b', name: 'B' },
 		files: [photo],
-		passphrase: 'さくら',
-		accepted: false,
 		started: false,
 		expiresAt: Date.now() + 60_000
 	};
 }
-test('only receiver can accept; no signaling or completion before receiver confirms passphrase', () => {
+test('only receiver can accept; no signaling or completion before acceptance', () => {
 	const t = transfer();
 	assert.throws(() => authorizeTransfer(t, 'a', 'accept'));
 	assert.throws(() => authorizeTransfer(t, 'c', 'cancel'));
-	assert.throws(() => authorizeTransfer(t, 'a', 'confirm'));
 	assert.throws(() => authorizeTransfer(t, 'a', 'signal'));
 	assert.throws(() => authorizeTransfer(t, 'b', 'complete'));
 	authorizeTransfer(t, 'b', 'accept');
-	t.accepted = true;
-	assert.throws(() => authorizeTransfer(t, 'a', 'confirm'));
-	authorizeTransfer(t, 'b', 'confirm');
-	assert.throws(() => authorizeTransfer(t, 'b', 'signal'));
 
 	t.started = true;
 	authorizeTransfer(t, 'a', 'signal');
@@ -96,22 +87,5 @@ test('nearby works across longitude boundary without returning coordinates', () 
 			{ latitude: 36, longitude: 140, accuracy: 10 }
 		),
 		false
-	);
-});
-
-test('passphrase challenge contains eight unique cards including the answer', () => {
-	for (let i = 0; i < 50; i++) {
-		const challenge = createPassphrase();
-		assert.equal(new Set(challenge.options).size, 8);
-		assert.deepEqual([...challenge.options].sort(), [...PASSPHRASES].sort());
-		assert.ok(challenge.options.includes(challenge.word));
-	}
-});
-test('confirmation requires a bounded nonempty word', () => {
-	for (const word of [undefined, null, 5, '', 'x'.repeat(33)])
-		assert.throws(() => parseClient({ type: 'confirm', id: 't', word }));
-	assert.equal(
-		parseClient({ type: 'confirm', id: 't', word: 'さくら' }).type,
-		'confirm'
 	);
 });

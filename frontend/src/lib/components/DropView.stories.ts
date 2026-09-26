@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/sveltekit';
-import { PASSPHRASES } from '../../../../shared/protocol';
 import { fn } from 'storybook/test';
 import DropView from './DropView.svelte';
 import brandIcon from '$lib/assets/pico-drop-icon.png';
@@ -22,8 +21,7 @@ const request = {
 	id: 'request-1',
 	from: me,
 	to: friend,
-	files,
-	confirmation: { kind: 'tell' as const, word: 'さくら' }
+	files
 };
 const meta = {
 	title: '画面/写真を共有',
@@ -95,48 +93,31 @@ export const IncomingRequest: Story = {
 		request: {
 			...request,
 			from: friend,
-			to: me,
-			confirmation: { kind: 'choose', options: [...PASSPHRASES] }
+			to: me
 		}
 	}
 };
-export const ConfirmCode: Story = {
-	name: '11 あいことばを伝える',
-	args: { request, phase: 'confirm' }
-};
-export const WaitingConfirmation: Story = {
-	name: '12 あいことばを選ぶ',
-	args: {
-		request: {
-			...request,
-			from: friend,
-			to: me,
-			confirmation: { kind: 'choose', options: [...PASSPHRASES] }
-		},
-		phase: 'confirm'
-	}
-};
 export const PeerConnecting: Story = {
-	name: '13 転送の接続中',
+	name: '11 転送の接続中',
 	args: { request, phase: 'connecting' }
 };
 export const Transferring: Story = {
-	name: '14 写真を転送中',
+	name: '12 写真を転送中',
 	args: { request, phase: 'transferring', bytes: 7 }
 };
 export const Verifying: Story = {
-	name: '15 データを検証中',
+	name: '13 データを検証中',
 	args: { request, phase: 'transferring', bytes: file.size }
 };
 export const Sent: Story = {
-	name: '16 送信完了',
+	name: '14 送信完了',
 	args: {
 		completed: true,
 		notice: '相手の端末で、すべての写真の受信とデータ一致を確認しました。'
 	}
 };
 export const Received: Story = {
-	name: '17 受信完了',
+	name: '15 受信完了',
 	args: {
 		completed: true,
 		received: [{ file, url: brandIcon, preview: true }],
@@ -144,7 +125,7 @@ export const Received: Story = {
 	}
 };
 export const UnsupportedPreview: Story = {
-	name: '18 プレビュー非対応',
+	name: '16 プレビュー非対応',
 	args: {
 		completed: true,
 		received: [
@@ -157,7 +138,7 @@ export const UnsupportedPreview: Story = {
 	}
 };
 export const LocationDenied: Story = {
-	name: '19 位置情報が未許可',
+	name: '17 位置情報が未許可',
 	args: {
 		flowStarted: true,
 		locationMessage:
@@ -165,7 +146,7 @@ export const LocationDenied: Story = {
 	}
 };
 export const Offline: Story = {
-	name: '20 接続エラー',
+	name: '18 接続エラー',
 	args: {
 		connection: 'offline',
 		error: '接続が切れました。再接続して相手を探してください。'

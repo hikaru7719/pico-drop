@@ -23,7 +23,7 @@ try {
 	const stories = Object.values(index.entries).filter(
 		(entry) => entry.type === 'story'
 	);
-	assert.equal(stories.length, 22);
+	assert.equal(stories.length, 20);
 	for (const story of stories) {
 		await page.goto(
 			`${baseURL}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`
@@ -41,9 +41,9 @@ try {
 		);
 	}
 	await page.goto(
-		`${baseURL}/iframe.html?id=${encodeURIComponent('画面-写真を共有--confirm-code')}&viewMode=story`
+		`${baseURL}/iframe.html?id=${encodeURIComponent('画面-写真を共有--peer-connecting')}&viewMode=story`
 	);
-	await page.locator('.passphrase').waitFor();
+	await page.locator('.transfer').waitFor();
 	assert.equal(
 		await page.getByRole('heading', { name: 'Photos, Right Nearby.' }).count(),
 		0

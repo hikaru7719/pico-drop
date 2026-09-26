@@ -1,7 +1,6 @@
 <script lang="ts">
 	import DiscoveryPulse from './DiscoveryPulse.svelte';
 	import TransferProgress from './TransferProgress.svelte';
-	import PassphrasePicture from './PassphrasePicture.svelte';
 	import { formatBytes } from '$lib/photos';
 	import type {
 		Device,
@@ -25,8 +24,7 @@
 		selecting?: boolean;
 		requesting?: boolean;
 		request?: Extract<ServerMessage, { type: 'requested' }> | undefined;
-		phase?: 'waiting' | 'confirm' | 'connecting' | 'transferring';
-		confirmed?: boolean;
+		phase?: 'waiting' | 'connecting' | 'transferring';
 		bytes?: number;
 		received?: { file: File; url: string; preview: boolean }[];
 		completed?: boolean;
@@ -43,10 +41,7 @@
 		chooseRecipient?: (device: Device) => void;
 		select?: (event: Event) => void;
 		invite?: (device: Device) => void;
-		action?: (
-			type: 'accept' | 'reject' | 'confirm' | 'cancel',
-			word?: string
-		) => void;
+		action?: (type: 'accept' | 'reject' | 'cancel') => void;
 		save?: () => void;
 		discard?: () => void;
 	};
@@ -69,7 +64,6 @@
 		requesting = $bindable(false),
 		request = $bindable(undefined),
 		phase = $bindable('waiting'),
-		confirmed = $bindable(false),
 		bytes = $bindable(0),
 		received = $bindable([]),
 		completed = $bindable(false),
@@ -444,7 +438,7 @@
 							onclick={stopDiscovery}>探索を停止する</button
 						>{/if}
 					<p class="hint">
-						位置情報は候補の発見だけに使います。表示名や距離だけで判断せず、相手からあいことばを聞いて確認してください。
+						位置情報は候補の発見だけに使います。送る前に相手の画面に表示された端末名を確認してください。
 					</p>
 				</section>
 			{/if}
@@ -466,7 +460,7 @@
 				<p>
 					{sending
 						? '相手の承諾を待っています。写真はまだ送信していません。'
-						: 'この相手から写真を受け取りますか？承諾後に相手から聞いたあいことばを選びます。'}
+						: 'この相手から写真を受け取りますか？受け取ると転送が始まります。'}
 				</p>
 				{#if !sending}<div class="actions">
 						<button
@@ -474,46 +468,6 @@
 							onclick={() => action('accept')}>受け取る</button
 						><button onclick={() => action('reject')}>辞退する</button>
 					</div>{/if}
-			{:else if phase === 'confirm'}
-				{#if request.confirmation.kind === 'tell'}
-					<p>このあいことばを、受け取る相手に伝えてください。</p>
-					<div
-						class="passphrase"
-						aria-label={`あいことば ${request.confirmation.word}`}
-					>
-						<PassphrasePicture word={request.confirmation.word} />{request
-							.confirmation.word}
-					</div>
-					<p
-						class="hint"
-						role="status"
-					>
-						相手が同じあいことばを選ぶと、転送が始まります。
-					</p>
-				{:else}
-					<p id="passphrase-prompt">
-						送る相手から聞いたあいことばを選んでください。
-					</p>
-					<div
-						class="passphrase-options"
-						role="group"
-						aria-labelledby="passphrase-prompt"
-					>
-						{#each request.confirmation.options as word}<button
-								disabled={confirmed}
-								onclick={() => action('confirm', word)}
-								><PassphrasePicture {word} /><span>{word}</span></button
-							>{/each}
-					</div>
-					<p
-						class="hint"
-						role="status"
-					>
-						{confirmed
-							? 'あいことばを確認しています…'
-							: '選ぶと転送が始まります。違うものを選んだ場合は転送を中止します。'}
-					</p>
-				{/if}
 			{:else}
 				<TransferProgress
 					{bytes}
@@ -529,10 +483,7 @@
 			{#if sending || phase !== 'waiting'}
 				<button
 					class="text-button"
-					onclick={() => action('cancel')}
-					>{phase === 'confirm'
-						? 'あいことばが分からない・中止する'
-						: '中止する'}</button
+					onclick={() => action('cancel')}>中止する</button
 				>
 			{/if}
 		</section>
@@ -1012,46 +963,6 @@
 		flex-wrap: wrap;
 		margin: 20px 0;
 	}
-	.passphrase {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 12px;
-		text-align: center;
-		font-size: clamp(30px, 7vw, 44px);
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		color: #004fa3;
-		padding: 28px 16px;
-		margin: 24px 0;
-		background: #f5f8fc;
-		border-radius: 16px;
-	}
-	.passphrase-options {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 12px;
-		margin: 24px 0;
-	}
-	.passphrase-options button {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 8px;
-		min-height: 72px;
-		background: #f8f9fb;
-		border-color: #e3e7ed;
-		color: #1d1d1f;
-		font-size: 17px;
-		font-weight: 500;
-		border-radius: 14px;
-	}
-	.passphrase-options button:not(:disabled):hover {
-		background: #edf4fc;
-		border-color: #0071e3;
-		color: #0066cc;
-	}
 
 	.gallery {
 		display: flex;
@@ -1167,9 +1078,6 @@
 		}
 	}
 	@media (max-width: 640px) {
-		.passphrase-options {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
 		main {
 			padding-top: 24px;
 		}

@@ -1,37 +1,5 @@
 /* eslint-disable no-control-regex -- Reject or sanitize control characters in photo names. */
 
-export const PASSPHRASES = [
-	'さくら',
-	'りんご',
-	'いるか',
-	'ひまわり',
-	'うさぎ',
-	'ほし',
-	'ぺんぎん',
-	'にじ'
-] as const;
-
-export type Confirmation =
-	| {
-			kind: 'tell';
-			word: string;
-	  }
-	| {
-			kind: 'choose';
-			options: string[];
-	  };
-
-export function createPassphrase() {
-	const options: string[] = [...PASSPHRASES];
-	for (let i = options.length - 1; i > 0; i--) {
-		const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
-		[options[i], options[j]] = [options[j], options[i]];
-	}
-	const word =
-		options[crypto.getRandomValues(new Uint32Array(1))[0] % options.length];
-	return { word, options };
-}
-
 export const LIMITS = {
 	files: 10,
 	bytes: 50 * 1024 * 1024,
@@ -100,11 +68,6 @@ export type ClientMessage =
 			id: string;
 	  }
 	| {
-			type: 'confirm';
-			id: string;
-			word: string;
-	  }
-	| {
 			type: 'signal';
 			id: string;
 			signal: Signal;
@@ -125,10 +88,9 @@ export type ServerMessage =
 			from: Device;
 			to: Device;
 			files: PhotoMeta[];
-			confirmation: Confirmation;
 	  }
 	| {
-			type: 'accepted' | 'start';
+			type: 'start';
 			id: string;
 	  }
 	| {
@@ -139,8 +101,7 @@ export type ServerMessage =
 				| 'cancelled'
 				| 'disconnected'
 				| 'timeout'
-				| 'complete'
-				| 'mismatch';
+				| 'complete';
 	  }
 	| {
 			type: 'signal';
@@ -242,13 +203,6 @@ export function parseClient(value: unknown): ClientMessage {
 	if (typeof value.id === 'string' && value.id.length <= 40) {
 		if (['accept', 'reject', 'cancel', 'complete'].includes(value.type))
 			return value as ClientMessage;
-		if (
-			value.type === 'confirm' &&
-			typeof value.word === 'string' &&
-			value.word.length > 0 &&
-			value.word.length <= 32
-		)
-			return value as ClientMessage;
 		if (value.type === 'signal' && record(value.signal)) {
 			const s = value.signal;
 			if (
@@ -280,8 +234,6 @@ export type TransferState = {
 	from: Device;
 	to: Device;
 	files: PhotoMeta[];
-	passphrase: string;
-	accepted: boolean;
 	started: boolean;
 	expiresAt: number;
 };
@@ -295,17 +247,12 @@ export function authorizeTransfer(
 	if (t.expiresAt <= now || ![t.from.id, t.to.id].includes(actor))
 		throw new Error('転送が期限切れ、または操作できません。');
 	if (
-		(action === 'accept' ||
-			action === 'reject' ||
-			action === 'complete' ||
-			action === 'confirm') &&
+		(action === 'accept' || action === 'reject' || action === 'complete') &&
 		actor !== t.to.id
 	)
 		throw new Error('受信者のみ操作できます。');
-	if ((action === 'accept' || action === 'reject') && (t.accepted || t.started))
+	if ((action === 'accept' || action === 'reject') && t.started)
 		throw new Error('すでに応答済みです。');
-	if (action === 'confirm' && (!t.accepted || t.started))
-		throw new Error('先に受信を承諾してください。');
 	if ((action === 'signal' || action === 'complete') && !t.started)
-		throw new Error('受信者があいことばを選んでください。');
+		throw new Error('先に受信を承諾してください。');
 }
