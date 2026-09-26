@@ -17,149 +17,152 @@ const meta = {
 	type: 'image/jpeg',
 	size: data.byteLength
 };
-test('multiple photos are received byte-for-byte and complete only after final marker', async () => {
-	const files: File[] = [];
-	let complete = false;
-	const r = new PhotoReceiver(
-		[meta, { ...meta, id: 'p2' }],
-		() => {},
-		(f) => files.push(f),
-		() => {
-			complete = true;
-		}
-	);
-	for (const id of ['p', 'p2']) {
-		await r.consume(
-			JSON.stringify({ type: 'file', id, sha256: await digest(data) })
+
+class ReceiverFixture {
+	files: File[] = [];
+	complete = false;
+	receiver: PhotoReceiver;
+	constructor(metadata = [meta]) {
+		this.receiver = new PhotoReceiver(
+			metadata,
+			() => {},
+			(f) => this.files.push(f),
+			() => {
+				this.complete = true;
+			}
 		);
-		await r.consume(data.slice(0, 4));
-		await r.consume(data.slice(4));
-		assert.equal(complete, false);
-		await r.consume(JSON.stringify({ type: 'file-end', id }));
 	}
-	await r.consume('{"type":"done"}');
-	assert.equal(complete, true);
-	assert.equal(files.length, 2);
-	for (const f of files) assert.deepEqual(await f.arrayBuffer(), data);
-});
-test('receiver rejects oversized, early, truncated and corrupt data', async () => {
-	const make = () =>
-		new PhotoReceiver(
-			[meta],
-			() => {},
-			() => {},
-			() => {}
+	async begin(id = 'p', sha256: string | null = null) {
+		await this.receiver.consume(
+			JSON.stringify({
+				type: 'file',
+				id,
+				sha256: sha256 ?? (await digest(data))
+			})
 		);
-	await assert.rejects(make().consume(data));
-	await assert.rejects(make().consume('{"type":"done"}'));
-	let r = make();
-	await r.consume(
-		JSON.stringify({ type: 'file', id: 'p', sha256: await digest(data) })
-	);
-	await assert.rejects(r.consume(new ArrayBuffer(9)));
-	r = make();
-	await r.consume(
-		JSON.stringify({ type: 'file', id: 'p', sha256: '0'.repeat(64) })
-	);
-	await r.consume(data);
-	await assert.rejects(r.consume('{"type":"file-end","id":"p"}'));
-	r = make();
-	await r.consume(
-		JSON.stringify({ type: 'file', id: 'p', sha256: await digest(data) })
-	);
-	await r.consume(data.slice(0, 4));
-	await assert.rejects(r.consume('{"type":"file-end","id":"p"}'));
-	r = make();
-	r.dispose();
-	await assert.rejects(r.consume(data));
+	}
+	async photo(id: string) {
+		await this.begin(id);
+		await this.receiver.consume(data.slice(0, 4));
+		await this.receiver.consume(data.slice(4));
+		assert.equal(this.complete, false);
+		await this.receiver.consume(JSON.stringify({ type: 'file-end', id }));
+	}
+}
+async function assertReceivedFiles(f: ReceiverFixture) {
+	assert.equal(f.complete, true);
+	assert.equal(f.files.length, 2);
+	for (const file of f.files) {
+		assert.deepEqual(await file.arrayBuffer(), data);
+	}
+}
+void test('multiple photos are received byte-for-byte and complete only after final marker', async () => {
+	const f = new ReceiverFixture([meta, { ...meta, id: 'p2' }]);
+	for (const id of ['p', 'p2']) {
+		await f.photo(id);
+	}
+	await f.receiver.consume('{"type":"done"}');
+	await assertReceivedFiles(f);
 });
-test('sender respects cancellation and channel backpressure', async () => {
-	const controller = new AbortController();
-	controller.abort();
-	let sends = 0;
-	const channel = {
-		readyState: 'open',
-		bufferedAmount: 0,
-		send: () => {
-			sends++;
-		}
-	} as unknown as RTCDataChannel;
-	await assert.rejects(
-		sendPhotos(
-			channel,
-			[new File([data], 'photo.jpg')],
-			[meta],
-			controller.signal,
-			() => {}
-		)
-	);
-	assert.equal(sends, 0);
-	const live = new AbortController();
-	const blocked = Object.assign(new EventTarget(), {
-		readyState: 'open',
-		bufferedAmount: 1024 * 1024,
-		bufferedAmountLowThreshold: 0,
-		send: () => {
-			sends++;
-		}
-	});
-	const pending = sendPhotos(
-		blocked as unknown as RTCDataChannel,
-		[new File([data], 'photo.jpg')],
-		[meta],
-		live.signal,
-		() => {}
-	);
+void test('receiver rejects early and disposed data', async () => {
+	const f = new ReceiverFixture();
+	await assert.rejects(f.receiver.consume(data));
+	await assert.rejects(f.receiver.consume('{"type":"done"}'));
+	f.receiver.dispose();
+	await assert.rejects(f.receiver.consume(data));
+});
+void test('receiver rejects oversized data', async () => {
+	const f = new ReceiverFixture();
+	await f.begin();
+	await assert.rejects(f.receiver.consume(new ArrayBuffer(9)));
+});
+void test('receiver rejects corrupt data', async () => {
+	const f = new ReceiverFixture();
+	await f.begin('p', '0'.repeat(64));
+	await f.receiver.consume(data);
+	await assert.rejects(f.receiver.consume('{"type":"file-end","id":"p"}'));
+});
+void test('receiver rejects truncated data', async () => {
+	const f = new ReceiverFixture();
+	await f.begin();
+	await f.receiver.consume(data.slice(0, 4));
+	await assert.rejects(f.receiver.consume('{"type":"file-end","id":"p"}'));
+});
+class SenderFixture extends EventTarget {
+	readyState = 'open';
+	bufferedAmount = 0;
+	bufferedAmountLowThreshold = 0;
+	sends = 0;
+	controller = new AbortController();
+	send() {
+		this.sends++;
+	}
+	start() {
+		return sendPhotos({
+			channel: this as unknown as RTCDataChannel,
+			files: [new File([data], 'photo.jpg')],
+			metadata: [meta],
+			signal: this.controller.signal,
+			progress: () => {}
+		});
+	}
+}
+void test('sender respects cancellation', async () => {
+	const sender = new SenderFixture();
+	sender.controller.abort();
+	await assert.rejects(sender.start());
+	assert.equal(sender.sends, 0);
+});
+void test('sender respects channel backpressure', async () => {
+	const sender = new SenderFixture();
+	sender.bufferedAmount = 1024 * 1024;
+	const pending = sender.start();
 	await new Promise((resolve) => setTimeout(resolve, 20));
-	assert.equal(sends, 0);
-	live.abort();
+	assert.equal(sender.sends, 0);
+	sender.controller.abort();
 	await assert.rejects(pending);
 });
-test('photo classification uses file bytes and preserves HEIC, rejects renamed non-photos', async () => {
+void test('photo classification uses file bytes', async () => {
 	const [jpeg] = await describePhotos([
 		new File([data], 'camera.heic', { type: 'image/heic' })
 	]);
 	assert.equal(jpeg.type, 'image/jpeg');
-	await assert.rejects(
-		describePhotos([
-			new File(['not a photo'], 'fake.jpg', { type: 'image/jpeg' })
-		])
-	);
+});
+void test('photo classification rejects renamed non-photos', async () => {
+	const fake = new File(['not a photo'], 'fake.jpg', { type: 'image/jpeg' });
+	await assert.rejects(describePhotos([fake]));
+});
+void test('photo classification preserves HEIC', async () => {
 	const heic = new Uint8Array(24);
 	heic.set(new TextEncoder().encode('ftypheic'), 4);
-	const [meta] = await describePhotos([
+	const [photo] = await describePhotos([
 		new File([heic], 'camera.heic', { type: 'image/heic' })
 	]);
-	assert.equal(meta.type, 'image/heic');
-	assert.equal(meta.name, 'camera.heic');
+	assert.equal(photo.type, 'image/heic');
+	assert.equal(photo.name, 'camera.heic');
 });
-
-test('share cancellation and completion remain distinct from confirmed photo-library saving', async () => {
-	const files = [new File([data], 'photo.jpg', { type: 'image/jpeg' })];
+function mockShare(canShare: boolean, share: () => Promise<void>) {
 	Object.defineProperty(navigator, 'canShare', {
 		configurable: true,
-		value: () => true
+		value: () => canShare
 	});
 	Object.defineProperty(navigator, 'share', {
 		configurable: true,
-		value: async () => {
-			throw new DOMException('Cancelled', 'AbortError');
-		}
+		value: share
 	});
-	assert.equal(await sharePhotos(files), 'cancelled');
-	Object.defineProperty(navigator, 'share', {
-		configurable: true,
-		value: async () => {}
+}
+const shareFiles = [new File([data], 'photo.jpg', { type: 'image/jpeg' })];
+void test('share cancellation and completion remain distinct from confirmed photo-library saving', async () => {
+	mockShare(true, async () => {
+		throw new DOMException('Cancelled', 'AbortError');
 	});
-	assert.equal(await sharePhotos(files), 'shared');
-	Object.defineProperty(navigator, 'canShare', {
-		configurable: true,
-		value: () => false
-	});
-	assert.equal(await sharePhotos(files), 'unsupported');
+	assert.equal(await sharePhotos(shareFiles), 'cancelled');
+	mockShare(true, async () => {});
+	assert.equal(await sharePhotos(shareFiles), 'shared');
+	mockShare(false, async () => {});
+	assert.equal(await sharePhotos(shareFiles), 'unsupported');
 });
-
-test('byte labels retain precision for small photos and zero progress', () => {
+void test('byte labels retain precision for small photos and zero progress', () => {
 	assert.equal(formatBytes(0), '0 B');
 	assert.equal(formatBytes(7), '7 B');
 	assert.equal(formatBytes(15), '15 B');

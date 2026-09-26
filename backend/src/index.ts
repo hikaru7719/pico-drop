@@ -5,6 +5,9 @@ import {
 	parseClient,
 	authorizeTransfer,
 	type Location,
+	type ClientMessage,
+	type Device,
+	type PhotoMeta,
 	type ServerMessage,
 	type Session,
 	type TransferState
@@ -41,129 +44,215 @@ function send(ws: WebSocket, message: ServerMessage) {
 	}
 }
 
+type StoredSession = Omit<Session, 'token'> & { used?: boolean };
+type Rate = { count: number; expiresAt: number };
+type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
+type TransferMessage = Extract<ClientMessage, { id: string }>;
+const SESSION_LIMIT = '接続回数が多すぎます。1分後に再試行してください。';
+const REQUEST_LIMIT = '送信要求が多すぎます。1分後に再試行してください。';
+const NOT_NEARBY = '相手が見つかりません。近くの端末を再検索してください。';
+const TURN_LIMIT = '接続設定の取得上限です。再接続してください。';
+const TURN_FAILED = '中継サーバーの準備に失敗しました。再試行してください。';
+const device = (session: Device): Device => ({
+	id: session.id,
+	name: session.name
+});
+function requestError(request: Request, url: URL) {
+	if (request.headers.get('Origin') !== url.origin) {
+		return json({ error: 'Origin not allowed' }, 403);
+	}
+	if (!['/api/session', '/api/ws', '/api/ice'].includes(url.pathname)) {
+		return json({ error: 'Not found' }, 404);
+	}
+	return null;
+}
+
 export default {
 	async fetch(request, env): Promise<Response> {
 		const url = new URL(request.url);
-		if (url.pathname === '/api/health')
+		if (url.pathname === '/api/health') {
 			return json({ status: 'ok', service: 'pico-drop-backend' });
-		// Frontend forwards the original URL through a service binding; dev proxy preserves Host.
-		if (request.headers.get('Origin') !== url.origin)
-			return json({ error: 'Origin not allowed' }, 403);
-		if (!['/api/session', '/api/ws', '/api/ice'].includes(url.pathname))
-			return json({ error: 'Not found' }, 404);
-		return env.HUB.get(env.HUB.idFromName('mvp')).fetch(request);
+		}
+		return (
+			requestError(request, url) ??
+			env.HUB.get(env.HUB.idFromName('mvp')).fetch(request)
+		);
 	}
 } satisfies ExportedHandler<Bindings>;
 
+function randomToken() {
+	return Array.from(crypto.getRandomValues(new Uint8Array(32)), (x) =>
+		x.toString(16).padStart(2, '0')
+	).join('');
+}
+function newSession(): Session {
+	const id = crypto.randomUUID();
+	return {
+		id,
+		token: randomToken(),
+		name: `ゲスト ${id.slice(0, 4).toUpperCase()}`,
+		expiresAt: Date.now() + LIMITS.sessionMs
+	};
+}
+
+function turnHeaders(token: string) {
+	return {
+		Authorization: `Bearer ${token}`,
+		'Content-Type': 'application/json'
+	};
+}
+function turnRequest(token: string): RequestInit {
+	return {
+		method: 'POST',
+		headers: turnHeaders(token),
+		body: JSON.stringify({ ttl: 900 }),
+		signal: AbortSignal.timeout(10_000)
+	};
+}
+
+async function turnServers(env: Bindings) {
+	const url = `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(env.TURN_KEY_ID!)}/credentials/generate-ice-servers`;
+	const response = await fetch(url, turnRequest(env.TURN_KEY_API_TOKEN!));
+	if (!response.ok) {
+		throw new Error('TURN');
+	}
+	const data = (await response.json()) as { iceServers: unknown[] };
+	return json({ iceServers: data.iceServers, relay: true });
+}
+function sessionExpired(a: Attachment, now: number) {
+	return (
+		(!a.session && a.connectedAt < now - 10_000) ||
+		(a.session && a.session.expiresAt <= now)
+	);
+}
 export class NearbyHub extends DurableObject<Bindings> {
 	async fetch(request: Request): Promise<Response> {
 		const path = new URL(request.url).pathname;
-		if (
-			path === '/api/ws' &&
-			request.headers.get('Upgrade')?.toLowerCase() === 'websocket'
-		) {
-			if (this.ctx.getWebSockets().length >= 200)
-				return json({ error: '混み合っています。後でお試しください。' }, 503);
-			const pair = new WebSocketPair();
-			this.ctx.acceptWebSocket(pair[1]);
-			pair[1].serializeAttachment({
-				connectedAt: Date.now()
-			} satisfies Attachment);
-			await this.schedule();
-			return new Response(null, { status: 101, webSocket: pair[0] });
+		const upgrade =
+			request.headers.get('Upgrade')?.toLowerCase() === 'websocket';
+		if (path === '/api/ws' && upgrade) {
+			return this.upgradeSocket();
 		}
-		if (path === '/api/session' && request.method === 'POST') {
-			return this.ctx.blockConcurrencyWhile(async () => {
-				const key =
-					'rate:' +
-					(await hash(request.headers.get('CF-Connecting-IP') ?? 'local'));
-				const rate = await this.ctx.storage.get<{
-					count: number;
-					expiresAt: number;
-				}>(key);
-				const current =
-					rate && rate.expiresAt > Date.now()
-						? rate
-						: { count: 0, expiresAt: Date.now() + 60_000 };
-				if (++current.count > 20)
-					return json(
-						{ error: '接続回数が多すぎます。1分後に再試行してください。' },
-						429
-					);
-				await this.ctx.storage.put(key, current);
-				const token = Array.from(
-					crypto.getRandomValues(new Uint8Array(32)),
-					(x) => x.toString(16).padStart(2, '0')
-				).join('');
-				const id = crypto.randomUUID();
-				const session: Session = {
-					id,
-					token,
-					name: `ゲスト ${id.slice(0, 4).toUpperCase()}`,
-					expiresAt: Date.now() + LIMITS.sessionMs
-				};
-				const { token: _token, ...stored } = session;
-				await this.ctx.storage.put('session:' + (await hash(token)), stored);
-				await this.schedule();
-				return json(session, 201);
+		return this.post(request, path);
+	}
+	async post(request: Request, path: string) {
+		if (request.method !== 'POST') {
+			return json({ error: 'Method not allowed' }, 405);
+		}
+		return this.postRoute(request, path);
+	}
+	async postRoute(request: Request, path: string) {
+		if (path === '/api/session') {
+			return this.ctx.blockConcurrencyWhile(() => this.createSession(request));
+		}
+		return path === '/api/ice'
+			? this.ice(request)
+			: json({ error: 'Method not allowed' }, 405);
+	}
+
+	async upgradeSocket() {
+		if (this.ctx.getWebSockets().length >= 200) {
+			return json({ error: '混み合っています。後でお試しください。' }, 503);
+		}
+		return this.acceptSocket();
+	}
+	async acceptSocket() {
+		const pair = new WebSocketPair();
+		this.ctx.acceptWebSocket(pair[1]);
+		pair[1].serializeAttachment({
+			connectedAt: Date.now()
+		} satisfies Attachment);
+		await this.schedule();
+		return new Response(null, { status: 101, webSocket: pair[0] });
+	}
+
+	async sessionRate(request: Request) {
+		const key =
+			'rate:' +
+			(await hash(request.headers.get('CF-Connecting-IP') ?? 'local'));
+		const rate = await this.ctx.storage.get<Rate>(key);
+		return { key, current: currentRate(rate) };
+	}
+
+	async checkSessionRate(request: Request) {
+		const { key, current } = await this.sessionRate(request);
+		if (++current.count > 20) {
+			return false;
+		}
+		await this.ctx.storage.put(key, current);
+		return true;
+	}
+
+	async createSession(request: Request) {
+		if (!(await this.checkSessionRate(request))) {
+			return json({ error: SESSION_LIMIT }, 429);
+		}
+		const session = newSession();
+		const { token, ...stored } = session;
+		await this.ctx.storage.put('session:' + (await hash(token)), stored);
+		await this.schedule();
+		return json(session, 201);
+	}
+	async iceSocket(request: Request) {
+		const token =
+			request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+		if (!/^[a-f0-9]{64}$/.test(token)) {
+			return undefined;
+		}
+		return this.sessionSocket(token);
+	}
+	async sessionSocket(token: string) {
+		const session = await this.ctx.storage.get<StoredSession>(
+			'session:' + (await hash(token))
+		);
+		return session && session.expiresAt > Date.now()
+			? this.socket(session.id)
+			: undefined;
+	}
+
+	async activeTransfer(ws: WebSocket) {
+		const a = this.attachment(ws);
+		const t =
+			a.transfer &&
+			(await this.ctx.storage.get<TransferState>('transfer:' + a.transfer));
+		return t && t.started && t.expiresAt > Date.now();
+	}
+	async ice(request: Request) {
+		const ws = await this.iceSocket(request);
+		if (!ws) {
+			return json({ error: 'Unauthorized' }, 401);
+		}
+		if (!(await this.activeTransfer(ws))) {
+			return json({ error: '転送の確認が必要です。' }, 403);
+		}
+		return this.issueIce(ws);
+	}
+	async issueIce(ws: WebSocket) {
+		const latest = this.attachment(ws);
+		if ((latest.turnCount ?? 0) >= 10) {
+			return json({ error: TURN_LIMIT }, 429);
+		}
+		latest.turnCount = (latest.turnCount ?? 0) + 1;
+		ws.serializeAttachment(latest);
+		return this.iceServers();
+	}
+	async iceServers() {
+		if (!this.env.TURN_KEY_ID || !this.env.TURN_KEY_API_TOKEN) {
+			return json({
+				iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }],
+				relay: false
 			});
 		}
-		if (path === '/api/ice' && request.method === 'POST') {
-			const token =
-				request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
-			if (!/^[a-f0-9]{64}$/.test(token))
-				return json({ error: 'Unauthorized' }, 401);
-			const session = await this.ctx.storage.get<Omit<Session, 'token'>>(
-				'session:' + (await hash(token))
-			);
-			const ws = session && this.socket(session.id);
-			if (!session || session.expiresAt <= Date.now() || !ws)
-				return json({ error: 'Unauthorized' }, 401);
-			const a = this.attachment(ws);
-			const t =
-				a.transfer &&
-				(await this.ctx.storage.get<TransferState>('transfer:' + a.transfer));
-			if (!t || !t.started || t.expiresAt <= Date.now())
-				return json({ error: '転送の確認が必要です。' }, 403);
-			// The attachment survives hibernation; a session can mint at most ten credentials.
-			const latest = this.attachment(ws);
-			if ((latest.turnCount ?? 0) >= 10)
-				return json(
-					{ error: '接続設定の取得上限です。再接続してください。' },
-					429
-				);
-			latest.turnCount = (latest.turnCount ?? 0) + 1;
-			ws.serializeAttachment(latest);
-			if (!this.env.TURN_KEY_ID || !this.env.TURN_KEY_API_TOKEN)
-				return json({
-					iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }],
-					relay: false
-				});
-			try {
-				const response = await fetch(
-					`https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(this.env.TURN_KEY_ID)}/credentials/generate-ice-servers`,
-					{
-						method: 'POST',
-						headers: {
-							Authorization: `Bearer ${this.env.TURN_KEY_API_TOKEN}`,
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify({ ttl: 900 }),
-						signal: AbortSignal.timeout(10_000)
-					}
-				);
-				if (!response.ok) throw new Error('TURN');
-				const data = (await response.json()) as { iceServers: unknown[] };
-				return json({ iceServers: data.iceServers, relay: true });
-			} catch {
-				return json(
-					{ error: '中継サーバーの準備に失敗しました。再試行してください。' },
-					503
-				);
-			}
-		}
-		return json({ error: 'Method not allowed' }, 405);
+		return this.turnServers();
 	}
+	async turnServers() {
+		try {
+			return await turnServers(this.env);
+		} catch {
+			return json({ error: TURN_FAILED }, 503);
+		}
+	}
+
 	attachment(ws: WebSocket): Attachment {
 		return ws.deserializeAttachment() as Attachment;
 	}
@@ -177,8 +266,9 @@ export class NearbyHub extends DurableObject<Bindings> {
 			);
 	}
 	async schedule() {
-		if ((await this.ctx.storage.getAlarm()) === null)
+		if ((await this.ctx.storage.getAlarm()) === null) {
 			await this.ctx.storage.setAlarm(Date.now() + 15_000);
+		}
 	}
 	isPresent(a: Attachment) {
 		return (
@@ -188,202 +278,271 @@ export class NearbyHub extends DurableObject<Bindings> {
 			(a.seen ?? 0) > Date.now() - LIMITS.presenceMs
 		);
 	}
+	nearbyDevice(ws: WebSocket, other: WebSocket, a: Attachment): Device[] {
+		const b = this.attachment(other);
+		const available =
+			other !== ws && other.readyState === WebSocket.OPEN && this.isPresent(b);
+		return available && nearby(a.location!, b.location!)
+			? [device(b.session!)]
+			: [];
+	}
 	broadcast() {
 		const sockets = this.ctx.getWebSockets();
 		for (const ws of sockets) {
-			const a = this.attachment(ws);
-			if (!a.session) continue;
-			const devices = this.isPresent(a)
-				? sockets.flatMap((other) => {
-						const b = this.attachment(other);
-						return other !== ws &&
-							other.readyState === WebSocket.OPEN &&
-							this.isPresent(b) &&
-							nearby(a.location!, b.location!)
-							? [{ id: b.session!.id, name: b.session!.name }]
-							: [];
-					})
-				: [];
-			send(ws, { type: 'nearby', devices });
+			this.sendNearby(ws, sockets);
 		}
 	}
-	async end(
-		id: string,
-		reason: Extract<ServerMessage, { type: 'ended' }>['reason']
-	) {
+	sendNearby(ws: WebSocket, sockets: WebSocket[]) {
+		const a = this.attachment(ws);
+		if (!a.session) {
+			return;
+		}
+		const devices = this.isPresent(a)
+			? sockets.flatMap((other) => this.nearbyDevice(ws, other, a))
+			: [];
+		send(ws, { type: 'nearby', devices });
+	}
+	clearTransfer(ws: WebSocket, id: string) {
+		const a = this.attachment(ws);
+		if (a.transfer === id) {
+			delete a.transfer;
+			ws.serializeAttachment(a);
+		}
+	}
+	notifyEnd(participant: Device, id: string, reason: EndReason) {
+		const ws = this.socket(participant.id);
+		if (!ws) {
+			return;
+		}
+		this.clearTransfer(ws, id);
+		send(ws, { type: 'ended', id, reason });
+	}
+
+	async end(id: string, reason: EndReason) {
 		const t = await this.ctx.storage.get<TransferState>('transfer:' + id);
-		if (!t) return;
+		if (!t) {
+			return;
+		}
 		await this.ctx.storage.delete('transfer:' + id);
-		for (const device of [t.from, t.to]) {
-			const ws = this.socket(device.id);
-			if (!ws) continue;
-			const a = this.attachment(ws);
-			if (a.transfer === id) {
-				delete a.transfer;
-				ws.serializeAttachment(a);
-			}
-			send(ws, { type: 'ended', id, reason });
+		for (const participant of [t.from, t.to]) {
+			this.notifyEnd(participant, id, reason);
 		}
 	}
+
 	async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
-		await this.ctx.blockConcurrencyWhile(async () => {
-			try {
-				if (typeof raw !== 'string' || raw.length > 24_000)
-					throw new Error('制御メッセージのみ送信できます。');
-				let a = this.attachment(ws);
-				if (!a.window || a.window < Date.now() - 60_000) {
-					a.window = Date.now();
-					a.messages = 0;
-					a.requests = 0;
-				}
-				a.messages = (a.messages ?? 0) + 1;
-				ws.serializeAttachment(a);
-				if (a.messages > 240) {
-					ws.close(1008, 'Rate limit');
-					return;
-				}
-				const m = parseClient(JSON.parse(raw));
-				if (m.type === 'auth' && !a.session) {
-					const key = 'session:' + (await hash(m.token));
-					const session = await this.ctx.storage.get<
-						Omit<Session, 'token'> & { used?: boolean }
-					>(key);
-					if (
-						!session ||
-						session.used ||
-						session.expiresAt <= Date.now() ||
-						this.socket(session.id)
-					) {
-						ws.close(1008, 'Invalid session');
-						return;
-					}
-					// A token authenticates one socket; reconnect obtains a fresh anonymous session.
-					await this.ctx.storage.put(key, { ...session, used: true });
-					a.session = {
-						id: session.id,
-						name: session.name,
-						expiresAt: session.expiresAt
-					};
-					ws.serializeAttachment(a);
-					send(ws, {
-						type: 'ready',
-						device: { id: session.id, name: session.name }
-					});
-					return;
-				}
-				if (!a.session || a.session.expiresAt <= Date.now()) {
-					ws.close(1008, 'Session expired');
-					return;
-				}
-				if (m.type === 'presence') {
-					if (
-						m.location &&
-						a.location &&
-						(a.lastPresence ?? 0) > Date.now() - 2000
-					)
-						return;
-					a.lastPresence = Date.now();
-					a.seen = Date.now();
-					if (m.location) a.location = m.location;
-					else delete a.location;
-					ws.serializeAttachment(a);
-					this.broadcast();
-					return;
-				}
-				if (m.type === 'request') {
-					a.requests = (a.requests ?? 0) + 1;
-					ws.serializeAttachment(a);
-					if (a.requests > 5)
-						throw new Error(
-							'送信要求が多すぎます。1分後に再試行してください。'
-						);
-					const other = this.socket(m.to);
-					const b = other && this.attachment(other);
-					if (
-						!other ||
-						!b ||
-						other === ws ||
-						!this.isPresent(a) ||
-						!this.isPresent(b) ||
-						!nearby(a.location!, b.location!)
-					)
-						throw new Error(
-							'相手が見つかりません。近くの端末を再検索してください。'
-						);
-					if (a.transfer || b.transfer)
-						throw new Error('転送中です。完了後にお試しください。');
-					const t: TransferState = {
-						id: crypto.randomUUID(),
-						from: { id: a.session.id, name: a.session.name },
-						to: { id: b.session!.id, name: b.session!.name },
-						files: m.files,
-						started: false,
-						expiresAt: Date.now() + LIMITS.requestMs
-					};
-					await this.ctx.storage.put('transfer:' + t.id, t);
-					a.transfer = t.id;
-					b.transfer = t.id;
-					ws.serializeAttachment(a);
-					other.serializeAttachment(b);
-					const message = {
-						type: 'requested' as const,
-						id: t.id,
-						from: t.from,
-						to: t.to,
-						files: t.files
-					};
-					send(ws, message);
-					send(other, message);
-					return;
-				}
-				if (!('id' in m) || a.transfer !== m.id)
-					throw new Error('転送が見つかりません。');
-				const t = await this.ctx.storage.get<TransferState>('transfer:' + m.id);
-				if (!t) throw new Error('転送が期限切れです。');
-				authorizeTransfer(t, a.session.id, m.type);
-				if (
-					m.type === 'reject' ||
-					m.type === 'cancel' ||
-					m.type === 'complete'
-				) {
-					await this.end(
-						t.id,
-						m.type === 'reject'
-							? 'rejected'
-							: m.type === 'complete'
-								? 'complete'
-								: 'cancelled'
-					);
-					return;
-				}
-				if (m.type === 'signal') {
-					const other = this.socket(
-						a.session.id === t.from.id ? t.to.id : t.from.id
-					);
-					if (other)
-						send(other, { type: 'signal', id: t.id, signal: m.signal });
-					return;
-				}
-				if (m.type === 'accept') {
-					t.started = true;
-					t.expiresAt = Date.now() + LIMITS.transferMs;
-					await this.ctx.storage.put('transfer:' + t.id, t);
-					for (const device of [t.from, t.to]) {
-						const other = this.socket(device.id);
-						if (other) send(other, { type: 'start', id: t.id });
-					}
-				}
-			} catch (e) {
-				send(ws, {
-					type: 'error',
-					message: e instanceof Error ? e.message : '処理に失敗しました。'
-				});
-			}
-		});
+		await this.ctx.blockConcurrencyWhile(() => this.receive(ws, raw));
+	}
+	async receive(ws: WebSocket, raw: string | ArrayBuffer) {
+		try {
+			await this.handleRaw(ws, raw);
+		} catch (e) {
+			send(ws, {
+				type: 'error',
+				message: e instanceof Error ? e.message : '処理に失敗しました。'
+			});
+		}
+	}
+	messageRate(ws: WebSocket) {
+		const a = this.attachment(ws);
+		if (!a.window || a.window < Date.now() - 60_000) {
+			Object.assign(a, { window: Date.now(), messages: 0, requests: 0 });
+		}
+		a.messages = (a.messages ?? 0) + 1;
+		ws.serializeAttachment(a);
+		return a;
+	}
+	async handleRaw(ws: WebSocket, raw: string | ArrayBuffer) {
+		const text = controlMessage(raw);
+		const a = this.messageRate(ws);
+		if (this.closeOverLimit(ws, a)) {
+			return;
+		}
+		await this.handleMessage(ws, a, parseClient(JSON.parse(text)));
+	}
+	closeOverLimit(ws: WebSocket, a: Attachment) {
+		if (a.messages! <= 240) {
+			return false;
+		}
+		ws.close(1008, 'Rate limit');
+		return true;
+	}
+
+	async handleMessage(ws: WebSocket, a: Attachment, m: ClientMessage) {
+		if (m.type === 'auth' && !a.session) {
+			return this.authenticate(ws, a, m.token);
+		}
+		if (!a.session || a.session.expiresAt <= Date.now()) {
+			ws.close(1008, 'Session expired');
+		} else {
+			await this.authenticatedMessage(ws, a, m);
+		}
+	}
+	async authenticatedMessage(ws: WebSocket, a: Attachment, m: ClientMessage) {
+		if (m.type === 'presence') {
+			return this.presence(ws, a, m.location);
+		}
+		if (m.type === 'request') {
+			return this.requestTransfer(ws, a, m);
+		}
+		await this.checkedTransferAction(a, m);
+	}
+	async checkedTransferAction(a: Attachment, m: ClientMessage) {
+		if (!('id' in m) || a.transfer !== m.id) {
+			throw new Error('転送が見つかりません。');
+		}
+		await this.transferAction(a, m);
+	}
+
+	invalidSession(session: StoredSession | undefined) {
+		return (
+			!session ||
+			session.used ||
+			session.expiresAt <= Date.now() ||
+			this.socket(session.id)
+		);
+	}
+	async authenticate(ws: WebSocket, a: Attachment, token: string) {
+		const key = 'session:' + (await hash(token));
+		const session = await this.ctx.storage.get<StoredSession>(key);
+		if (this.invalidSession(session)) {
+			ws.close(1008, 'Invalid session');
+		} else {
+			await this.acceptSession(ws, a, { key, session: session! });
+		}
+	}
+	async acceptSession(ws: WebSocket, a: Attachment, stored: StoredIdentity) {
+		const { key, session } = stored;
+		await this.ctx.storage.put(key, { ...session, used: true });
+		a.session = { ...device(session), expiresAt: session.expiresAt };
+		ws.serializeAttachment(a);
+		send(ws, { type: 'ready', device: device(session) });
+	}
+
+	presence(ws: WebSocket, a: Attachment, location: Location | null) {
+		if (location && a.location && (a.lastPresence ?? 0) > Date.now() - 2000) {
+			return;
+		}
+		this.updateLocation(a, location);
+		ws.serializeAttachment(a);
+		this.broadcast();
+	}
+	updateLocation(a: Attachment, location: Location | null) {
+		a.lastPresence = Date.now();
+		a.seen = Date.now();
+		if (location) {
+			a.location = location;
+		} else {
+			delete a.location;
+		}
+	}
+
+	checkRequestRate(ws: WebSocket, a: Attachment) {
+		a.requests = (a.requests ?? 0) + 1;
+		ws.serializeAttachment(a);
+		if (a.requests > 5) {
+			throw new Error(REQUEST_LIMIT);
+		}
+	}
+	requestRecipient(ws: WebSocket, a: Attachment, to: string) {
+		const other = this.socket(to);
+		const b = other && this.attachment(other);
+		if (!other || !b || other === ws) {
+			throw new Error(NOT_NEARBY);
+		}
+		this.checkRecipient(a, b);
+		return { other, b };
+	}
+	checkRecipient(a: Attachment, b: Attachment) {
+		const present = this.isPresent(a) && this.isPresent(b);
+		if (!present || !nearby(a.location!, b.location!)) {
+			throw new Error(NOT_NEARBY);
+		}
+		if (a.transfer || b.transfer) {
+			throw new Error('転送中です。完了後にお試しください。');
+		}
+	}
+
+	newTransfer(a: Attachment, b: Attachment, files: PhotoMeta[]): TransferState {
+		return {
+			id: crypto.randomUUID(),
+			from: device(a.session!),
+			to: device(b.session!),
+			files,
+			started: false,
+			expiresAt: Date.now() + LIMITS.requestMs
+		};
+	}
+	async requestTransfer(ws: WebSocket, a: Attachment, m: TransferRequest) {
+		this.checkRequestRate(ws, a);
+		const { other, b } = this.requestRecipient(ws, a, m.to);
+		const t = this.newTransfer(a, b, m.files);
+		await this.ctx.storage.put('transfer:' + t.id, t);
+		this.attachTransfer(ws, a, t);
+		this.attachTransfer(other, b, t);
+	}
+
+	attachTransfer(ws: WebSocket, a: Attachment, t: TransferState) {
+		a.transfer = t.id;
+		ws.serializeAttachment(a);
+		send(ws, requestedMessage(t));
+	}
+
+	async transferAction(a: Attachment, m: TransferMessage) {
+		const t = await this.ctx.storage.get<TransferState>('transfer:' + m.id);
+		if (!t) {
+			throw new Error('転送が期限切れです。');
+		}
+		authorizeTransfer(t, a.session!.id, m.type);
+		await this.applyTransferAction(a.session!.id, t, m);
+	}
+	async applyTransferAction(
+		actor: string,
+		t: TransferState,
+		m: TransferMessage
+	) {
+		if (m.type === 'signal') {
+			return this.relaySignal(actor, t, m);
+		}
+		await this.applyTransferDecision(t, m.type);
+	}
+
+	async applyTransferDecision(t: TransferState, type: string) {
+		if (type === 'accept') {
+			await this.acceptTransfer(t);
+		} else {
+			await this.end(t.id, endReason(type));
+		}
+	}
+
+	relaySignal(
+		actor: string,
+		t: TransferState,
+		m: Extract<ClientMessage, { type: 'signal' }>
+	) {
+		const other = this.socket(actor === t.from.id ? t.to.id : t.from.id);
+		if (other) {
+			send(other, { type: 'signal', id: t.id, signal: m.signal });
+		}
+	}
+	async acceptTransfer(t: TransferState) {
+		t.started = true;
+		t.expiresAt = Date.now() + LIMITS.transferMs;
+		await this.ctx.storage.put('transfer:' + t.id, t);
+		for (const participant of [t.from, t.to]) {
+			this.notifyStart(participant.id, t.id);
+		}
+	}
+	notifyStart(participant: string, id: string) {
+		const ws = this.socket(participant);
+		if (ws) {
+			send(ws, { type: 'start', id });
+		}
 	}
 	async webSocketClose(ws: WebSocket) {
 		const a = this.attachment(ws);
-		if (a.transfer) await this.end(a.transfer, 'disconnected');
+		if (a.transfer) {
+			await this.end(a.transfer, 'disconnected');
+		}
 		ws.close();
 		this.broadcast();
 	}
@@ -391,34 +550,85 @@ export class NearbyHub extends DurableObject<Bindings> {
 		await this.webSocketClose(ws);
 	}
 	async alarm() {
-		await this.ctx.blockConcurrencyWhile(async () => {
-			const now = Date.now();
-			for (const ws of this.ctx.getWebSockets()) {
-				const a = this.attachment(ws);
-				if (
-					(!a.session && a.connectedAt < now - 10_000) ||
-					(a.session && a.session.expiresAt <= now)
-				) {
-					if (a.transfer) await this.end(a.transfer, 'timeout');
-					ws.close(1008, 'Session expired');
-				} else if (a.location && (a.seen ?? 0) < now - LIMITS.presenceMs) {
-					delete a.location;
-					ws.serializeAttachment(a);
-				}
-			}
-			const entries = await this.ctx.storage.list<{ expiresAt: number }>();
-			for (const [key, value] of entries)
-				if (value.expiresAt <= now) {
-					if (key.startsWith('transfer:'))
-						await this.end(key.slice(9), 'timeout');
-					else await this.ctx.storage.delete(key);
-				}
-			this.broadcast();
-			if (
-				this.ctx.getWebSockets().length ||
-				(await this.ctx.storage.list({ limit: 1 })).size
-			)
-				await this.ctx.storage.setAlarm(now + 15_000);
-		});
+		await this.ctx.blockConcurrencyWhile(() => this.expire());
 	}
+	async expireSocket(ws: WebSocket, now: number) {
+		const a = this.attachment(ws);
+		if (sessionExpired(a, now)) {
+			await this.closeExpired(ws, a);
+		} else if (a.location && (a.seen ?? 0) < now - LIMITS.presenceMs) {
+			delete a.location;
+			ws.serializeAttachment(a);
+		}
+	}
+	async closeExpired(ws: WebSocket, a: Attachment) {
+		if (a.transfer) {
+			await this.end(a.transfer, 'timeout');
+		}
+		ws.close(1008, 'Session expired');
+	}
+	async expireEntry(key: string, expiresAt: number, now: number) {
+		if (!(expiresAt <= now)) {
+			return;
+		}
+		if (key.startsWith('transfer:')) {
+			await this.end(key.slice(9), 'timeout');
+		} else {
+			await this.ctx.storage.delete(key);
+		}
+	}
+	async reschedule(now: number) {
+		if (
+			this.ctx.getWebSockets().length ||
+			(await this.ctx.storage.list({ limit: 1 })).size
+		) {
+			await this.ctx.storage.setAlarm(now + 15_000);
+		}
+	}
+	async expire() {
+		const now = Date.now();
+		for (const ws of this.ctx.getWebSockets()) {
+			await this.expireSocket(ws, now);
+		}
+		await this.expireEntries(now);
+		this.broadcast();
+		await this.reschedule(now);
+	}
+	async expireEntries(now: number) {
+		const entries = await this.ctx.storage.list<{ expiresAt: number }>();
+		for (const [key, value] of entries) {
+			await this.expireEntry(key, value.expiresAt, now);
+		}
+	}
+}
+
+type TransferRequest = Extract<ClientMessage, { type: 'request' }>;
+function controlMessage(raw: string | ArrayBuffer) {
+	if (typeof raw !== 'string' || raw.length > 24_000) {
+		throw new Error('制御メッセージのみ送信できます。');
+	}
+	return raw;
+}
+function requestedMessage(t: TransferState): ServerMessage {
+	return {
+		type: 'requested',
+		id: t.id,
+		from: t.from,
+		to: t.to,
+		files: t.files
+	};
+}
+function endReason(type: string): EndReason {
+	return type === 'reject'
+		? 'rejected'
+		: type === 'complete'
+			? 'complete'
+			: 'cancelled';
+}
+
+type StoredIdentity = { key: string; session: StoredSession };
+function currentRate(rate: Rate | undefined): Rate {
+	return rate && rate.expiresAt > Date.now()
+		? rate
+		: { count: 0, expiresAt: Date.now() + 60_000 };
 }

@@ -13,34 +13,46 @@ const browser = await chromium.launch({
 const baseURL = process.env.TEST_URL || 'http://localhost:5173';
 const contexts = [];
 const errors = [];
-async function device() {
+function countPeers() {
+	window.peerCount = 0;
+	const Original = window.RTCPeerConnection;
+	window.RTCPeerConnection = class extends Original {
+		constructor(...args) {
+			super(...args);
+			window.peerCount++;
+		}
+	};
+}
+async function deviceContext() {
 	const context = await browser.newContext({
 		viewport: { width: 390, height: 844 },
 		geolocation: { latitude: 35.6812, longitude: 139.7671, accuracy: 20 },
 		permissions: ['geolocation']
 	});
 	contexts.push(context);
-	await context.addInitScript(() => {
-		window.peerCount = 0;
-		const Original = window.RTCPeerConnection;
-		window.RTCPeerConnection = class extends Original {
-			constructor(...args) {
-				super(...args);
-				window.peerCount++;
-			}
-		};
+	await context.addInitScript(countPeers);
+	return context;
+}
+async function startDiscovery(page) {
+	const button = page.getByRole('button', {
+		name: '近くの人を探す',
+		exact: true
 	});
+	await button.waitFor();
+	assert.equal(await page.locator('input[type=file]').count(), 0);
+	await button.click();
+}
+async function openDevice(context) {
 	const page = await context.newPage();
 	page.on('pageerror', (e) => errors.push(e.message));
 	await page.goto(baseURL);
-	await page
-		.getByRole('button', { name: '近くの人を探す', exact: true })
-		.waitFor();
-	assert.equal(await page.locator('input[type=file]').count(), 0);
-	await page
-		.getByRole('button', { name: '近くの人を探す', exact: true })
-		.click();
+	await page.waitForLoadState('networkidle');
+	await startDiscovery(page);
 	return page;
+}
+
+async function device() {
+	return openDevice(await deviceContext());
 }
 async function reconnect(a, b) {
 	await a.getByRole('button', { name: '近くの人を探す', exact: true }).click();
@@ -56,22 +68,10 @@ try {
 		.getByRole('status')
 		.filter({ hasText: '近くの人を探しています' })
 		.waitFor();
-	await a.waitForFunction(() => {
-		const card = document
-			.querySelector('[aria-labelledby="nearby-heading"]')
-			.getBoundingClientRect();
-		const target = Math.max(
-			0,
-			Math.min(
-				scrollY + card.top + card.height / 2 - innerHeight / 2,
-				document.documentElement.scrollHeight - innerHeight
-			)
-		);
-		return (
-			Math.abs(scrollY - target) < 3 &&
-			document.querySelector('.intro-shell').getBoundingClientRect().height < 1
-		);
+	await a.addScriptTag({
+		path: new URL('./fixtures/browser-helpers.js', import.meta.url).pathname
 	});
+	await a.waitForFunction(() => window.discoveryCentered());
 	assert.equal(
 		await a.getByRole('heading', { name: 'Photos, Right Nearby.' }).count(),
 		0
@@ -118,21 +118,7 @@ try {
 		.getByRole('button', { name: /を選ぶ$/ })
 		.first()
 		.click();
-	const jpeg = await a.evaluate(() => {
-		const c = document.createElement('canvas');
-		c.width = 640;
-		c.height = 480;
-		const ctx = c.getContext('2d');
-		const image = ctx.createImageData(c.width, c.height);
-		for (let i = 0; i < image.data.length; i += 4) {
-			image.data[i] = i % 251;
-			image.data[i + 1] = (i * 17) % 253;
-			image.data[i + 2] = (i * 43) % 255;
-			image.data[i + 3] = 255;
-		}
-		ctx.putImageData(image, 0, 0);
-		return c.toDataURL('image/jpeg', 0.92).split(',')[1];
-	});
+	const jpeg = await a.evaluate(() => window.testJpeg());
 	const photo = Buffer.from(jpeg, 'base64');
 	await a.locator('input[type=file]').setInputFiles([
 		{ name: 'trip.jpg', mimeType: 'image/jpeg', buffer: photo },
@@ -220,6 +206,8 @@ try {
 		'PASS: two-browser discovery, reject, direct transfer after receiver acceptance, multi-photo WebRTC, SHA-256 match, mobile layout, share fallback, unsaved-photo retention, discard, disconnect'
 	);
 } finally {
-	for (const context of contexts) await context.close();
+	for (const context of contexts) {
+		await context.close();
+	}
 	await browser.close();
 }

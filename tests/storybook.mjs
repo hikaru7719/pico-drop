@@ -15,8 +15,9 @@ const errors = [];
 const apiCalls = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('request', (request) => {
-	if (new URL(request.url()).pathname.startsWith('/api/'))
+	if (new URL(request.url()).pathname.startsWith('/api/')) {
 		apiCalls.push(request.url());
+	}
 });
 try {
 	const index = await (await fetch(`${baseURL}/index.json`)).json();

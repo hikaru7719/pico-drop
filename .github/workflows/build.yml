@@ -33,5 +33,7 @@ jobs:
         run: mise run setup
       - name: Check formatting
         run: mise run format:check
+      - name: Lint with type information
+        run: mise run lint
       - name: Build
         run: mise run build

@@ -94,38 +94,53 @@
 			received.length > 0
 	);
 	$effect(() => {
-		if (inFlow) flowStarted = true;
+		if (inFlow) {
+			flowStarted = true;
+		}
 	});
 	function centerDiscovery(event: TransitionEvent) {
 		if (
 			event.target !== event.currentTarget ||
 			event.propertyName !== 'grid-template-rows'
-		)
+		) {
 			return;
-		if (searching || discovering)
-			discoverySection?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+		}
+		centerActiveDiscovery();
 	}
 
 	const headline = 'Photos, Right Nearby.';
 	const typingInterval = 180;
 	const headlineCycle = 250 + (headline.length - 1) * typingInterval + 3000;
 	let headlineReplay = $state(0);
-	$effect(() => {
-		if (inFlow) return;
-		const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-		if (motion.matches) return;
-		const timers = [1, 2].map((replay) =>
-			setTimeout(() => {
-				headlineReplay = replay;
-			}, headlineCycle * replay)
-		);
+	function centerActiveDiscovery() {
+		if (searching || discovering) {
+			discoverySection?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+		}
+	}
+	function replayHeadline(replay: number) {
+		return setTimeout(() => {
+			headlineReplay = replay;
+		}, headlineCycle * replay);
+	}
+	function watchMotion(motion: MediaQueryList) {
+		const timers = [1, 2].map(replayHeadline);
 		const stop = () => timers.forEach(clearTimeout);
 		motion.addEventListener('change', stop);
 		return () => {
 			stop();
 			motion.removeEventListener('change', stop);
 		};
+	}
+	$effect(() => {
+		if (inFlow) {
+			return;
+		}
+		const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+		if (!motion.matches) {
+			return watchMotion(motion);
+		}
 	});
+
 	const headlineWords = headline.split(' ').map((word, index, words) => ({
 		word,
 		offset: words.slice(0, index).join(' ').length + (index ? 1 : 0)

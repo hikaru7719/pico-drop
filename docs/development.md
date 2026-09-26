@@ -23,7 +23,7 @@ iPhone実機ではHTTPS接続を使う。LAN上のHTTPだけではGeolocationや
 
 ## 静的解析と整形
 
-`mise run lint` はoxlint、`mise run format` / `mise run format:check` はoxfmtをmise経由で実行する。生成物・依存パッケージは対象外。Svelte整形はoxfmtのSvelte対応を有効にし、その実行に必要なSvelteコンパイラをルートの開発依存に置く。独立したPrettier設定は使用しない。Svelte固有の診断は `mise run check` のsvelte-checkで補完する。
+`mise run lint` は型情報付きoxlint（`--type-aware`）、`mise run format` / `mise run format:check` はoxfmtをmise経由で実行する。生成物・依存パッケージは対象外。Svelte整形はoxfmtのSvelte対応を有効にし、その実行に必要なSvelteコンパイラをルートの開発依存に置く。独立したPrettier設定は使用しない。`oxlint-tsgolint` はルートの開発依存として固定バージョンを導入する。追加ルールの範囲は [Oxlint方針](./oxlint-policy.md) を参照。Svelte固有の診断は `mise run check` のsvelte-checkで補完する。
 
 フロントエンドのソースはTypeScriptに統一し、生成されたWorkerのJavaScriptが型チェックに混入しないようallowJs/checkJsを無効にする。
 

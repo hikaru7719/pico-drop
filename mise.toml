@@ -39,12 +39,12 @@ description = "アプリと資料をビルドする（公開しない）"
 depends = ["//frontend:build", "//backend:build", "//docs:build"]
 
 [tasks.lint]
-description = "ソースとテストをoxlintで検査する"
-run = "oxlint --deny-warnings frontend backend shared tests"
+description = "ソースとテストを型情報付きoxlintで検査する"
+run = "oxlint --type-aware --deny-warnings frontend backend shared tests"
 
 [tasks."lint:fix"]
 description = "oxlintの自動修正を適用する"
-run = "oxlint --deny-warnings --fix frontend backend shared tests"
+run = "oxlint --type-aware --deny-warnings --fix frontend backend shared tests"
 
 [tasks.format]
 description = "sharedを含むリポジトリ全体をoxfmtで整形する"

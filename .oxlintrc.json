@@ -15,8 +15,14 @@
 				"IIFEs": true
 			}
 		],
-		"eslint/max-params": ["error", { "max": 4 }],
-		"eslint/yoda": ["error", "never"]
+		"eslint/max-params": [
+			"error",
+			{
+				"max": 4
+			}
+		],
+		"eslint/yoda": ["error", "never"],
+		"typescript/switch-exhaustiveness-check": "error"
 	},
 	"ignorePatterns": [
 		"**/node_modules/**",
@@ -30,5 +36,8 @@
 		"**/worker-configuration.d.ts",
 		"work/**",
 		"outputs/**"
-	]
+	],
+	"options": {
+		"typeAware": true
+	}
 }

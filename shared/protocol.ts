@@ -117,116 +117,160 @@ export function record(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function validPhotos(value: unknown): value is PhotoMeta[] {
-	if (!Array.isArray(value) || value.length < 1 || value.length > LIMITS.files)
-		return false;
-	const ids = new Set<string>();
-	let total = 0;
-	for (const file of value) {
-		if (
-			!record(file) ||
-			typeof file.id !== 'string' ||
-			!/^[a-zA-Z0-9-]{1,40}$/.test(file.id) ||
-			ids.has(file.id) ||
-			typeof file.name !== 'string' ||
-			file.name.length < 1 ||
-			file.name.length > 100 ||
-			/[\x00-\x1f/\\]/.test(file.name) ||
-			typeof file.type !== 'string' ||
-			![
-				'image/jpeg',
-				'image/png',
-				'image/webp',
-				'image/heic',
-				'image/heif'
-			].includes(file.type) ||
-			!Number.isSafeInteger(file.size) ||
-			(file.size as number) <= 0
-		)
-			return false;
-		ids.add(file.id);
-		total += file.size as number;
-	}
-	return total <= LIMITS.bytes;
+const PHOTO_TYPES = [
+	'image/jpeg',
+	'image/png',
+	'image/webp',
+	'image/heic',
+	'image/heif'
+];
+const TRANSFER_ACTIONS = ['accept', 'reject', 'cancel', 'complete'];
+const INVALID_MESSAGE = '不正なメッセージです。';
+
+function validName(name: unknown): name is string {
+	return (
+		typeof name === 'string' &&
+		name.length >= 1 &&
+		name.length <= 100 &&
+		!/[\x00-\x1f/\\]/.test(name)
+	);
+}
+function validPhoto(file: unknown): file is PhotoMeta {
+	return (
+		record(file) &&
+		validPhotoFields(file) &&
+		typeof file.id === 'string' &&
+		/^[a-zA-Z0-9-]{1,40}$/.test(file.id)
+	);
+}
+function validPhotoFields(file: Record<string, unknown>) {
+	return (
+		validName(file.name) &&
+		typeof file.type === 'string' &&
+		PHOTO_TYPES.includes(file.type) &&
+		Number.isSafeInteger(file.size) &&
+		(file.size as number) > 0
+	);
 }
 
+export function validPhotos(value: unknown): value is PhotoMeta[] {
+	if (
+		!Array.isArray(value) ||
+		value.length < 1 ||
+		value.length > LIMITS.files
+	) {
+		return false;
+	}
+	return Array.from(value).every(validPhoto) && validPhotoTotals(value);
+}
+function validPhotoTotals(files: PhotoMeta[]) {
+	return (
+		new Set(files.map((file) => file.id)).size === files.length &&
+		files.reduce((total, file) => total + file.size, 0) <= LIMITS.bytes
+	);
+}
+
+function inRange(value: unknown, min: number, max: number): boolean {
+	return (
+		typeof value === 'number' &&
+		Number.isFinite(value) &&
+		value >= min &&
+		value <= max
+	);
+}
 export function validLocation(value: unknown): value is Location {
 	return (
 		record(value) &&
-		typeof value.latitude === 'number' &&
-		Number.isFinite(value.latitude) &&
-		Math.abs(value.latitude) <= 90 &&
-		typeof value.longitude === 'number' &&
-		Number.isFinite(value.longitude) &&
-		Math.abs(value.longitude) <= 180 &&
-		typeof value.accuracy === 'number' &&
-		Number.isFinite(value.accuracy) &&
-		value.accuracy >= 0 &&
-		value.accuracy <= 10_000
+		inRange(value.latitude, -90, 90) &&
+		inRange(value.longitude, -180, 180) &&
+		inRange(value.accuracy, 0, 10_000)
 	);
 }
-
-export function nearby(a: Location, b: Location): boolean {
+function haversine(a: Location, b: Location) {
 	const rad = Math.PI / 180;
-	const h =
+	return (
 		Math.sin(((a.latitude - b.latitude) * rad) / 2) ** 2 +
 		Math.cos(a.latitude * rad) *
 			Math.cos(b.latitude * rad) *
-			Math.sin(((a.longitude - b.longitude) * rad) / 2) ** 2;
-	return (
-		12_742_000 * Math.asin(Math.sqrt(Math.min(1, h))) <=
-		300 + Math.min(a.accuracy, 500) + Math.min(b.accuracy, 500)
+			Math.sin(((a.longitude - b.longitude) * rad) / 2) ** 2
 	);
 }
-
-export function parseClient(value: unknown): ClientMessage {
-	if (!record(value) || typeof value.type !== 'string')
-		throw new Error('不正なメッセージです。');
-	if (
-		value.type === 'auth' &&
-		typeof value.token === 'string' &&
-		/^[a-f0-9]{64}$/.test(value.token)
-	)
-		return value as ClientMessage;
-	if (
-		value.type === 'presence' &&
-		(value.location === null || validLocation(value.location))
-	)
-		return value as ClientMessage;
-	if (
-		value.type === 'request' &&
+export function nearby(a: Location, b: Location): boolean {
+	const distance =
+		12_742_000 * Math.asin(Math.sqrt(Math.min(1, haversine(a, b))));
+	return (
+		distance <= 300 + Math.min(a.accuracy, 500) + Math.min(b.accuracy, 500)
+	);
+}
+function validDescription(value: unknown) {
+	return (
+		record(value) &&
+		['offer', 'answer'].includes(String(value.type)) &&
+		typeof value.sdp === 'string' &&
+		value.sdp.length < 20_000
+	);
+}
+function validCandidateFields(value: Record<string, unknown>) {
+	return (
+		(value.sdpMid == null || typeof value.sdpMid === 'string') &&
+		(value.sdpMLineIndex == null || Number.isInteger(value.sdpMLineIndex)) &&
+		(value.usernameFragment == null ||
+			typeof value.usernameFragment === 'string')
+	);
+}
+function validCandidate(value: unknown) {
+	return (
+		record(value) &&
+		typeof value.candidate === 'string' &&
+		value.candidate.length < 2000 &&
+		validCandidateFields(value)
+	);
+}
+function validSignal(value: unknown) {
+	return (
+		record(value) &&
+		(validDescription(value.description) || validCandidate(value.candidate))
+	);
+}
+function validTransferMessage(value: Record<string, unknown>) {
+	return (
+		typeof value.id === 'string' &&
+		value.id.length <= 40 &&
+		(TRANSFER_ACTIONS.includes(String(value.type)) ||
+			(value.type === 'signal' && validSignal(value.signal)))
+	);
+}
+const messageValidators: Record<
+	string,
+	(value: Record<string, unknown>) => boolean
+> = {
+	auth: (value) =>
+		typeof value.token === 'string' && /^[a-f0-9]{64}$/.test(value.token),
+	presence: (value) => value.location === null || validLocation(value.location),
+	request: (value) =>
 		typeof value.to === 'string' &&
 		value.to.length <= 40 &&
 		validPhotos(value.files)
-	)
-		return value as ClientMessage;
-	if (typeof value.id === 'string' && value.id.length <= 40) {
-		if (['accept', 'reject', 'cancel', 'complete'].includes(value.type))
-			return value as ClientMessage;
-		if (value.type === 'signal' && record(value.signal)) {
-			const s = value.signal;
-			if (
-				record(s.description) &&
-				['offer', 'answer'].includes(String(s.description.type)) &&
-				typeof s.description.sdp === 'string' &&
-				s.description.sdp.length < 20_000
-			)
-				return value as ClientMessage;
-			if (
-				record(s.candidate) &&
-				typeof s.candidate.candidate === 'string' &&
-				s.candidate.candidate.length < 2000 &&
-				(s.candidate.sdpMid == null ||
-					typeof s.candidate.sdpMid === 'string') &&
-				(s.candidate.sdpMLineIndex == null ||
-					Number.isInteger(s.candidate.sdpMLineIndex)) &&
-				(s.candidate.usernameFragment == null ||
-					typeof s.candidate.usernameFragment === 'string')
-			)
-				return value as ClientMessage;
-		}
+};
+export function parseClient(value: unknown): ClientMessage {
+	if (!record(value) || typeof value.type !== 'string') {
+		throw new Error(INVALID_MESSAGE);
 	}
-	throw new Error('不正なメッセージです。');
+	return parseRecord(value, value.type);
+}
+function messageValidator(type: string) {
+	return Object.hasOwn(messageValidators, type)
+		? messageValidators[type]
+		: validTransferMessage;
+}
+function parseRecord(
+	value: Record<string, unknown>,
+	type: string
+): ClientMessage {
+	if (!messageValidator(type)(value)) {
+		throw new Error(INVALID_MESSAGE);
+	}
+	return value as ClientMessage;
 }
 
 export type TransferState = {
@@ -238,21 +282,45 @@ export type TransferState = {
 	expiresAt: number;
 };
 
+type Authorization = {
+	transfer: TransferState;
+	actor: string;
+	action: string;
+	now: number;
+};
+const authorizationRules: [(context: Authorization) => boolean, string][] = [
+	[
+		({ transfer: t, actor, now }) =>
+			t.expiresAt <= now || ![t.from.id, t.to.id].includes(actor),
+		'転送が期限切れ、または操作できません。'
+	],
+	[
+		({ transfer: t, actor, action }) =>
+			['accept', 'reject', 'complete'].includes(action) && actor !== t.to.id,
+		'受信者のみ操作できます。'
+	],
+	[
+		({ transfer: t, action }) =>
+			['accept', 'reject'].includes(action) && t.started,
+		'すでに応答済みです。'
+	],
+	[
+		({ transfer: t, action }) =>
+			['signal', 'complete'].includes(action) && !t.started,
+		'先に受信を承諾してください。'
+	]
+];
 export function authorizeTransfer(
 	t: TransferState,
 	actor: string,
 	action: string,
 	now = Date.now()
 ): void {
-	if (t.expiresAt <= now || ![t.from.id, t.to.id].includes(actor))
-		throw new Error('転送が期限切れ、または操作できません。');
-	if (
-		(action === 'accept' || action === 'reject' || action === 'complete') &&
-		actor !== t.to.id
-	)
-		throw new Error('受信者のみ操作できます。');
-	if ((action === 'accept' || action === 'reject') && t.started)
-		throw new Error('すでに応答済みです。');
-	if ((action === 'signal' || action === 'complete') && !t.started)
-		throw new Error('先に受信を承諾してください。');
+	checkAuthorization({ transfer: t, actor, action, now });
+}
+function checkAuthorization(context: Authorization) {
+	const failure = authorizationRules.find(([invalid]) => invalid(context));
+	if (failure) {
+		throw new Error(failure[1]);
+	}
 }
