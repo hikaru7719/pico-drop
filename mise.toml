@@ -18,7 +18,8 @@ description = "依存パッケージをインストールし、開発用の型�
 run = [
 	"pnpm install --frozen-lockfile",
 	{ task = "//:gen" },
-	{ task = "//frontend:sync" }
+	{ task = "//frontend:sync" },
+	{ task = "//:hooks:install" }
 ]
 
 [tasks.dev]
@@ -60,3 +61,8 @@ run = "oxfmt --check ."
 [tasks.test]
 description = "ユニットテストを実行する"
 run = "node --experimental-transform-types --test tests/*.test.ts"
+
+[tasks."hooks:install"]
+description = "コミット前の整形・lintチェックを有効にする"
+dir = "{{ config_root }}"
+run = "git config --local core.hooksPath .githooks"
