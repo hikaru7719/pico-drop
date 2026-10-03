@@ -65,30 +65,14 @@ async function participant() {
 	await socket.next('ready');
 	return { identity, socket };
 }
-async function waitPresence(a, id, present) {
-	let devices = (await a.next('nearby')).devices;
-	while (devices.some((d) => d.id === id) !== present) {
-		devices = (await a.next('nearby')).devices;
-	}
-	return devices;
-}
-async function discovery(a, b) {
-	const location = { latitude: 35, longitude: 139, accuracy: 20 };
-	a.socket.send({ type: 'presence', location });
-	b.socket.send({ type: 'presence', location });
-	const devices = await waitPresence(a.socket, b.identity.id, true);
-	await refreshPresence(a, b, location);
-	return devices.every((d) => Object.keys(d).sort().join(',') === 'id,name');
-}
-async function refreshPresence(a, b, location) {
-	b.socket.send({ type: 'presence', location: null });
-	await waitPresence(a.socket, b.identity.id, false);
-	b.socket.send({ type: 'presence', location });
-	await waitPresence(a.socket, b.identity.id, true);
-}
 async function request(a, b) {
 	const files = [{ id: 'p', name: 'photo.jpg', type: 'image/jpeg', size: 8 }];
-	a.socket.send({ type: 'request', to: b.identity.id, files });
+	a.socket.send({ type: 'create-link', files });
+	const link = await a.socket.next('link-created');
+	b.socket.send({ type: 'join-link', token: link.token });
+	return requested(a, b);
+}
+async function requested(a, b) {
 	const transfer = await a.socket.next('requested');
 	const received = await b.socket.next('requested');
 	return {
@@ -163,9 +147,9 @@ async function scenario() {
 	const a = await participant(),
 		b = await participant(),
 		c = await participant();
-	const publicOnly = await discovery(a, b);
+
 	const transfer = await transferChecks(a, b, c);
-	return { publicOnly, ...transfer, ...(await tokenChecks(a)) };
+	return { ...transfer, ...(await tokenChecks(a)) };
 }
 window.runApiTests = async () => {
 	try {

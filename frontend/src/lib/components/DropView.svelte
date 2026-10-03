@@ -1,30 +1,29 @@
 <script lang="ts">
 	import { isHeic, type ConversionMode } from '../../../../shared/photos.ts';
 	import type { ReceivedPhoto } from '$lib/photos/received';
-	import DiscoveryPulse from './DiscoveryPulse.svelte';
 	import TransferProgress from './TransferProgress.svelte';
 	import { formatBytes } from '$lib/photos';
 	import type {
-		Device,
 		PhotoMeta,
 		ServerMessage,
 		Session
 	} from '../../../../shared/protocol';
 	type Props = {
+		incomingToken?: string;
+		shareLink?: string;
+		linkExpiresAt?: number;
+		creatingLink?: boolean;
+		createLink?: () => void;
+		joinLink?: () => void;
+		revokeLink?: () => void;
+		shareInvitation?: () => void;
+		copyInvitation?: () => void;
 		flowStarted?: boolean;
 		session?: Session | undefined;
 		connection?: 'idle' | 'connecting' | 'online' | 'offline';
-		devices?: Device[];
-		recipient?: Device | undefined;
-		photosHeading?: HTMLHeadingElement | undefined;
-		discoverySection?: HTMLElement | undefined;
-		discovering?: boolean;
-		searching?: boolean;
-		locationMessage?: string;
 		selected?: File[];
 		metadata?: PhotoMeta[];
 		selecting?: boolean;
-		requesting?: boolean;
 		request?: Extract<ServerMessage, { type: 'requested' }> | undefined;
 		phase?: 'waiting' | 'connecting' | 'transferring';
 		bytes?: number;
@@ -42,32 +41,27 @@
 		transferSection?: HTMLElement | undefined;
 		receivedSection?: HTMLElement | undefined;
 		connect?: () => void;
-		startDiscovery?: () => void;
-		stopDiscovery?: () => void;
-		chooseRecipient?: (device: Device) => void;
 		select?: (event: Event) => void;
-		invite?: (device: Device) => void;
 		action?: (type: 'accept' | 'reject' | 'cancel') => void;
 		save?: () => void;
 		discard?: () => void;
 	};
 	let {
+		incomingToken = '',
+		shareLink = '',
+		linkExpiresAt,
+		creatingLink = false,
+		createLink = () => {},
+		joinLink = () => {},
+		revokeLink = () => {},
+		shareInvitation = () => {},
+		copyInvitation = () => {},
 		flowStarted = $bindable(false),
 		session = $bindable(undefined),
 		connection = $bindable('idle'),
-		devices = $bindable([]),
-		recipient = $bindable(undefined),
-		photosHeading = $bindable(undefined),
-		discoverySection = $bindable(undefined),
-		discovering = $bindable(false),
-		searching = $bindable(false),
-		locationMessage = $bindable(
-			'位置情報を使って、近くでこのページを開いている人を探します。'
-		),
 		selected = $bindable([]),
 		metadata = $bindable([]),
 		selecting = $bindable(false),
-		requesting = $bindable(false),
 		request = $bindable(undefined),
 		phase = $bindable('waiting'),
 		bytes = $bindable(0),
@@ -81,11 +75,7 @@
 		transferSection = $bindable(undefined),
 		receivedSection = $bindable(undefined),
 		connect = () => {},
-		startDiscovery = () => {},
-		stopDiscovery = () => {},
-		chooseRecipient = () => {},
 		select = () => {},
-		invite = () => {},
 		action = () => {},
 		save = () => {},
 		photosExpireAt,
@@ -96,9 +86,8 @@
 	}: Props = $props();
 	const inFlow = $derived(
 		flowStarted ||
-			searching ||
-			discovering ||
-			!!recipient ||
+			!!shareLink ||
+			!!incomingToken ||
 			!!request ||
 			completed ||
 			received.length > 0
@@ -108,25 +97,10 @@
 			flowStarted = true;
 		}
 	});
-	function centerDiscovery(event: TransitionEvent) {
-		if (
-			event.target !== event.currentTarget ||
-			event.propertyName !== 'grid-template-rows'
-		) {
-			return;
-		}
-		centerActiveDiscovery();
-	}
-
-	const headline = 'Photos, Right Nearby.';
+	const headline = 'Photos, Just a Link Away.';
 	const typingInterval = 180;
 	const headlineCycle = 250 + (headline.length - 1) * typingInterval + 3000;
 	let headlineReplay = $state(0);
-	function centerActiveDiscovery() {
-		if (searching || discovering) {
-			discoverySection?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-		}
-	}
 	function replayHeadline(replay: number) {
 		return setTimeout(() => {
 			headlineReplay = replay;
@@ -156,9 +130,6 @@
 		offset: words.slice(0, index).join(' ').length + (index ? 1 : 0)
 	}));
 
-	const recipientAvailable = $derived(
-		!!recipient && devices.some((device) => device.id === recipient?.id)
-	);
 	const sending = $derived(!!request && request.from.id === session?.id);
 	const total = $derived(
 		request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0
@@ -167,10 +138,10 @@
 </script>
 
 <svelte:head>
-	<title>Pico Drop — Share photos nearby.</title>
+	<title>Pico Drop — Share photos with a link.</title>
 	<meta
 		name="description"
-		content="近くの人へ、写真をさっと。アプリもログインも不要で写真を共有。"
+		content="リンクで、写真をさっと。アプリもログインも不要で写真を共有。"
 	/>
 </svelte:head>
 
@@ -228,7 +199,7 @@
 							>{wordIndex < headlineWords.length - 1 ? ' ' : ''}{/each}
 					{/key}
 				</h1>
-				<p>一緒に過ごした瞬間を、その場で。<br />ログインは不要です。</p>
+				<p>写真を選んで、リンクで共有。<br />ログインは不要です。</p>
 			</section>
 		</div>
 	</div>
@@ -250,38 +221,63 @@
 		>{/if}
 	{#if !request && !(completed && received.length)}
 		<div class="workspace">
-			{#if recipient}
+			{#if incomingToken}
+				<section class="card">
+					<h2>共有リンクから写真を受け取る</h2>
+					<p class="description">
+						送信者がこのページを開いている間に参加してください。送信元・枚数を確認してから受信できます。
+					</p>
+					<button
+						class="primary"
+						disabled={connection === 'connecting' || connection === 'online'}
+						onclick={joinLink}
+						>{connection === 'idle' || connection === 'offline'
+							? '共有に参加する'
+							: '送信者に接続中…'}</button
+					>
+					<p class="hint">
+						接続できない場合はSafariやChromeでリンクを開いてください。
+					</p>
+				</section>
+			{:else if shareLink}
+				<section class="card">
+					<h2>リンクを共有して待つ</h2>
+					<p class="description">
+						LINEなどで相手1人に送ってください。相手が受信するまで、この画面を開いたままにしてください。
+					</p>
+					<label
+						>共有リンク<input
+							class="share-link"
+							aria-label="共有リンク"
+							readonly
+							value={shareLink}
+							onclick={(event) => event.currentTarget.select()}
+						/></label
+					>
+					<p class="hint">
+						参加期限：{linkExpiresAt
+							? new Date(linkExpiresAt).toLocaleTimeString('ja-JP')
+							: ''}（作成から10分）。参加後は再利用できません。
+					</p>
+					<div class="actions">
+						<button
+							class="primary"
+							onclick={shareInvitation}>LINEなどで共有する</button
+						><button onclick={copyInvitation}>リンクをコピー</button>
+					</div>
+					<button
+						class="text-button"
+						onclick={revokeLink}>リンクを取り消す</button
+					>
+				</section>
+			{:else}
 				<section
 					class="card photos"
 					aria-labelledby="photos-heading"
 				>
-					<div class="section-heading">
-						<h2
-							id="photos-heading"
-							bind:this={photosHeading}
-							tabindex="-1"
-						>
-							写真を選んで送る
-						</h2>
-					</div>
-					<div class="recipient-row">
-						<p class="description">送信先：{recipient?.name}</p>
-						<button
-							class="text-button"
-							disabled={requesting || selecting}
-							onclick={() => {
-								recipient = undefined;
-							}}>相手を選び直す</button
-						>
-					</div>
-					{#if !recipientAvailable}<p
-							class="hint"
-							role="status"
-						>
-							相手が見つかりません。相手の探索を確認するか、選び直してください。
-						</p>{/if}
+					<h2 id="photos-heading">写真を選んで共有する</h2>
 					<label
-						class:disabled={!!request || requesting || selecting}
+						class:disabled={!!request || selecting || creatingLink}
 						class="picker"
 						><span
 							class="photo-icon"
@@ -318,7 +314,7 @@
 							type="file"
 							accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
 							multiple
-							disabled={!!request || requesting || selecting}
+							disabled={!!request || selecting || creatingLink}
 							onchange={select}
 						/></label
 					>
@@ -334,7 +330,7 @@
 										class="clear-selection"
 										aria-label={`${file.name}を選択から外す`}
 										title="この写真を選択から外す"
-										disabled={!!request || requesting || selecting}
+										disabled={!!request || selecting || creatingLink}
 										onclick={() => {
 											selected = selected.filter(
 												(_, fileIndex) => fileIndex !== index
@@ -363,107 +359,18 @@
 						class="primary send-button"
 						disabled={!metadata.length ||
 							selecting ||
-							requesting ||
-							!recipientAvailable ||
-							connection !== 'online'}
+							creatingLink ||
+							connection === 'connecting'}
 						onclick={() => {
-							if (recipient) invite(recipient);
-						}}>{requesting ? '送信を準備中…' : '送る'}</button
+							flowStarted = true;
+							createLink();
+						}}
+						>{creatingLink || connection === 'connecting'
+							? 'リンクを作成中…'
+							: '共有リンクを作成'}</button
 					>
-				</section>
-			{:else}
-				<section
-					class="card"
-					bind:this={discoverySection}
-					aria-labelledby="nearby-heading"
-				>
-					<div class="section-heading">
-						<h2 id="nearby-heading">
-							{devices.length ? '送る相手を選ぶ' : '近くの人を探す'}
-						</h2>
-					</div>
-					<p class="description">
-						{discovering
-							? devices.length
-								? '写真を送る相手を選んでください。受け取るだけなら、このまま待つだけです。'
-								: '受け取るだけなら、このまま待つだけです。'
-							: 'まずは、お互いに「近くの人を探す」を押してください。相手が見つかったら、写真を選んで送れます。'}
-					</p>
-					{#if !discovering && !searching}
-						<button
-							class="primary"
-							disabled={connection === 'connecting'}
-							onclick={() => {
-								flowStarted = true;
-								startDiscovery();
-							}}>近くの人を探す</button
-						>
-					{/if}
-					{#if !devices.length}
-						<div
-							class="discovery-reveal"
-							class:expanded={searching || discovering}
-							inert={!searching && !discovering}
-							aria-hidden={!searching && !discovering}
-							ontransitionend={centerDiscovery}
-						>
-							<div class="discovery-clip">
-								<DiscoveryPulse locating={searching && !discovering} />
-							</div>
-						</div>
-					{/if}
-					{#if discovering && locationMessage.includes('誤差')}
-						<p
-							class="hint"
-							role="status"
-						>
-							{locationMessage}
-						</p>
-					{:else if !discovering && !searching}
-						<p
-							class="hint"
-							role="status"
-						>
-							{locationMessage}
-						</p>
-					{/if}
-
-					{#if devices.length}<ul class="devices">
-							{#each devices as device}<li>
-									<span
-										class="avatar"
-										aria-hidden="true"
-										><svg
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="1.5"
-											><rect
-												x="6"
-												y="2"
-												width="12"
-												height="20"
-												rx="3"
-											/><path d="M10 18h4" /></svg
-										></span
-									>
-									<div>
-										<strong>{device.name}</strong><small>近くで待機中</small>
-									</div>
-									<button
-										aria-label={`${device.name}を選ぶ`}
-										disabled={requesting || !!received.length}
-										onclick={() => chooseRecipient(device)}>選ぶ</button
-									>
-								</li>{/each}
-						</ul>{/if}
-					{#if discovering || searching}<button
-							class="text-button"
-							disabled={!!request}
-							onclick={stopDiscovery}>探索を停止する</button
-						>{/if}
 					<p class="hint">
-						位置情報は候補の発見だけに使います。送る前に相手の画面に表示された端末名を確認してください。
+						リンクは10分間有効です。合言葉・ログイン・位置情報は不要です。リンクを持つ人が参加できます。
 					</p>
 				</section>
 			{/if}
@@ -598,6 +505,13 @@
 </main>
 
 <style>
+	.share-link {
+		width: 100%;
+		min-width: 0;
+		box-sizing: border-box;
+		margin-top: 12px;
+		padding: 12px;
+	}
 	:global(body) {
 		margin: 0;
 		background: #f5f5f7;
@@ -687,8 +601,7 @@
 	.dot.online {
 		background: #248a3d;
 	}
-	.intro-shell,
-	.discovery-reveal {
+	.intro-shell {
 		display: grid;
 		grid-template-rows: 1fr;
 		opacity: 1;
@@ -696,19 +609,13 @@
 			grid-template-rows 800ms cubic-bezier(0.22, 1, 0.36, 1),
 			opacity 400ms ease;
 	}
-	.intro-clip,
-	.discovery-clip {
+	.intro-clip {
 		min-height: 0;
 		overflow: hidden;
 	}
-	.intro-shell.collapsed,
-	.discovery-reveal {
+	.intro-shell.collapsed {
 		grid-template-rows: 0fr;
 		opacity: 0;
-	}
-	.discovery-reveal.expanded {
-		grid-template-rows: 1fr;
-		opacity: 1;
 	}
 	header {
 		transition: margin-bottom 800ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -820,29 +727,6 @@
 		margin-top: 24px;
 		min-width: 160px;
 	}
-	.recipient-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		flex-wrap: wrap;
-		gap: 4px 16px;
-		margin-bottom: 16px;
-	}
-	.recipient-row .description {
-		flex: 1 1 160px;
-		min-width: 0;
-		margin: 0;
-		overflow-wrap: anywhere;
-	}
-	.recipient-row .text-button {
-		flex-shrink: 0;
-	}
-	.section-heading {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		margin-bottom: 24px;
-	}
 	h2 {
 		font-size: 18px;
 		letter-spacing: -0.025em;
@@ -914,8 +798,7 @@
 		padding: 12px 0;
 		display: block;
 	}
-	.file-list,
-	.devices {
+	.file-list {
 		list-style: none;
 		margin: 20px 0 0;
 		padding: 0;
@@ -970,34 +853,6 @@
 	.file-list small {
 		white-space: nowrap;
 		color: #6e6e73;
-	}
-	.devices li {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		padding: 14px 0;
-		border-bottom: 1px solid #e8e8ed;
-	}
-	.avatar {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		background: #f5f5f7;
-		border-radius: 50%;
-		font-size: 22px;
-	}
-	.devices li > div {
-		flex: 1;
-	}
-	.devices strong {
-		font-size: 14px;
-	}
-	.devices small {
-		display: block;
-		font-size: 11px;
-		color: #6e6e73;
-		margin-top: 5px;
 	}
 	.alert {
 		width: 100%;
@@ -1094,15 +949,9 @@
 		width: 48px;
 		height: 48px;
 	}
-	.avatar svg {
-		width: 22px;
-		height: 22px;
-	}
-	.card,
-	.devices li > div {
+	.card {
 		min-width: 0;
 	}
-	.devices strong,
 	.badge {
 		overflow-wrap: anywhere;
 	}
@@ -1128,7 +977,6 @@
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.intro-shell,
-		.discovery-reveal,
 		header {
 			transition: none;
 		}

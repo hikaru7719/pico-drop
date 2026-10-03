@@ -1,4 +1,4 @@
-// Run against `mise run dev`. Playwright may be supplied by the local tool runtime.
+// Run against `mise run dev` without location permission in either browser.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 const { chromium } = await import(
@@ -23,154 +23,92 @@ function countPeers() {
 		}
 	};
 }
-async function deviceContext() {
+async function device() {
 	const context = await browser.newContext({
-		viewport: { width: 390, height: 844 },
-		geolocation: { latitude: 35.6812, longitude: 139.7671, accuracy: 20 },
-		permissions: ['geolocation']
+		viewport: { width: 390, height: 844 }
 	});
 	contexts.push(context);
 	await context.addInitScript(countPeers);
-	return context;
+	return openPage(context);
 }
-async function startDiscovery(page) {
-	const button = page.getByRole('button', {
-		name: '近くの人を探す',
-		exact: true
-	});
-	await button.waitFor();
-	assert.equal(await page.locator('input[type=file]').count(), 0);
-	await button.click();
-}
-async function openDevice(context) {
+async function openPage(context) {
 	const page = await context.newPage();
 	page.on('pageerror', (e) => errors.push(e.message));
 	await page.goto(baseURL);
 	await page.waitForLoadState('networkidle');
-	await startDiscovery(page);
 	return page;
 }
+async function createLink(page) {
+	await page
+		.getByRole('button', { name: '共有リンクを作成', exact: true })
+		.click();
+	const field = page.getByRole('textbox', { name: '共有リンク', exact: true });
+	await field.waitFor();
+	return field.inputValue();
+}
+async function join(page, link) {
+	await page.goto(link);
+	const count = await peerCount(page);
+	await page
+		.getByRole('button', { name: '共有に参加する', exact: true })
+		.click();
+	await page.getByRole('button', { name: '受け取る', exact: true }).waitFor();
+	assert.equal(await peerCount(page), count);
+}
+async function peerCount(page) {
+	return page.evaluate(() => window.peerCount);
+}
 
-async function device() {
-	return openDevice(await deviceContext());
-}
-async function reconnect(a, b) {
-	await a.getByRole('button', { name: '近くの人を探す', exact: true }).click();
-	await b.getByRole('button', { name: '近くの人を探す', exact: true }).click();
-	await a
-		.getByRole('button', { name: /を選ぶ$/ })
-		.first()
-		.click();
-}
-try {
-	const a = await device();
-	await a
-		.getByRole('status')
-		.filter({ hasText: '近くの人を探しています' })
-		.waitFor();
-	await a.addScriptTag({
-		path: new URL('./page.browser-fixture.js', import.meta.url).pathname
-	});
-	await a.waitForFunction(() => window.discoveryCentered());
-	assert.equal(
-		await a.getByRole('heading', { name: 'Photos, Right Nearby.' }).count(),
-		0
-	);
-	assert.equal(
-		await a.getByRole('button', { name: 'もう一度探す', exact: true }).count(),
-		0
-	);
-	assert.equal(
-		await a
-			.getByRole('button', { name: '近くの人を探す', exact: true })
-			.count(),
-		0
-	);
-	await a.screenshot({ path: '/tmp/pico-drop-discovery.png', fullPage: true });
-	await a.emulateMedia({ reducedMotion: 'reduce' });
-	assert.equal(
-		await a
-			.locator('.ripple')
-			.first()
-			.evaluate((el) => getComputedStyle(el).animationName),
-		'none'
-	);
-	await a.emulateMedia({ reducedMotion: 'no-preference' });
-	await a.getByRole('button', { name: '探索を停止する', exact: true }).click();
-	// Restart must make this device discoverable without waiting for the next refresh.
-	await a.getByRole('button', { name: '近くの人を探す', exact: true }).click();
-	const b = await device();
-	await a
-		.getByRole('button', { name: /を選ぶ$/ })
-		.first()
-		.click({ timeout: 5000 });
-	await a
-		.getByRole('heading', { name: '写真を選んで送る', exact: true })
-		.waitFor();
-	assert.equal(await b.locator('input[type=file]').count(), 0);
-	assert.equal(
-		await a.getByRole('button', { name: '送る', exact: true }).isEnabled(),
-		false
-	);
-	await a.getByRole('button', { name: '相手を選び直す', exact: true }).click();
-	assert.equal(await a.locator('input[type=file]').count(), 0);
-	await a
-		.getByRole('button', { name: /を選ぶ$/ })
-		.first()
-		.click();
-	const jpeg = await a.evaluate(() => window.testJpeg());
-	const photo = Buffer.from(jpeg, 'base64');
-	await a.locator('input[type=file]').setInputFiles([
-		{ name: 'trip.jpg', mimeType: 'image/jpeg', buffer: photo },
-		{ name: 'friends.jpg', mimeType: 'image/jpeg', buffer: photo }
-	]);
-	await a
-		.getByRole('button', { name: 'trip.jpgを選択から外す', exact: true })
-		.click();
-	assert.deepEqual(await a.locator('.file-list li > span').allTextContents(), [
-		'friends.jpg'
-	]);
-	await a
-		.getByRole('button', { name: 'friends.jpgを選択から外す', exact: true })
-		.click();
-	assert.equal(await a.locator('.file-list li').count(), 0);
-	assert.equal(
-		await a.getByRole('button', { name: '送る', exact: true }).isEnabled(),
-		false
-	);
-	await a.locator('input[type=file]').setInputFiles([
-		{ name: 'trip.jpg', mimeType: 'image/jpeg', buffer: photo },
-		{ name: 'friends.jpg', mimeType: 'image/jpeg', buffer: photo }
-	]);
-	await a.getByRole('button', { name: '送る', exact: true }).click();
-	await b.getByRole('button', { name: '辞退する', exact: true }).click();
-	await a.getByRole('alert').filter({ hasText: '辞退' }).waitFor();
-	assert.equal(await a.evaluate(() => window.peerCount), 0);
-	// Receiver acceptance starts the transfer directly; no peer exists before approval.
-	await reconnect(a, b);
-	await a.getByRole('button', { name: '送る', exact: true }).click();
-	await b.getByRole('button', { name: '受け取る', exact: true }).waitFor();
+async function noPeers(a, b) {
 	assert.equal(await a.evaluate(() => window.peerCount), 0);
 	assert.equal(await b.evaluate(() => window.peerCount), 0);
+}
+async function revoked(a, b) {
+	const link = await createLink(a);
+	await a
+		.getByRole('button', { name: 'リンクを取り消す', exact: true })
+		.click();
+	await b.goto(link);
+	await b.getByRole('button', { name: '共有に参加する', exact: true }).click();
+	await b.getByRole('alert').filter({ hasText: '期限切れ' }).waitFor();
+}
+async function rejected(a, b) {
+	await join(b, await createLink(a));
+	await noPeers(a, b);
+	await b.getByRole('button', { name: '辞退する', exact: true }).click();
+	await a.getByRole('alert').filter({ hasText: '辞退' }).waitFor();
+	await noPeers(a, b);
+}
+async function receive(a, b) {
+	const link = await createLink(a);
+	await join(b, link);
+	await noPeers(a, b);
 	await b.getByRole('button', { name: '受け取る', exact: true }).click();
+	await transferComplete(a, b);
+	return link;
+}
+async function transferComplete(a, b) {
 	await b
 		.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true })
 		.waitFor({ timeout: 60_000 });
 	await a.getByRole('status').filter({ hasText: 'データ一致' }).waitFor();
-	const received = await b.locator('.gallery a').evaluateAll(async (links) =>
-		Promise.all(
-			links.map(async (link) => {
-				const bytes = await (await fetch(link.href)).arrayBuffer();
-				return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
-					.map((v) => v.toString(16).padStart(2, '0'))
-					.join('');
-			})
-		)
-	);
-	assert.deepEqual(received, [
-		createHash('sha256').update(photo).digest('hex'),
-		createHash('sha256').update(photo).digest('hex')
-	]);
+}
+async function browserHashes(links) {
+	async function hash(link) {
+		const bytes = await (await fetch(link.href)).arrayBuffer();
+		const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+		const hex = Array.from(digest, (v) => v.toString(16).padStart(2, '0'));
+		return hex.join('');
+	}
+	return Promise.all(links.map(hash));
+}
+async function verifyPhotos(b, photo) {
+	const hashes = await b.locator('.gallery a').evaluateAll(browserHashes);
+	const expected = createHash('sha256').update(photo).digest('hex');
+	assert.deepEqual(hashes, Array(2).fill(expected));
+	await verifyLayout(b);
+}
+async function verifyLayout(b) {
 	assert.equal(
 		await b.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
 		true
@@ -179,31 +117,78 @@ try {
 		path: process.env.SCREENSHOT_PATH || '/tmp/pico-drop-received.png',
 		fullPage: true
 	});
-	await b.evaluate(() => {
-		Object.defineProperty(navigator, 'canShare', {
-			configurable: true,
-			value: () => false
-		});
+}
+async function reuse(link) {
+	const c = await device();
+	await c.goto(link);
+	await c.getByRole('button', { name: '共有に参加する', exact: true }).click();
+	await c.getByRole('alert').filter({ hasText: '使用済み' }).waitFor();
+}
+function unsupportedShare() {
+	Object.defineProperty(navigator, 'canShare', {
+		configurable: true,
+		value: () => false
 	});
+}
+async function saveAndDiscard(b) {
+	await b.evaluate(unsupportedShare);
 	await b
 		.getByRole('button', { name: '写真に保存・共有', exact: true })
 		.click();
+	await shareFallback(b);
+	await b.getByRole('button', { name: '写真を破棄する', exact: true }).click();
+	assert.equal(await b.locator('.gallery a').count(), 0);
+}
+async function shareFallback(b) {
 	await b
 		.getByRole('status')
 		.filter({ hasText: '共有に対応していません' })
 		.waitFor();
 	assert.equal(await b.locator('.gallery a').count(), 2);
-	await b.getByRole('button', { name: '写真を破棄する', exact: true }).click();
-	assert.equal(await b.locator('.gallery a').count(), 0);
-	// Peer disconnect while awaiting approval must release the sender's transfer.
-	await reconnect(a, b);
-	await a.getByRole('button', { name: '送る', exact: true }).click();
-	await b.getByRole('button', { name: '受け取る', exact: true }).waitFor();
+}
+async function disconnect(a, b) {
+	await join(b, await createLink(a));
 	await b.close();
 	await a.getByRole('alert').filter({ hasText: '接続が切れました' }).waitFor();
+}
+async function selectPhotos(a) {
+	await a.addScriptTag({
+		path: new URL('./page.browser-fixture.js', import.meta.url).pathname
+	});
+	const photo = await readPhoto(a);
+	await a.locator('input[type=file]').setInputFiles(photoFiles(photo));
+	return photo;
+}
+async function readPhoto(a) {
+	return Buffer.from(await a.evaluate(() => window.testJpeg()), 'base64');
+}
+
+function photoFiles(photo) {
+	return ['trip.jpg', 'friends.jpg'].map((name) => ({
+		name,
+		mimeType: 'image/jpeg',
+		buffer: photo
+	}));
+}
+async function scenario() {
+	const a = await device(),
+		b = await device();
+	const photo = await selectPhotos(a);
+	await revoked(a, b);
+	await rejected(a, b);
+	await reuse(await receive(a, b));
+	await verifyPhotos(b, photo);
+	await finish(a, b);
+}
+async function finish(a, b) {
+	await saveAndDiscard(b);
+	await disconnect(a, b);
 	assert.deepEqual(errors, []);
+}
+try {
+	await scenario();
 	console.log(
-		'PASS: two-browser discovery, reject, direct transfer after receiver acceptance, multi-photo WebRTC, SHA-256 match, mobile layout, share fallback, unsaved-photo retention, discard, disconnect'
+		'PASS: short-lived links, revoke, reject, single use, no RTC before approval, multi-photo RTC, SHA-256 match, mobile layout, save fallback, discard, disconnect without location permission'
 	);
 } finally {
 	for (const context of contexts) {

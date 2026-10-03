@@ -10,7 +10,6 @@ import {
 	authorizeTransfer,
 	parseClient,
 	validPhotos,
-	nearby,
 	LIMITS,
 	type TransferState
 } from './protocol.ts';
@@ -75,21 +74,28 @@ const invalidMessages = [
 	{ type: 'request', to: 'b', files: [] },
 	{ type: 'signal', id: 't', signal: { candidate: { candidate: 123 } } }
 ];
-test('signaling validation rejects malformed messages and coordinates', () => {
+test('signaling validation rejects malformed and obsolete messages', () => {
 	for (const input of invalidMessages) {
 		assert.throws(() => parseClient(input));
 	}
 	assert.equal(
-		parseClient({ type: 'presence', location: null }).type,
-		'presence'
+		parseClient({ type: 'join-link', token: 'a'.repeat(64) }).type,
+		'join-link'
 	);
 });
-const location = (latitude: number, longitude: number) => ({
-	latitude,
-	longitude,
-	accuracy: 10
-});
-test('nearby works across longitude boundary without returning coordinates', () => {
-	assert.equal(nearby(location(0, 179.999), location(0, -179.999)), true);
-	assert.equal(nearby(location(35, 139), location(36, 140)), false);
+const invalidLinks = [
+	{ type: 'join-link', token: '1234' },
+	{ type: 'create-link', files: [] },
+	{ type: 'presence', location: null },
+	{ type: 'request', to: 'b', files: [photo] }
+];
+test('links require valid metadata and unguessable tokens; legacy discovery is rejected', () => {
+	assert.equal(
+		parseClient({ type: 'create-link', files: [photo] }).type,
+		'create-link'
+	);
+	assert.equal(parseClient({ type: 'revoke-link' }).type, 'revoke-link');
+	for (const input of invalidLinks) {
+		assert.throws(() => parseClient(input));
+	}
 });

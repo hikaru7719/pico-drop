@@ -6,7 +6,7 @@ export const LIMITS = {
 	bytes: 50 * 1024 * 1024,
 	chunk: 16 * 1024,
 	sessionMs: 30 * 60_000,
-	presenceMs: 90_000,
+	linkMs: 10 * 60_000,
 	requestMs: 120_000,
 	transferMs: 10 * 60_000
 };
@@ -16,12 +16,6 @@ export type PhotoMeta = {
 	name: string;
 	type: string;
 	size: number;
-};
-
-export type Location = {
-	latitude: number;
-	longitude: number;
-	accuracy: number;
 };
 
 export type Device = {
@@ -55,15 +49,9 @@ export type ClientMessage =
 			type: 'auth';
 			token: string;
 	  }
-	| {
-			type: 'presence';
-			location: Location | null;
-	  }
-	| {
-			type: 'request';
-			to: string;
-			files: PhotoMeta[];
-	  }
+	| { type: 'create-link'; files: PhotoMeta[] }
+	| { type: 'join-link'; token: string }
+	| { type: 'revoke-link' }
 	| {
 			type: 'accept' | 'reject' | 'cancel' | 'complete';
 			id: string;
@@ -79,10 +67,8 @@ export type ServerMessage =
 			type: 'ready';
 			device: Device;
 	  }
-	| {
-			type: 'nearby';
-			devices: Device[];
-	  }
+	| { type: 'link-created'; token: string; expiresAt: number }
+	| { type: 'link-ended' }
 	| {
 			type: 'requested';
 			id: string;
@@ -172,38 +158,6 @@ function validPhotoTotals(files: PhotoMeta[]) {
 	);
 }
 
-function inRange(value: unknown, min: number, max: number): boolean {
-	return (
-		typeof value === 'number' &&
-		Number.isFinite(value) &&
-		value >= min &&
-		value <= max
-	);
-}
-export function validLocation(value: unknown): value is Location {
-	return (
-		record(value) &&
-		inRange(value.latitude, -90, 90) &&
-		inRange(value.longitude, -180, 180) &&
-		inRange(value.accuracy, 0, 10_000)
-	);
-}
-function haversine(a: Location, b: Location) {
-	const rad = Math.PI / 180;
-	return (
-		Math.sin(((a.latitude - b.latitude) * rad) / 2) ** 2 +
-		Math.cos(a.latitude * rad) *
-			Math.cos(b.latitude * rad) *
-			Math.sin(((a.longitude - b.longitude) * rad) / 2) ** 2
-	);
-}
-export function nearby(a: Location, b: Location): boolean {
-	const distance =
-		12_742_000 * Math.asin(Math.sqrt(Math.min(1, haversine(a, b))));
-	return (
-		distance <= 300 + Math.min(a.accuracy, 500) + Math.min(b.accuracy, 500)
-	);
-}
 function validDescription(value: unknown) {
 	return (
 		record(value) &&
@@ -248,11 +202,10 @@ const messageValidators: Record<
 > = {
 	auth: (value) =>
 		typeof value.token === 'string' && /^[a-f0-9]{64}$/.test(value.token),
-	presence: (value) => value.location === null || validLocation(value.location),
-	request: (value) =>
-		typeof value.to === 'string' &&
-		value.to.length <= 40 &&
-		validPhotos(value.files)
+	'create-link': (value) => validPhotos(value.files),
+	'join-link': (value) =>
+		typeof value.token === 'string' && /^[a-f0-9]{64}$/.test(value.token),
+	'revoke-link': () => true
 };
 export function parseClient(value: unknown): ClientMessage {
 	if (!record(value) || typeof value.type !== 'string') {

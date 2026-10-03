@@ -11,10 +11,11 @@ const script = page
 	.match(/<script lang="ts">([\s\S]*?)<\/script>/)![1]
 	.replace(/\bimport\s[\s\S]*?\sfrom\s+['"][^'"]+['"];?/g, '');
 const source = `export function createPage(deps) {
-const { LIMITS, onMount, tick, createSession, Signaling, locate, window, setInterval, clearInterval } = deps;
+const { LIMITS, onMount, tick, createSession, Signaling, window } = deps;
 ${stripTypeScriptTypes(script, { mode: 'transform' })}
-return { startDiscovery, stopDiscovery, handle, action,
-get state() { return { connection, searching, discovering, session, completed, received, error }; } };
+return { createLink, joinLink, revokeLink, handle, action,
+setPhotos(files) { metadata = files; },
+get state() { return { connection, session, completed, received, error, shareLink, creatingLink, incomingToken }; } };
 }`;
 const compiled = compileModule(source, {
 	filename: 'connection-controller.svelte.js',
@@ -27,7 +28,7 @@ const { createPage } = await import(
 	`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`
 );
 
-type SetupOptions = { pendingSession?: boolean; locationError?: boolean };
+type SetupOptions = { pendingSession?: boolean; token?: string };
 class FakeSocket {
 	closed = false;
 	messages: unknown[] = [];
@@ -45,7 +46,6 @@ class PageFixture {
 	sessions = 0;
 	sessionSignal: AbortSignal | undefined;
 	resolvePending: (value: unknown) => void = () => {};
-	intervals = 0;
 	mount: () => void = () => {};
 	session = {
 		id: 'self',
@@ -61,13 +61,20 @@ class PageFixture {
 	window() {
 		return {
 			isSecureContext: true,
+			location: this.location(),
 			RTCPeerConnection: class {},
-			matchMedia: () => ({ matches: true }),
 			addEventListener: (name: string, callback: () => void) =>
 				this.events.set(name, callback),
 			removeEventListener: (name: string) => this.events.delete(name)
 		};
 	}
+	location() {
+		return {
+			origin: 'https://example.com',
+			hash: this.options.token ? '#share=' + this.options.token : ''
+		};
+	}
+
 	signaling() {
 		const sockets = this.sockets;
 		return class extends FakeSocket {
@@ -89,26 +96,10 @@ class PageFixture {
 	resolveSession() {
 		this.resolvePending(this.session);
 	}
-	async locate() {
-		if (this.options.locationError) {
-			throw new Error('Location denied');
-		}
-		return { latitude: 35, longitude: 139, accuracy: 10 };
-	}
-	setInterval() {
-		this.intervals++;
-		return 1;
-	}
-	clearInterval(timer: unknown) {
-		if (timer !== undefined) {
-			this.intervals--;
-		}
-	}
 	io() {
 		return {
 			window: this.window(),
 			Signaling: this.signaling(),
-			locate: () => this.locate(),
 			createSession: (signal: AbortSignal) => this.createSession(signal)
 		};
 	}
@@ -119,9 +110,7 @@ class PageFixture {
 		return {
 			onMount: (callback: () => void) => {
 				this.mount = callback;
-			},
-			setInterval: () => this.setInterval(),
-			clearInterval: (timer: unknown) => this.clearInterval(timer)
+			}
 		};
 	}
 }
@@ -146,57 +135,67 @@ test('opening and restoring the page do not contact signaling', async () => {
 	await flush();
 	assertIdle(app);
 });
+const files = [{ id: 'photo', name: 'photo.jpg', type: 'image/jpeg', size: 8 }];
 async function connectOnce(app: PageFixture) {
-	await Promise.all([
-		app.controller.startDiscovery(),
-		app.controller.startDiscovery()
-	]);
+	app.controller.setPhotos(files);
+	await Promise.all([app.controller.createLink(), app.controller.createLink()]);
 	assert.equal(app.sessions, 1);
 	assert.equal(app.controller.state.connection, 'connecting');
 	assert.equal(app.sockets[0].messages.length, 0);
 }
-async function discover(app: PageFixture) {
+async function ready(app: PageFixture) {
 	app.sockets[0].emit({ type: 'ready' });
 	await flush();
-	assert.equal(app.controller.state.discovering, true);
-	assert.equal(app.intervals, 1);
-	assert.equal(
-		(app.sockets[0].messages[0] as { type: string }).type,
-		'presence'
-	);
 }
 function assertStopped(app: PageFixture) {
 	assert.equal(app.sockets[0].closed, true);
 	assert.equal(app.controller.state.connection, 'idle');
-	assert.equal(app.intervals, 0);
 }
-test('one click connects, authentication starts discovery, stop closes and restart reconnects', async () => {
+test('authentication creates a link without requesting location; revocation closes signaling', async () => {
 	const app = setup();
 	await connectOnce(app);
-	await discover(app);
-	app.controller.stopDiscovery();
+	await ready(app);
+	assert.deepEqual(app.sockets[0].messages, [{ type: 'create-link', files }]);
+	await assertLinkCreated(app);
+	app.controller.revokeLink();
 	assertStopped(app);
-	await app.controller.startDiscovery();
-	assert.equal(app.sessions, 2);
-	app.controller.stopDiscovery();
+	assert.equal(app.controller.state.shareLink, '');
 });
+async function assertLinkCreated(app: PageFixture) {
+	await app.controller.handle({
+		type: 'link-created',
+		token: 'a'.repeat(64),
+		expiresAt: Date.now() + LIMITS.linkMs
+	});
+	const expected = 'https://example.com/#share=' + 'a'.repeat(64);
+	assert.equal(app.controller.state.shareLink, expected);
+}
 test('stopping an in-flight session request prevents a late WebSocket connection', async () => {
 	const app = setup({ pendingSession: true });
-	const pending = app.controller.startDiscovery();
-	app.controller.stopDiscovery();
+	app.controller.setPhotos(files);
+	const pending = app.controller.createLink();
+	app.controller.revokeLink();
 	assert.equal(app.sessionSignal?.aborted, true);
 	app.resolveSession();
 	await pending;
 	assert.equal(app.sockets.length, 0);
-	assert.equal(app.controller.state.connection, 'idle');
 });
-test('location denial closes the connection and leaves discovery retryable', async () => {
-	const app = setup({ locationError: true });
-	await app.controller.startDiscovery();
-	app.sockets[0].emit({ type: 'ready' });
-	await flush();
-	assertStopped(app);
-	assert.equal(app.controller.state.searching, false);
+test('opening a link does not consume it until explicit participation', async () => {
+	const token = 'b'.repeat(64);
+	const app = setup({ token });
+	assertIdle(app);
+	await app.controller.joinLink();
+	await ready(app);
+	assert.deepEqual(app.sockets[0].messages, [{ type: 'join-link', token }]);
+	app.controller.revokeLink();
+});
+test('a rejected link clears the busy state and permits retry', async () => {
+	const app = setup({ token: 'b'.repeat(64) });
+	await app.controller.joinLink();
+	await ready(app);
+	await app.controller.handle({ type: 'error', message: '期限切れ' });
+	assert.equal(app.controller.state.error, '期限切れ');
+	app.controller.revokeLink();
 });
 async function requestTransfer(app: PageFixture) {
 	await app.controller.handle({
@@ -204,14 +203,14 @@ async function requestTransfer(app: PageFixture) {
 		id: 'transfer',
 		from: app.session,
 		to: { id: 'other', name: 'Other' },
-		files: []
+		files
 	});
 }
 for (const reason of ['complete', 'cancelled']) {
-	test(`transfer ${reason} closes signaling and stops discovery`, async () => {
+	test(`transfer ${reason} closes signaling and clears link`, async () => {
 		const app = setup();
-		await app.controller.startDiscovery();
-		await discover(app);
+		await connectOnce(app);
+		await ready(app);
 		await requestTransfer(app);
 		await app.controller.handle({ type: 'ended', id: 'transfer', reason });
 		assertStopped(app);

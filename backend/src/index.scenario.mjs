@@ -17,7 +17,6 @@ try {
 		path: new URL('./index.browser-fixture.js', import.meta.url).pathname
 	});
 	const result = await page.evaluate(() => window.runApiTests());
-	assert.equal(result.publicOnly, true);
 	assert.equal(result.sameRequest, true);
 	assert.match(result.preAccept, /承諾/);
 	assert.match(result.senderAccept, /受信者/);
@@ -34,7 +33,7 @@ try {
 	);
 	assert.equal(crossOrigin.status(), 403);
 	console.log(
-		'PASS: Origin checks, token validation/replay, no coordinate disclosure, receiver-only approval/completion, outsider rejection, direct start after receiver approval, TURN authorization, stale transfer rejection'
+		'PASS: Origin checks, token validation/replay, single-use link rendezvous, receiver-only approval/completion, outsider rejection, direct start after receiver approval, TURN authorization, stale transfer rejection'
 	);
 } finally {
 	await browser.close();

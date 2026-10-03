@@ -24,7 +24,7 @@ try {
 	const stories = Object.values(index.entries).filter(
 		(entry) => entry.type === 'story'
 	);
-	assert.equal(stories.length, 20);
+	assert.equal(stories.length, 19);
 	for (const story of stories) {
 		await page.goto(
 			`${baseURL}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`
@@ -46,7 +46,9 @@ try {
 	);
 	await page.locator('.transfer').waitFor();
 	assert.equal(
-		await page.getByRole('heading', { name: 'Photos, Right Nearby.' }).count(),
+		await page
+			.getByRole('heading', { name: 'Photos, Just a Link Away.' })
+			.count(),
 		0
 	);
 	assert.deepEqual(errors, []);

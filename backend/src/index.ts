@@ -7,10 +7,8 @@ import { photoRequest } from './images.ts';
 import { DurableObject } from 'cloudflare:workers';
 import {
 	LIMITS,
-	nearby,
 	parseClient,
 	authorizeTransfer,
-	type Location,
 	type ClientMessage,
 	type Device,
 	type PhotoMeta,
@@ -23,13 +21,11 @@ type Bindings = Env & { TURN_KEY_ID?: string; TURN_KEY_API_TOKEN?: string };
 type Attachment = {
 	connectedAt: number;
 	session?: Omit<Session, 'token'>;
-	location?: Location;
-	seen?: number;
+	linkKey?: string;
 	transfer?: string;
 	window?: number;
 	messages?: number;
 	requests?: number;
-	lastPresence?: number;
 	turnCount?: number;
 };
 const json = (data: unknown, status = 200) =>
@@ -50,13 +46,33 @@ function send(ws: WebSocket, message: ServerMessage) {
 	}
 }
 
+type LinkJoin = {
+	ws: WebSocket;
+	a: Attachment;
+	key: string;
+	link: ShareLink;
+	owner: WebSocket;
+};
+type TransferSockets = {
+	owner: WebSocket;
+	ws: WebSocket;
+	sender: Attachment;
+	a: Attachment;
+	t: TransferState;
+};
+function newLink(owner: string, files: PhotoMeta[]): ShareLink {
+	return { owner, files, expiresAt: Date.now() + LIMITS.linkMs };
+}
+
 type StoredSession = Omit<Session, 'token'> & { used?: boolean };
 type Rate = { count: number; expiresAt: number };
 type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
 type TransferMessage = Extract<ClientMessage, { id: string }>;
 const SESSION_LIMIT = '接続回数が多すぎます。1分後に再試行してください。';
 const REQUEST_LIMIT = '送信要求が多すぎます。1分後に再試行してください。';
-const NOT_NEARBY = '相手が見つかりません。近くの端末を再検索してください。';
+const LINK_UNAVAILABLE =
+	'共有リンクが期限切れ、使用済み、または送信者が不在です。';
+type ShareLink = { owner: string; files: PhotoMeta[]; expiresAt: number };
 const TURN_LIMIT = '接続設定の取得上限です。再接続してください。';
 const TURN_FAILED = '中継サーバーの準備に失敗しました。再試行してください。';
 const device = (session: Device): Device => ({
@@ -298,38 +314,6 @@ export class NearbyHub extends DurableObject<Bindings> {
 			await this.ctx.storage.setAlarm(Date.now() + 15_000);
 		}
 	}
-	isPresent(a: Attachment) {
-		return (
-			!!a.session &&
-			a.session.expiresAt > Date.now() &&
-			!!a.location &&
-			(a.seen ?? 0) > Date.now() - LIMITS.presenceMs
-		);
-	}
-	nearbyDevice(ws: WebSocket, other: WebSocket, a: Attachment): Device[] {
-		const b = this.attachment(other);
-		const available =
-			other !== ws && other.readyState === WebSocket.OPEN && this.isPresent(b);
-		return available && nearby(a.location!, b.location!)
-			? [device(b.session!)]
-			: [];
-	}
-	broadcast() {
-		const sockets = this.ctx.getWebSockets();
-		for (const ws of sockets) {
-			this.sendNearby(ws, sockets);
-		}
-	}
-	sendNearby(ws: WebSocket, sockets: WebSocket[]) {
-		const a = this.attachment(ws);
-		if (!a.session) {
-			return;
-		}
-		const devices = this.isPresent(a)
-			? sockets.flatMap((other) => this.nearbyDevice(ws, other, a))
-			: [];
-		send(ws, { type: 'nearby', devices });
-	}
 	clearTransfer(ws: WebSocket, id: string) {
 		const a = this.attachment(ws);
 		if (a.transfer === id) {
@@ -416,11 +400,17 @@ export class NearbyHub extends DurableObject<Bindings> {
 		}
 	}
 	async authenticatedMessage(ws: WebSocket, a: Attachment, m: ClientMessage) {
-		if (m.type === 'presence') {
-			return this.presence(ws, a, m.location);
+		if (m.type === 'create-link') {
+			return this.createLink(ws, a, m.files);
 		}
-		if (m.type === 'request') {
-			return this.requestTransfer(ws, a, m);
+		if (m.type === 'join-link') {
+			return this.joinLink(ws, a, m.token);
+		}
+		await this.otherMessage(ws, a, m);
+	}
+	async otherMessage(ws: WebSocket, a: Attachment, m: ClientMessage) {
+		if (m.type === 'revoke-link') {
+			return this.revokeLink(ws, a);
 		}
 		await this.checkedTransferAction(a, m);
 	}
@@ -456,24 +446,6 @@ export class NearbyHub extends DurableObject<Bindings> {
 		send(ws, { type: 'ready', device: device(session) });
 	}
 
-	presence(ws: WebSocket, a: Attachment, location: Location | null) {
-		if (location && a.location && (a.lastPresence ?? 0) > Date.now() - 2000) {
-			return;
-		}
-		this.updateLocation(a, location);
-		ws.serializeAttachment(a);
-		this.broadcast();
-	}
-	updateLocation(a: Attachment, location: Location | null) {
-		a.lastPresence = Date.now();
-		a.seen = Date.now();
-		if (location) {
-			a.location = location;
-		} else {
-			delete a.location;
-		}
-	}
-
 	checkRequestRate(ws: WebSocket, a: Attachment) {
 		a.requests = (a.requests ?? 0) + 1;
 		ws.serializeAttachment(a);
@@ -481,25 +453,6 @@ export class NearbyHub extends DurableObject<Bindings> {
 			throw new Error(REQUEST_LIMIT);
 		}
 	}
-	requestRecipient(ws: WebSocket, a: Attachment, to: string) {
-		const other = this.socket(to);
-		const b = other && this.attachment(other);
-		if (!other || !b || other === ws) {
-			throw new Error(NOT_NEARBY);
-		}
-		this.checkRecipient(a, b);
-		return { other, b };
-	}
-	checkRecipient(a: Attachment, b: Attachment) {
-		const present = this.isPresent(a) && this.isPresent(b);
-		if (!present || !nearby(a.location!, b.location!)) {
-			throw new Error(NOT_NEARBY);
-		}
-		if (a.transfer || b.transfer) {
-			throw new Error('転送中です。完了後にお試しください。');
-		}
-	}
-
 	newTransfer(a: Attachment, b: Attachment, files: PhotoMeta[]): TransferState {
 		return {
 			id: crypto.randomUUID(),
@@ -510,13 +463,71 @@ export class NearbyHub extends DurableObject<Bindings> {
 			expiresAt: Date.now() + LIMITS.requestMs
 		};
 	}
-	async requestTransfer(ws: WebSocket, a: Attachment, m: TransferRequest) {
+	async revokeLink(ws: WebSocket, a: Attachment) {
+		if (a.linkKey) {
+			await this.ctx.storage.delete(a.linkKey);
+			delete a.linkKey;
+			ws.serializeAttachment(a);
+			send(ws, { type: 'link-ended' });
+		}
+	}
+
+	async createLink(ws: WebSocket, a: Attachment, files: PhotoMeta[]) {
 		this.checkRequestRate(ws, a);
-		const { other, b } = this.requestRecipient(ws, a, m.to);
-		const t = this.newTransfer(a, b, m.files);
+		this.checkLinkParticipant(a);
+		await this.revokeLink(ws, a);
+		const token = randomToken();
+		const link = newLink(a.session!.id, files);
+		a.linkKey = 'link:' + (await hash(token));
+		await this.storeLink(ws, a, link);
+		send(ws, { type: 'link-created', token, expiresAt: link.expiresAt });
+	}
+
+	async storeLink(ws: WebSocket, a: Attachment, link: ShareLink) {
+		await this.ctx.storage.put(a.linkKey!, link);
+		ws.serializeAttachment(a);
+		await this.schedule();
+	}
+
+	checkLinkParticipant(a: Attachment) {
+		if (a.transfer) {
+			throw new Error('転送中です。完了後にお試しください。');
+		}
+	}
+
+	async joinLink(ws: WebSocket, a: Attachment, token: string) {
+		this.checkRequestRate(ws, a);
+		this.checkLinkParticipant(a);
+		const key = 'link:' + (await hash(token));
+		const link = await this.ctx.storage.get<ShareLink>(key);
+		const owner = this.linkOwner(ws, link);
+		await this.consumeLink({ ws, a, key, link: link!, owner });
+	}
+
+	linkOwner(ws: WebSocket, link: ShareLink | undefined) {
+		const owner = link && this.socket(link.owner);
+		if (!link || link.expiresAt <= Date.now() || !owner || owner === ws) {
+			throw new Error(LINK_UNAVAILABLE);
+		}
+		return owner;
+	}
+
+	async consumeLink(context: LinkJoin) {
+		const { ws, a, key, link, owner } = context;
+		const sender = this.attachment(owner);
+		this.checkLinkParticipant(sender);
+		await this.ctx.storage.delete(key);
+		delete sender.linkKey;
+		await this.revokeLink(ws, a);
+		const t = this.newTransfer(sender, a, link.files);
+		await this.storeTransfer({ owner, ws, sender, a, t });
+	}
+
+	async storeTransfer(context: TransferSockets) {
+		const { owner, ws, sender, a, t } = context;
 		await this.ctx.storage.put('transfer:' + t.id, t);
+		this.attachTransfer(owner, sender, t);
 		this.attachTransfer(ws, a, t);
-		this.attachTransfer(other, b, t);
 	}
 
 	attachTransfer(ws: WebSocket, a: Attachment, t: TransferState) {
@@ -577,12 +588,15 @@ export class NearbyHub extends DurableObject<Bindings> {
 		}
 	}
 	async webSocketClose(ws: WebSocket) {
+		await this.ctx.blockConcurrencyWhile(() => this.closeSocket(ws));
+	}
+	async closeSocket(ws: WebSocket) {
 		const a = this.attachment(ws);
 		if (a.transfer) {
 			await this.end(a.transfer, 'disconnected');
 		}
+		await this.revokeLink(ws, a);
 		ws.close();
-		this.broadcast();
 	}
 	async webSocketError(ws: WebSocket) {
 		await this.webSocketClose(ws);
@@ -594,15 +608,13 @@ export class NearbyHub extends DurableObject<Bindings> {
 		const a = this.attachment(ws);
 		if (sessionExpired(a, now)) {
 			await this.closeExpired(ws, a);
-		} else if (a.location && (a.seen ?? 0) < now - LIMITS.presenceMs) {
-			delete a.location;
-			ws.serializeAttachment(a);
 		}
 	}
 	async closeExpired(ws: WebSocket, a: Attachment) {
 		if (a.transfer) {
 			await this.end(a.transfer, 'timeout');
 		}
+		await this.revokeLink(ws, a);
 		ws.close(1008, 'Session expired');
 	}
 	async expireEntry(key: string, expiresAt: number, now: number) {
@@ -612,7 +624,19 @@ export class NearbyHub extends DurableObject<Bindings> {
 		if (key.startsWith('transfer:')) {
 			await this.end(key.slice(9), 'timeout');
 		} else {
-			await this.ctx.storage.delete(key);
+			await this.expireStoredEntry(key);
+		}
+	}
+	async expireStoredEntry(key: string) {
+		await this.expireLink(key);
+		await this.ctx.storage.delete(key);
+	}
+	async expireLink(key: string) {
+		for (const ws of this.ctx.getWebSockets()) {
+			const a = this.attachment(ws);
+			if (a.linkKey === key) {
+				await this.revokeLink(ws, a);
+			}
 		}
 	}
 	async reschedule(now: number) {
@@ -629,7 +653,6 @@ export class NearbyHub extends DurableObject<Bindings> {
 			await this.expireSocket(ws, now);
 		}
 		await this.expireEntries(now);
-		this.broadcast();
 		await this.reschedule(now);
 	}
 	async expireEntries(now: number) {
@@ -640,7 +663,6 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 }
 
-type TransferRequest = Extract<ClientMessage, { type: 'request' }>;
 function controlMessage(raw: string | ArrayBuffer) {
 	if (typeof raw !== 'string' || raw.length > 24_000) {
 		throw new Error('制御メッセージのみ送信できます。');

@@ -1,18 +1,3 @@
-function centeredScroll(card) {
-	const desired = scrollY + card.top + card.height / 2 - innerHeight / 2;
-	return Math.max(
-		0,
-		Math.min(desired, document.documentElement.scrollHeight - innerHeight)
-	);
-}
-window.discoveryCentered = () => {
-	const card = document
-		.querySelector('[aria-labelledby="nearby-heading"]')
-		.getBoundingClientRect();
-	const collapsed =
-		document.querySelector('.intro-shell').getBoundingClientRect().height < 1;
-	return Math.abs(scrollY - centeredScroll(card)) < 3 && collapsed;
-};
 function fillImage(image) {
 	for (let i = 0; i < image.data.length; i += 4) {
 		image.data[i] = i % 251;

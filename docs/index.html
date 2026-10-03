@@ -103,7 +103,7 @@
 							<small>STATE / DURABLE OBJECT</small>
 							<h3>NearbyHub</h3>
 							<p>
-								匿名セッション · Nearby候補 · Accept / Reject<br />WebSocket
+								匿名セッション · 短命の共有リンク · Accept / Reject<br />WebSocket
 								signaling · 転送状態 · TURN資格情報の発行
 							</p>
 							<span>MVPは単一Hub（idFromName('mvp')）</span>
@@ -132,9 +132,9 @@
 						</p>
 					</li>
 					<li>
-						<h3>近くの候補を発見</h3>
+						<h3>短期間のリンクを共有</h3>
 						<p>
-							Geolocationで取得した位置をpresenceとして送信。Hubが座標と精度から候補を判定し、端末IDと表示名を返します。距離や同室を保証する機能ではありません。
+							写真を選んで10分間有効な共有リンクを作成し、LINEなどで相手1人に送ります。受信者の参加でリンクを使用済みにし、合言葉・位置情報は使いません。送信者は待機画面を開いておきます。
 						</p>
 					</li>
 					<li>
@@ -186,7 +186,7 @@
 						<span class="card-label">DURABLE OBJECT</span>
 						<h3>接続を再開できる状態</h3>
 						<p>
-							セッション、転送メタデータ、受信者の変換権限、期限付きレート制限をDOストレージに保存。位置・presence等はWebSocket
+							セッション、リンクのハッシュ・所有者・写真メタデータ・期限、受信者の変換権限、レート制限をDOストレージに保存。接続状態はWebSocket
 							attachmentで保持し、Hibernation後にも利用します。期限切れをalarmで削除します。
 						</p>
 					</article>
@@ -224,9 +224,9 @@
 								<td>JPEG・PNG・WebP・HEIC/HEIFを対象</td>
 							</tr>
 							<tr>
-								<td>セッション / presence</td>
-								<td>30分 / 90秒</td>
-								<td>匿名セッションの期限 / 候補の鮮度</td>
+								<td>セッション / 共有リンク</td>
+								<td>30分 / 10分</td>
+								<td>匿名セッションの期限 / 新規参加の期限</td>
 							</tr>
 							<tr>
 								<td>受信待ち / 転送</td>
@@ -241,9 +241,9 @@
 								</td>
 							</tr>
 							<tr>
-								<td>Nearby</td>
-								<td>300m + 両端末の精度補正</td>
-								<td>補正は各最大500m。精密な近接判定ではない</td>
+								<td>共有リンク</td>
+								<td>256bitランダムトークン</td>
+								<td>最初の参加・取り消し・切断で失効</td>
 							</tr>
 						</tbody>
 					</table>
@@ -273,8 +273,8 @@
 								<td>peer：接続 / signaling：制御通信 / transfer：写真転送</td>
 							</tr>
 							<tr>
-								<td><code>frontend/src/lib/discovery/</code></td>
-								<td>位置情報の取得</td>
+								<td><code>frontend/src/routes/+page.svelte</code></td>
+								<td>リンク作成・共有・参加・取り消し</td>
 							</tr>
 							<tr>
 								<td><code>frontend/src/lib/photos/</code></td>
@@ -299,7 +299,7 @@
 					<h3>実装と検証の境界</h3>
 					<p>
 						このページは2026-09-24時点のワークスペース内のコードと設計メモを整理したものです。コードの存在は本番稼働や実機検証の完了を意味しません。iPhone
-						Safariでの保存・HEICプレビュー・異なる回線でのTURN接続は実機検証が必要です。現在の単一Hubによる探索はMVP向けで、エリア分割は今後の設計項目です。
+						Safariでの保存・HEICプレビュー・異なる回線でのTURN接続は実機検証が必要です。現在の単一HubはMVP向けで、Hub分割は今後の設計項目です。
 					</p>
 				</aside>
 			</section>
@@ -360,18 +360,18 @@
 				<div
 					class="diagram"
 					role="img"
-					aria-label="送信者のrequestと受信者のacceptを、同じNearbyHub mvpが受け取る。受信者が承諾すると、両端末にstartを通知する。"
+					aria-label="送信者のcreate-linkと受信者のjoin-link・acceptを、同じNearbyHub mvpが受け取る。受信者が承諾すると、両端末にstartを通知する。"
 				>
 					<div class="endpoints">
 						<div class="node">
 							<small>SENDER → HUB</small>
 							<h3>送信者</h3>
-							<p>request：送りたい写真の情報</p>
+							<p>create-link：共有リンクと写真の情報</p>
 						</div>
 						<div class="node">
 							<small>RECEIVER → HUB</small>
 							<h3>受信者</h3>
-							<p>accept：受信を承諾</p>
+							<p>join-link：参加 / accept：受信を承諾</p>
 						</div>
 					</div>
 					<div class="connector">↓ 同じHubに両者の操作を集約 ↓</div>
@@ -414,7 +414,7 @@
 						<span class="card-label">ALARM</span>
 						<h3>期限切れを片付ける</h3>
 						<p>
-							現在は接続や保存データが残っている間、約15秒ごとにalarmを予約。期限切れセッション・転送を整理し、古い位置情報を候補から除きます。alarmやメッセージで復帰するため、更新頻度は実行量にも影響します。
+							現在は接続や保存データが残っている間、約15秒ごとにalarmを予約。期限切れセッション・共有リンク・転送を整理します。alarmやメッセージで復帰するため、更新頻度は実行量にも影響します。
 						</p>
 					</article>
 				</div>
@@ -427,13 +427,13 @@
 				<aside class="status">
 					<h3>規模が増えたときの設計</h3>
 					<p>
-						現在は全端末を1つのHubに集め、アプリ側でWebSocketを最大200接続に制限しています。DO全体の製品上限を示す数字ではありません。利用が増えたらエリアや部屋ごとに別IDのHubへ分ける設計が必要です。その際は、隣接エリアの候補探索や移動時の所属変更も設計します。写真本体は引き続きDataChannelで転送します。
+						現在は全端末を1つのHubに集め、アプリ側でWebSocketを最大200接続に制限しています。DO全体の製品上限を示す数字ではありません。利用が増えたら共有ルームごとに別IDのHubへ分ける設計が必要です。その際は、リンクから対応するHubへ接続する経路も設計します。写真本体は引き続きDataChannelで転送します。
 					</p>
 				</aside>
 			</section>
 
 			<footer>
-				<span>pico-drop / Share photos nearby.</span
+				<span>pico-drop / Share photos with a link.</span
 				><span>Architecture notes · 01</span>
 			</footer>
 		</main>

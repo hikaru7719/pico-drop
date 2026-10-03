@@ -31,11 +31,12 @@ const meta = {
 		connection: 'online',
 		session: me,
 		connect: fn(),
-		startDiscovery: fn(),
-		stopDiscovery: fn(),
-		chooseRecipient: fn(),
+		createLink: fn(),
+		joinLink: fn(),
+		revokeLink: fn(),
+		shareInvitation: fn(),
+		copyInvitation: fn(),
 		select: fn(),
-		invite: fn(),
 		action: fn(),
 		save: fn(),
 		discard: fn()
@@ -44,44 +45,42 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Initial: Story = {
-	name: '01 探索前',
+	name: '01 写真選択前',
 	args: { connection: 'idle', session: undefined }
 };
 export const Connecting: Story = {
 	name: '02 接続中',
 	args: { connection: 'connecting', session: undefined }
 };
-export const Locating: Story = {
-	name: '03 位置情報を取得中',
-	args: { searching: true }
+export const CreatingLink: Story = {
+	name: '03 リンクを作成中',
+	args: { creatingLink: true, selected: [file], metadata: files }
 };
-export const Searching: Story = {
-	name: '04 近くの人を探索中',
-	args: { discovering: true }
-};
-export const Nearby: Story = {
-	name: '05 相手を選ぶ',
+export const LinkReady: Story = {
+	name: '04 リンクを共有して待機',
 	args: {
-		discovering: true,
-		devices: [friend, { id: 'second', name: 'ゲスト C56D' }]
+		shareLink: 'https://example.com/#share=' + 'a'.repeat(64),
+		linkExpiresAt: Date.now() + 600_000
 	}
+};
+export const JoinLink: Story = {
+	name: '05 リンクから参加',
+	args: { incomingToken: 'a'.repeat(64), connection: 'idle' }
 };
 export const ChoosePhotos: Story = {
 	name: '06 写真を選ぶ',
-	args: { recipient: friend, devices: [friend] }
+	args: { flowStarted: true }
 };
 export const PhotosSelected: Story = {
 	name: '07 写真を選択済み',
-	args: {
-		recipient: friend,
-		devices: [friend],
-		selected: [file],
-		metadata: files
-	}
+	args: { selected: [file], metadata: files }
 };
-export const RecipientUnavailable: Story = {
-	name: '08 相手が見つからない',
-	args: { recipient: friend, selected: [file], metadata: files }
+export const LinkExpired: Story = {
+	name: '08 リンク期限切れ',
+	args: {
+		flowStarted: true,
+		error: '共有リンクの有効期限が切れました。新しく作成してください。'
+	}
 };
 export const SendingRequest: Story = {
 	name: '09 相手の承諾待ち',
@@ -137,18 +136,10 @@ export const UnsupportedPreview: Story = {
 		]
 	}
 };
-export const LocationDenied: Story = {
-	name: '17 位置情報が未許可',
-	args: {
-		flowStarted: true,
-		locationMessage:
-			'位置情報が許可されていません。ブラウザの設定で許可して再試行してください。'
-	}
-};
 export const Offline: Story = {
 	name: '18 接続エラー',
 	args: {
 		connection: 'offline',
-		error: '接続が切れました。再接続して相手を探してください。'
+		error: '接続が切れました。新しい共有リンクで再試行してください。'
 	}
 };

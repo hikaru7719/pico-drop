@@ -9,12 +9,10 @@
 	import DropView from '$lib/components/DropView.svelte';
 	import {
 		LIMITS,
-		type Device,
 		type PhotoMeta,
 		type ServerMessage,
 		type Session
 	} from '../../../shared/protocol.ts';
-	import { locate } from '$lib/discovery';
 	import { describePhotos, sharePhotos } from '$lib/photos';
 	import { createSession, Signaling } from '$lib/webrtc/signaling';
 	import { PhotoPeer } from '$lib/webrtc/peer';
@@ -24,24 +22,14 @@
 	let flowStarted = $state(false);
 	let session = $state<Session>();
 	let connection = $state<'idle' | 'connecting' | 'online' | 'offline'>('idle');
-	let devices = $state<Device[]>([]);
-	let recipient = $state<Device>();
-	let photosHeading = $state<HTMLHeadingElement>();
-	let discoverySection = $state<HTMLElement>();
-	async function chooseRecipient(device: Device) {
-		recipient = device;
-		await tick();
-		photosHeading?.focus();
-	}
-	let discovering = $state(false);
-	let searching = $state(false);
-	let locationMessage = $state(
-		'位置情報を使って、近くでこのページを開いている人を探します。'
-	);
+	let incomingToken = $state('');
+	let shareLink = $state('');
+	let linkExpiresAt = $state<number>();
+	let creatingLink = $state(false);
+	let linkTimer: ReturnType<typeof setTimeout> | undefined;
 	let selected = $state<File[]>([]);
 	let metadata = $state<PhotoMeta[]>([]);
 	let selecting = $state(false);
-	let requesting = $state(false);
 	let request = $state<RequestInfo>();
 	let phase = $state<'waiting' | 'connecting' | 'transferring'>('waiting');
 	let bytes = $state(0);
@@ -61,11 +49,8 @@
 	let peer: PhotoPeer | undefined;
 	let receiver: PhotoReceiver | undefined;
 	let abort = new AbortController();
-	let discoverTimer: ReturnType<typeof setInterval> | undefined;
 	let watchdog: ReturnType<typeof setTimeout> | undefined;
-	let requestTimer: ReturnType<typeof setTimeout> | undefined;
 	let generation = 0;
-	let discoveryGeneration = 0;
 	let signalQueue = Promise.resolve();
 	let disposed = false;
 	const sending = $derived(!!request && request.from.id === session?.id);
@@ -116,30 +101,25 @@
 	function cleanupTransfer() {
 		closePeer();
 		clearTimeout(watchdog);
-		clearTimeout(requestTimer);
 		request = undefined;
-		requesting = false;
 	}
 	function closeSignaling() {
 		generation++;
-		discoveryGeneration++;
 		sessionAbort?.abort();
 		sessionAbort = undefined;
 		signaling?.close();
 		signaling = undefined;
 	}
-	function resetDiscovery() {
-		clearInterval(discoverTimer);
-		discoverTimer = undefined;
-		searching = false;
-		discovering = false;
-		devices = [];
-		recipient = undefined;
+	function resetLink() {
+		clearTimeout(linkTimer);
+		shareLink = '';
+		linkExpiresAt = undefined;
+		creatingLink = false;
 	}
 	function disconnect(state: 'idle' | 'offline' = 'idle') {
 		closeSignaling();
 		cleanupTransfer();
-		resetDiscovery();
+		resetLink();
 		session = undefined;
 		connection = state;
 	}
@@ -187,7 +167,7 @@
 		error = '';
 		notice = '';
 		connection = 'connecting';
-		searching = true;
+		creatingLink = !incomingToken;
 		sessionAbort = new AbortController();
 	}
 	function activeGeneration(current: number) {
@@ -212,7 +192,9 @@
 	}
 	function connectionClosed(current: number) {
 		if (activeGeneration(current)) {
-			fail(new Error('接続が切れました。再接続して相手を探してください。'));
+			fail(
+				new Error('接続が切れました。新しい共有リンクで再試行してください。')
+			);
 		}
 	}
 	function checkBrowser() {
@@ -253,111 +235,85 @@
 		await attemptConnection(generation);
 	}
 
-	function scrollDiscovery() {
-		const reduced = window.matchMedia(
-			'(prefers-reduced-motion: reduce)'
-		).matches;
-		discoverySection?.scrollIntoView({
-			block: 'center',
-			behavior: reduced ? 'instant' : 'smooth'
-		});
-	}
-	async function centerDiscovery(current: number) {
-		await tick();
-		if (current === discoveryGeneration && (searching || discovering)) {
-			scrollDiscovery();
-		}
-	}
-
-	async function searchAndCenter() {
-		const pending = search();
-		const current = discoveryGeneration;
-		await centerDiscovery(current);
-		await pending;
-		await centerDiscovery(current);
-	}
-	async function startDiscovery() {
-		if (disposed || connection === 'connecting') {
+	async function createLink() {
+		if (creatingLink || selecting || !metadata.length || request || shareLink) {
 			return;
 		}
 		flowStarted = true;
-		await (connection !== 'online' ? connect() : searchAndCenter());
+		creatingLink = true;
+		await connect();
+		creatingLink = connection === 'connecting';
 	}
 
-	type SearchVersion = { current: number; discovery: number };
-	function currentSearch(version: SearchVersion) {
-		return (
-			version.current === generation &&
-			version.discovery === discoveryGeneration
-		);
-	}
-	function locationNotice(accuracy: number) {
-		return accuracy > 500
-			? '位置情報の誤差が大きいため、広めの範囲から候補を表示しています。'
-			: '近くの端末を探しています。相手も「近くの人を探す」を押してください。';
-	}
-	function refreshDiscovery() {
-		void search();
-	}
-	function publishLocation(location: Awaited<ReturnType<typeof locate>>) {
-		send({ type: 'presence', location });
-		discovering = true;
-		locationMessage = locationNotice(location.accuracy);
-		if (!discoverTimer) {
-			discoverTimer = setInterval(refreshDiscovery, 30_000);
-		}
-	}
-
-	async function findLocation(version: SearchVersion) {
-		const location = await locate();
-		if (disposed || !currentSearch(version) || connection !== 'online') {
+	async function joinLink() {
+		if (connection === 'connecting' || request || !incomingToken) {
 			return;
 		}
-		publishLocation(location);
-	}
-	function endFailedSearch(e: unknown) {
-		if (request) {
-			fail(e);
-		} else {
-			disconnect();
-		}
-	}
-	function searchFailed(e: unknown, version: SearchVersion) {
-		if (!currentSearch(version)) {
-			return;
-		}
-		locationMessage =
-			e instanceof Error ? e.message : '位置情報を取得できません。';
-		endFailedSearch(e);
+		flowStarted = true;
+		await connect();
 	}
 
-	function finishSearch(version: SearchVersion) {
-		if (currentSearch(version)) {
-			searching = false;
-		}
-	}
-	async function runSearch(version: SearchVersion) {
-		try {
-			await findLocation(version);
-		} catch (e) {
-			searchFailed(e, version);
-		} finally {
-			finishSearch(version);
-		}
-	}
-
-	async function search() {
-		if (searching || request || requesting || connection !== 'online') {
-			return;
-		}
-		searching = true;
-		await runSearch({ current: generation, discovery: ++discoveryGeneration });
-	}
-	function stopDiscovery() {
+	function revokeLink() {
 		disconnect();
-		locationMessage =
-			'探索を停止しました。再開すると、近くの端末に表示されます。';
+		notice = '共有リンクを取り消しました。';
 	}
+
+	function linkExpired() {
+		disconnect();
+		error = '共有リンクの有効期限が切れました。新しく作成してください。';
+	}
+
+	function linkCreated(
+		message: Extract<ServerMessage, { type: 'link-created' }>
+	) {
+		clearTimeout(watchdog);
+		shareLink = `${window.location.origin}/#share=${message.token}`;
+		linkExpiresAt = message.expiresAt;
+		creatingLink = false;
+		scheduleLinkExpiry(message.expiresAt);
+	}
+
+	function scheduleLinkExpiry(expiresAt: number) {
+		clearTimeout(linkTimer);
+		linkTimer = setTimeout(linkExpired, Math.max(0, expiresAt - Date.now()));
+	}
+
+	async function shareInvitation() {
+		try {
+			await publishInvitation();
+		} catch (e) {
+			if (!(e instanceof Error && e.name === 'AbortError')) {
+				error = '共有できませんでした。リンクをコピーして送ってください。';
+			}
+		}
+	}
+
+	async function publishInvitation() {
+		if (navigator.share) {
+			await navigator.share(invitationData());
+		} else {
+			await copyInvitation();
+		}
+	}
+
+	function invitationData() {
+		return {
+			title: 'Pico Drop',
+			text: '写真の共有リンク（10分間有効）',
+			url: shareLink
+		};
+	}
+
+	async function copyInvitation() {
+		try {
+			await navigator.clipboard.writeText(shareLink);
+			notice = 'リンクをコピーしました。LINEなどで相手に送ってください。';
+		} catch {
+			error =
+				'コピーできませんでした。表示されたリンクを選択してコピーしてください。';
+		}
+	}
+
 	async function describeSelection(files: File[]) {
 		const result = await describePhotos(files);
 		selected = files;
@@ -378,43 +334,15 @@
 		}
 	}
 	async function select(event: Event) {
+		if (shareLink || creatingLink || request) {
+			return;
+		}
 		const files = Array.from((event.target as HTMLInputElement).files ?? []);
 		selecting = true;
 		error = '';
 		await selectFiles(files);
 	}
 
-	function canInvite(device: Device) {
-		const busy = selecting || request || requesting || received.length;
-		return (
-			metadata.length &&
-			!busy &&
-			connection === 'online' &&
-			devices.some((nearby) => nearby.id === device.id)
-		);
-	}
-	function requestTimedOut() {
-		requesting = false;
-		error = '応答がありません。再接続してください。';
-	}
-	function sendInvitation(device: Device) {
-		try {
-			send({ type: 'request', to: device.id, files: metadata });
-			requestTimer = setTimeout(requestTimedOut, 10_000);
-		} catch (e) {
-			fail(e);
-		}
-	}
-	function invite(device: Device) {
-		if (!canInvite(device)) {
-			return;
-		}
-		error = '';
-		notice = '';
-		requesting = true;
-		discard();
-		sendInvitation(device);
-	}
 	function finishAction(type: 'accept' | 'reject' | 'cancel') {
 		if (type === 'accept') {
 			phase = 'connecting';
@@ -441,16 +369,29 @@
 
 	function ready() {
 		connection = 'online';
-		searching = false;
-		void startDiscovery();
+		startControlTimer();
+		if (incomingToken) {
+			send({ type: 'join-link', token: incomingToken });
+		} else {
+			send({ type: 'create-link', files: metadata });
+		}
 	}
+	function startControlTimer() {
+		watchdog = setTimeout(controlTimedOut, 10_000);
+	}
+	function controlTimedOut() {
+		fail(
+			new Error('共有リンクの準備がタイムアウトしました。再試行してください。')
+		);
+	}
+
 	function serverError(message: string) {
-		requesting = false;
-		clearTimeout(requestTimer);
+		resetLink();
 		if (request) {
 			fail(new Error(message));
 		} else {
 			error = message;
+			disconnect('offline');
 		}
 	}
 	function declineWhileUnsaved(message: RequestInfo) {
@@ -462,8 +403,8 @@
 		return true;
 	}
 	function resetRequest(message: RequestInfo) {
-		clearTimeout(requestTimer);
-		requesting = false;
+		clearTimeout(watchdog);
+		resetLink();
 		discard();
 		request = message;
 		bytes = 0;
@@ -555,13 +496,23 @@
 		if (message.type === 'ready') {
 			return ready();
 		}
-		if (message.type === 'nearby') {
-			devices = message.devices;
-			return;
+		if (message.type === 'link-created') {
+			return linkCreated(message);
+		}
+		return handleLinkMessage(message);
+	}
+	async function handleLinkMessage(
+		message: Exclude<ServerMessage, { type: 'ready' | 'link-created' }>
+	) {
+		if (message.type === 'link-ended') {
+			return shareLink ? linkExpired() : resetLink();
 		}
 		return handleRequestMessage(message);
 	}
-	type RequestMessage = Exclude<ServerMessage, { type: 'ready' | 'nearby' }>;
+	type RequestMessage = Exclude<
+		ServerMessage,
+		{ type: 'ready' | 'link-created' | 'link-ended' }
+	>;
 	async function handleRequestMessage(message: RequestMessage) {
 		if (message.type === 'error') {
 			return serverError(message.message);
@@ -884,12 +835,34 @@
 	}
 	function unmount() {
 		leave();
+		window.removeEventListener('hashchange', readInvitation);
 		window.removeEventListener('pagehide', leave);
 		window.removeEventListener('pageshow', resume);
 		window.removeEventListener('focus', checkPhotoExpiry);
 		window.removeEventListener('visibilitychange', checkPhotoExpiry);
 	}
+	function readInvitation() {
+		const params = new URLSearchParams(window.location.hash.slice(1));
+		const token = params.get('share');
+		incomingToken = '';
+		if (token !== null) {
+			applyInvitation(token);
+		}
+	}
+
+	function applyInvitation(token: string) {
+		if (/^[a-f0-9]{64}$/.test(token)) {
+			incomingToken = token;
+			flowStarted = true;
+		} else {
+			error =
+				'共有リンクが正しくありません。送信者に作り直してもらってください。';
+		}
+	}
+
 	onMount(() => {
+		readInvitation();
+		window.addEventListener('hashchange', readInvitation);
 		window.addEventListener('pagehide', leave);
 		window.addEventListener('pageshow', resume);
 		window.addEventListener('focus', checkPhotoExpiry);
@@ -902,17 +875,9 @@
 	bind:flowStarted
 	bind:session
 	bind:connection
-	bind:devices
-	bind:recipient
-	bind:photosHeading
-	bind:discoverySection
-	bind:discovering
-	bind:searching
-	bind:locationMessage
 	bind:selected
 	bind:metadata
 	bind:selecting
-	bind:requesting
 	bind:request
 	bind:phase
 	bind:bytes
@@ -925,12 +890,17 @@
 	bind:input
 	bind:transferSection
 	bind:receivedSection
-	connect={startDiscovery}
-	{startDiscovery}
-	{stopDiscovery}
-	{chooseRecipient}
+	connect={incomingToken ? joinLink : createLink}
+	{incomingToken}
+	{shareLink}
+	{linkExpiresAt}
+	{creatingLink}
+	{createLink}
+	{joinLink}
+	{revokeLink}
+	{shareInvitation}
+	{copyInvitation}
 	{select}
-	{invite}
 	{action}
 	{save}
 	{discard}
