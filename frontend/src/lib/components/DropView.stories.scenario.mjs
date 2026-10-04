@@ -47,7 +47,7 @@ try {
 	await page.locator('.transfer').waitFor();
 	assert.equal(
 		await page
-			.getByRole('heading', { name: 'Photos, Just a Link Away.' })
+			.getByRole('heading', { name: 'リンクで、写真を届ける。' })
 			.count(),
 		0
 	);

@@ -42,7 +42,7 @@
 			</p>
 			<p class="detail">
 				{connecting
-					? '相手の端末とつないでいます'
+					? '相手の端末に接続しています'
 					: verifying
 						? 'すべてのデータが届いたか確認しています'
 						: sending

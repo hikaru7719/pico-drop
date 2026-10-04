@@ -71,7 +71,7 @@ type TransferMessage = Extract<ClientMessage, { id: string }>;
 const SESSION_LIMIT = '接続回数が多すぎます。1分後に再試行してください。';
 const REQUEST_LIMIT = '送信要求が多すぎます。1分後に再試行してください。';
 const LINK_UNAVAILABLE =
-	'共有リンクが期限切れ、使用済み、または送信者が不在です。';
+	'この共有リンクは使えません。有効期限が切れたか、すでに使われたか、送信者が画面を閉じた可能性があります。送信者に新しいリンクを作ってもらってください。';
 type ShareLink = { owner: string; files: PhotoMeta[]; expiresAt: number };
 const TURN_LIMIT = '接続設定の取得上限です。再接続してください。';
 const TURN_FAILED = '中継サーバーの準備に失敗しました。再試行してください。';

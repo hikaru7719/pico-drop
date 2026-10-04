@@ -3,7 +3,7 @@ type Candidate = Extract<Signal, { candidate: unknown }>['candidate'];
 const CONNECT_FAILED =
 	'接続できませんでした。回線を確認して再試行してください。';
 const CONNECT_TIMEOUT =
-	'接続がタイムアウトしました。中継設定または回線を確認してください。';
+	'相手に接続できませんでした。インターネット接続を確認して、もう一度お試しください。';
 export class PhotoPeer {
 	private pc: RTCPeerConnection;
 	private candidates: RTCIceCandidateInit[] = [];

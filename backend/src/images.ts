@@ -19,9 +19,11 @@ const error = (message: string, status: number) =>
 const tokenOf = (request: Request) =>
 	request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
 const EXPIRED = '変換の期限が切れました。';
-const FAILED = '変換できませんでした。原本はそのまま保存できます。';
-const TOO_LARGE = '変換できる写真は1枚20MiBまでです。原本を保存してください。';
-const DENIED = '変換の期限切れ、権限がない、または試行上限です。';
+const FAILED = '変換できませんでした。元の写真はそのまま保存できます。';
+const TOO_LARGE =
+	'変換できる写真は1枚20MiBまでです。元の写真を保存してください。';
+const DENIED =
+	'この写真は変換できません。変換の有効期限が切れたか、許可されていない操作か、試行回数の上限に達した可能性があります。元の写真を保存してください。';
 type Conversion = {
 	request: Request;
 	images: ImagesBinding;

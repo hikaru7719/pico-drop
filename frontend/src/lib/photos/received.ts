@@ -21,9 +21,9 @@ type Callbacks = {
 	changed: (photos: ReceivedPhoto[]) => void;
 	expired: () => void;
 };
-const FAILED = '変換できませんでした。原本は保存できます。';
-const TOO_LARGE = '変換は1枚20MiBまでです。原本を保存してください。';
-const NO_ACCESS = '変換権限がありません。原本を保存してください。';
+const FAILED = '変換できませんでした。元の写真は保存できます。';
+const TOO_LARGE = '変換は1枚20MiBまでです。元の写真を保存してください。';
+const NO_ACCESS = 'この写真を変換できません。元の写真を保存してください。';
 const authorization = (token: string) => ({ Authorization: `Bearer ${token}` });
 export function releasePhoto(photo: ReceivedPhoto) {
 	for (const url of [photo.url, photo.previewUrl, photo.jpegUrl]) {

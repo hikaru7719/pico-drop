@@ -112,7 +112,8 @@ export const Sent: Story = {
 	name: '14 送信完了',
 	args: {
 		completed: true,
-		notice: '相手の端末で、すべての写真の受信とデータ一致を確認しました。'
+		notice:
+			'すべての写真が相手の端末に届きました。元の写真と同じデータであることも確認できました。'
 	}
 };
 export const Received: Story = {

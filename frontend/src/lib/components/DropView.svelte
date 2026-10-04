@@ -97,7 +97,7 @@
 			flowStarted = true;
 		}
 	});
-	const headline = 'Photos, Just a Link Away.';
+	const headline = 'リンクで、写真を届ける。';
 	const typingInterval = 180;
 	const headlineCycle = 250 + (headline.length - 1) * typingInterval + 3000;
 	let headlineReplay = $state(0);
@@ -125,10 +125,12 @@
 		}
 	});
 
-	const headlineWords = headline.split(' ').map((word, index, words) => ({
-		word,
-		offset: words.slice(0, index).join(' ').length + (index ? 1 : 0)
-	}));
+	const headlineWords = headline
+		.match(/[^、。]+[、。]?/g)!
+		.map((word, index, words) => ({
+			word,
+			offset: words.slice(0, index).join('').length
+		}));
 
 	const sending = $derived(!!request && request.from.id === session?.id);
 	const total = $derived(
@@ -138,10 +140,10 @@
 </script>
 
 <svelte:head>
-	<title>Pico Drop — Share photos with a link.</title>
+	<title>Pico Drop — リンクで写真を共有</title>
 	<meta
 		name="description"
-		content="リンクで、写真をさっと。アプリもログインも不要で写真を共有。"
+		content="リンクひとつで写真を共有。アプリのインストールもログインも不要です。"
 	/>
 </svelte:head>
 
@@ -186,7 +188,7 @@
 			<section class="intro">
 				<h1 aria-label={headline}>
 					{#key headlineReplay}
-						{#each headlineWords as { word, offset }, wordIndex}<span
+						{#each headlineWords as { word, offset }}<span
 								class="headline-word"
 								aria-hidden="true"
 								>{#each [...word] as character, index}<span
@@ -196,7 +198,7 @@
 										style={`--type-delay: ${250 + (offset + index) * typingInterval}ms; --caret-duration: ${index === word.length - 1 && offset + index < headline.length - 1 ? typingInterval * 2 : typingInterval}ms`}
 										>{character}</span
 									>{/each}</span
-							>{wordIndex < headlineWords.length - 1 ? ' ' : ''}{/each}
+							>{/each}
 					{/key}
 				</h1>
 				<p>写真を選んで、リンクで共有。<br />ログインは不要です。</p>
@@ -225,14 +227,14 @@
 				<section class="card">
 					<h2>共有リンクから写真を受け取る</h2>
 					<p class="description">
-						送信者がこのページを開いている間に参加してください。送信元・枚数を確認してから受信できます。
+						送信者がこの画面を開いている間に接続してください。相手の名前と写真の枚数を確認してから、受け取るかどうかを選べます。
 					</p>
 					<button
 						class="primary"
 						disabled={connection === 'connecting' || connection === 'online'}
 						onclick={joinLink}
 						>{connection === 'idle' || connection === 'offline'
-							? '共有に参加する'
+							? '送信者に接続する'
 							: '送信者に接続中…'}</button
 					>
 					<p class="hint">
@@ -241,9 +243,9 @@
 				</section>
 			{:else if shareLink}
 				<section class="card">
-					<h2>リンクを共有して待つ</h2>
+					<h2>相手にリンクを送る</h2>
 					<p class="description">
-						LINEなどで相手1人に送ってください。相手が受信するまで、この画面を開いたままにしてください。
+						このリンクをLINEなどで1人に送ってください。写真の送信が完了するまで、この画面を開いたままにしてください。
 					</p>
 					<label
 						>共有リンク<input
@@ -255,15 +257,15 @@
 						/></label
 					>
 					<p class="hint">
-						参加期限：{linkExpiresAt
+						リンクの有効期限：{linkExpiresAt
 							? new Date(linkExpiresAt).toLocaleTimeString('ja-JP')
-							: ''}（作成から10分）。参加後は再利用できません。
+							: ''}（作成から10分）。相手が接続すると、このリンクは使えなくなります。
 					</p>
 					<div class="actions">
 						<button
 							class="primary"
 							onclick={shareInvitation}>LINEなどで共有する</button
-						><button onclick={copyInvitation}>リンクをコピー</button>
+						><button onclick={copyInvitation}>リンクをコピーする</button>
 					</div>
 					<button
 						class="text-button"
@@ -303,11 +305,11 @@
 							>{selecting
 								? '写真を確認中…'
 								: selected.length
-									? `${selected.length}枚の写真を選択中`
+									? `${selected.length}枚の写真を選びました`
 									: '写真を選ぶ'}</strong
 						><span
 							>{selected.length
-								? `${formatBytes(selectedBytes)} · タップして選び直す`
+								? `${formatBytes(selectedBytes)} · 押して選び直す`
 								: '10枚まで・合計50MBまで'}</span
 						><input
 							bind:this={input}
@@ -367,10 +369,10 @@
 						}}
 						>{creatingLink || connection === 'connecting'
 							? 'リンクを作成中…'
-							: '共有リンクを作成'}</button
+							: '共有リンクを作成する'}</button
 					>
 					<p class="hint">
-						リンクは10分間有効です。合言葉・ログイン・位置情報は不要です。リンクを持つ人が参加できます。
+						リンクは10分間有効です。ログインや位置情報の許可は不要です。リンクを知っている人なら接続できます。
 					</p>
 				</section>
 			{/if}
@@ -384,21 +386,21 @@
 		>
 			<h2 id="transfer-heading">
 				{sending
-					? `${request.to.name} へ送信`
-					: `${request.from.name} から写真が届いています`}
+					? `${request.to.name}に写真を送る`
+					: `${request.from.name}から写真を受け取る`}
 			</h2>
 			<p>{request.files.length}枚 · {formatBytes(total)}</p>
 			{#if phase === 'waiting'}
 				<p>
 					{sending
-						? '相手の承諾を待っています。写真はまだ送信していません。'
+						? '相手が「受け取る」を押すのを待っています。写真はまだ送信していません。'
 						: 'この相手から写真を受け取りますか？受け取ると転送が始まります。'}
 				</p>
 				{#if !sending}<div class="actions">
 						<button
 							class="primary"
 							onclick={() => action('accept')}>受け取る</button
-						><button onclick={() => action('reject')}>辞退する</button>
+						><button onclick={() => action('reject')}>受け取らない</button>
 					</div>{/if}
 			{:else}
 				<TransferProgress
@@ -409,7 +411,7 @@
 				/>
 				<p class="hint">完了するまで画面を開いたままにしてください。</p>
 				{#if relay === false}<p class="hint">
-						中継サーバーは未設定です。直接接続できない回線では転送に失敗することがあります。
+						現在の接続方法では、お使いのネットワークによって写真を送れない場合があります。
 					</p>{/if}
 			{/if}
 			{#if sending || phase !== 'waiting'}
@@ -428,14 +430,16 @@
 		>
 			<h2 id="received-heading">{received.length}枚の写真を受け取りました</h2>
 			<p class="description">
-				iPhoneでは共有シートから「画像を保存」を選んでください。受信完了から10分、またはページを閉じると写真は破棄されます。保存済みの写真は端末に残ります。次の転送の前に、保存を確認して写真を破棄してください。
+				「写真を保存・共有する」を押すと、保存先や共有先を選べます。iPhoneでは「画像を保存」を選んでください。受信が完了してから10分たつか、このページを閉じると、画面内の写真は削除されます。端末に保存した写真は残ります。次の写真を受け取る前に、保存できたことを確認して「画面内の写真を削除する」を押してください。
 			</p>
 			{#if photosExpireAt}<p class="hint">
-					保存期限：{new Date(photosExpireAt).toLocaleTimeString('ja-JP')}
+					この画面から保存できる期限：{new Date(
+						photosExpireAt
+					).toLocaleTimeString('ja-JP')}
 				</p>{/if}
 			{#if received.some((photo) => isHeic(photo.file.type))}
 				<p class="hint">
-					HEICのプレビュー・JPEG変換を押すと、その写真をCloudflareへ送って処理します。サーバーへの写真保存は行いません。JPEGは画質が変わり、撮影情報は引き継がれない場合があります。原本はそのまま保存できます。
+					HEIC形式の写真で「プレビューを表示する」や「JPEGに変換する」を押すと、その写真をCloudflareに送って処理します。写真はサーバーに保存しません。JPEGに変換すると、画質が変わったり、撮影情報が引き継がれなかったりする場合があります。元の写真もそのまま保存できます。
 				</p>
 			{/if}
 			<div class="gallery">
@@ -447,7 +451,9 @@
 									item.preview = false;
 								}}
 							/>{:else}<div class="no-preview">
-								プレビュー未表示<br /><small>原本は保存できます</small>
+								プレビューは表示されていません<br /><small
+									>元の写真は保存できます</small
+								>
 							</div>{/if}
 						<figcaption>
 							<a
@@ -457,13 +463,14 @@
 										event.preventDefault();
 									}
 								}}
-								download={item.file.name}>{item.file.name}（原本）</a
+								download={item.file.name}
+								>{item.file.name}（元の写真をダウンロード）</a
 							>
 							{#if isHeic(item.file.type)}
 								{#if !item.previewUrl}<button
 										disabled={item.busy}
 										onclick={() => convertPhoto(index, 'preview')}
-										>プレビューを表示</button
+										>プレビューを表示する</button
 									>{/if}
 								{#if !item.jpegUrl}<button
 										disabled={item.busy}
@@ -480,10 +487,10 @@
 											if (!checkPhotoExpiry()) {
 												event.preventDefault();
 											}
-										}}>JPEGをダウンロード</a
+										}}>JPEGをダウンロードする</a
 									>
 									<button onclick={() => shareJpeg(index)}
-										>JPEGを保存・共有</button
+										>JPEGを保存・共有する</button
 									>
 								{/if}
 							{/if}
@@ -494,8 +501,8 @@
 				<button
 					class="primary"
 					disabled={sharing}
-					onclick={save}>写真に保存・共有</button
-				><button onclick={discard}>写真を破棄する</button>
+					onclick={save}>写真を保存・共有する</button
+				><button onclick={discard}>画面内の写真を削除する</button>
 			</div>
 		</section>
 	{/if}

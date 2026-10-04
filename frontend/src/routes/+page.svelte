@@ -61,25 +61,26 @@
 	const TRANSFER_STOPPED =
 		'転送が止まりました。画面を開いたまま再試行してください。';
 	const CONFIRM_EXPIRED =
-		'確認の有効期限が切れました。もう一度送信してください。';
+		'受け取るかどうかを確認する時間が過ぎました。新しい共有リンクで送り直してください。';
 	const RECEIVED_NOTICE =
 		'写真を受け取りました。保存するには、下のボタンを押してください。';
 	const SENT_NOTICE =
-		'相手の端末で、すべての写真の受信とデータ一致を確認しました。';
+		'すべての写真が相手の端末に届きました。元の写真と同じデータであることも確認できました。';
 	const PREVIOUS_PHOTOS =
-		'前の写真が残っているため、新しい受信を辞退しました。保存後に写真を破棄すると、次の転送ができます。';
+		'前に受け取った写真がこの画面に残っているため、新しい写真は受け取りませんでした。保存できたことを確認して、画面内の写真を削除してください。';
+	const REJECTED_NOTICE = '写真の受け取りを断りました。';
 	const endMessages = {
-		rejected: '相手が受信を辞退しました。',
+		rejected: '相手が写真を受け取りませんでした。',
 		cancelled: '転送を中止しました。',
 		disconnected: '相手との接続が切れました。再試行してください。',
 		timeout: '有効期限が切れました。もう一度送信してください。'
 	};
 	const shareMessages = {
 		shared:
-			'共有シートの操作を終了しました。写真アプリに保存されたか確認してください。',
+			'保存・共有の画面を閉じました。写真を保存した場合は、写真アプリなどで確認してください。',
 		cancelled: '共有をキャンセルしました。写真はこの画面に残っています。',
 		unsupported:
-			'このブラウザは写真の共有に対応していません。各写真の「ダウンロード」を使ってください。'
+			'このブラウザでは写真を共有できません。写真のファイル名を押して、1枚ずつダウンロードしてください。'
 	};
 	function discard() {
 		photoCollection?.dispose();
@@ -199,7 +200,9 @@
 	}
 	function checkBrowser() {
 		if (!window.isSecureContext || !window.RTCPeerConnection) {
-			throw new Error('HTTPSとWebRTCに対応したブラウザで開いてください。');
+			throw new Error(
+				'このブラウザでは写真を転送できません。SafariやChromeで、https://から始まるリンクを開いてください。'
+			);
 		}
 	}
 	function openSignaling(next: Session, current: number) {
@@ -350,8 +353,7 @@
 		}
 		disconnect();
 		discard();
-		notice =
-			type === 'reject' ? '受信を辞退しました。' : '転送を中止しました。';
+		notice = type === 'reject' ? REJECTED_NOTICE : '転送を中止しました。';
 	}
 	function sendAction(type: 'accept' | 'reject' | 'cancel', id: string) {
 		try {
@@ -381,7 +383,9 @@
 	}
 	function controlTimedOut() {
 		fail(
-			new Error('共有リンクの準備がタイムアウトしました。再試行してください。')
+			new Error(
+				'共有リンクの準備に時間がかかっています。もう一度お試しください。'
+			)
 		);
 	}
 
@@ -783,7 +787,7 @@
 		completed = false;
 		photosExpireAt = undefined;
 		notice =
-			'受信から10分経過したため、写真を破棄しました。保存済みの写真は端末に残ります。';
+			'受信から10分たったため、画面内の写真を削除しました。端末に保存した写真は残っています。';
 	}
 	function retainPhotos(access?: PhotoAccess) {
 		photoCollection = new ReceivedPhotos(received, access, {

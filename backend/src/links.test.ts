@@ -120,7 +120,7 @@ async function checkJoin(app: Fixture, token: string) {
 	const t = app.sockets[1].last('requested');
 	expect(t).toEqual(app.sockets[0].last('requested'));
 	await app.message(2, { type: 'join-link', token });
-	expect(app.sockets[2].last('error').message).toMatch(/使用済み/);
+	expect(app.sockets[2].last('error').message).toMatch(/すでに使われた/);
 	await checkApproval(app, t.id);
 }
 async function checkApproval(app: Fixture, id: string) {
@@ -143,7 +143,7 @@ async function checkExpiry() {
 	const link = await app.link();
 	vi.setSystemTime(link.expiresAt);
 	await app.message(1, { type: 'join-link', token: link.token });
-	expect(app.sockets[1].last('error').message).toMatch(/期限切れ/);
+	expect(app.sockets[1].last('error').message).toMatch(/有効期限が切れた/);
 	expect(app.sockets[1].last('requested')).toBeUndefined();
 }
 for (const reason of ['revoke', 'disconnect', 'replace']) {
@@ -152,7 +152,7 @@ for (const reason of ['revoke', 'disconnect', 'replace']) {
 		const link = await app.link();
 		await invalidate(app, reason);
 		await app.message(1, { type: 'join-link', token: link.token });
-		expect(app.sockets[1].last('error').message).toMatch(/期限切れ/);
+		expect(app.sockets[1].last('error').message).toMatch(/有効期限が切れた/);
 	});
 }
 async function invalidate(app: Fixture, reason: string) {

@@ -40,7 +40,7 @@ async function openPage(context) {
 }
 async function createLink(page) {
 	await page
-		.getByRole('button', { name: '共有リンクを作成', exact: true })
+		.getByRole('button', { name: '共有リンクを作成する', exact: true })
 		.click();
 	const field = page.getByRole('textbox', { name: '共有リンク', exact: true });
 	await field.waitFor();
@@ -50,7 +50,7 @@ async function join(page, link) {
 	await page.goto(link);
 	const count = await peerCount(page);
 	await page
-		.getByRole('button', { name: '共有に参加する', exact: true })
+		.getByRole('button', { name: '送信者に接続する', exact: true })
 		.click();
 	await page.getByRole('button', { name: '受け取る', exact: true }).waitFor();
 	assert.equal(await peerCount(page), count);
@@ -63,20 +63,27 @@ async function noPeers(a, b) {
 	assert.equal(await a.evaluate(() => window.peerCount), 0);
 	assert.equal(await b.evaluate(() => window.peerCount), 0);
 }
+async function clickButton(page, name) {
+	await page.getByRole('button', { name, exact: true }).click();
+}
+
 async function revoked(a, b) {
 	const link = await createLink(a);
 	await a
 		.getByRole('button', { name: 'リンクを取り消す', exact: true })
 		.click();
 	await b.goto(link);
-	await b.getByRole('button', { name: '共有に参加する', exact: true }).click();
-	await b.getByRole('alert').filter({ hasText: '期限切れ' }).waitFor();
+	await clickButton(b, '送信者に接続する');
+	await b.getByRole('alert').filter({ hasText: '有効期限が切れた' }).waitFor();
 }
 async function rejected(a, b) {
 	await join(b, await createLink(a));
 	await noPeers(a, b);
-	await b.getByRole('button', { name: '辞退する', exact: true }).click();
-	await a.getByRole('alert').filter({ hasText: '辞退' }).waitFor();
+	await b.getByRole('button', { name: '受け取らない', exact: true }).click();
+	await a
+		.getByRole('alert')
+		.filter({ hasText: '受け取りませんでした' })
+		.waitFor();
 	await noPeers(a, b);
 }
 async function receive(a, b) {
@@ -91,7 +98,7 @@ async function transferComplete(a, b) {
 	await b
 		.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true })
 		.waitFor({ timeout: 60_000 });
-	await a.getByRole('status').filter({ hasText: 'データ一致' }).waitFor();
+	await a.getByRole('status').filter({ hasText: '同じデータ' }).waitFor();
 }
 async function browserHashes(links) {
 	async function hash(link) {
@@ -121,8 +128,10 @@ async function verifyLayout(b) {
 async function reuse(link) {
 	const c = await device();
 	await c.goto(link);
-	await c.getByRole('button', { name: '共有に参加する', exact: true }).click();
-	await c.getByRole('alert').filter({ hasText: '使用済み' }).waitFor();
+	await c
+		.getByRole('button', { name: '送信者に接続する', exact: true })
+		.click();
+	await c.getByRole('alert').filter({ hasText: 'すでに使われた' }).waitFor();
 }
 function unsupportedShare() {
 	Object.defineProperty(navigator, 'canShare', {
@@ -133,16 +142,16 @@ function unsupportedShare() {
 async function saveAndDiscard(b) {
 	await b.evaluate(unsupportedShare);
 	await b
-		.getByRole('button', { name: '写真に保存・共有', exact: true })
+		.getByRole('button', { name: '写真を保存・共有する', exact: true })
 		.click();
 	await shareFallback(b);
-	await b.getByRole('button', { name: '写真を破棄する', exact: true }).click();
+	await clickButton(b, '画面内の写真を削除する');
 	assert.equal(await b.locator('.gallery a').count(), 0);
 }
 async function shareFallback(b) {
 	await b
 		.getByRole('status')
-		.filter({ hasText: '共有に対応していません' })
+		.filter({ hasText: 'このブラウザでは写真を共有できません' })
 		.waitFor();
 	assert.equal(await b.locator('.gallery a').count(), 2);
 }
