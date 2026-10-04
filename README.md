@@ -130,3 +130,7 @@ http://127.0.0.1:5174 で閲覧できます。`mise run dev` はアプリ用で�
 Vitestのテストは対象ファイルの隣に `.test.ts` として配置します。testsディレクトリは設けません。`mise run test` でfrontend・backend・docs・sharedを検証し、`mise run //frontend:test`、`mise run //backend:test`、`mise run //docs:test`、`mise run test:shared` で個別実行できます。watchは `mise run test:watch`、起動済みアプリとStorybookのブラウザ検証は `mise run test:e2e` です。
 
 - [ADR-0002: Vitestのテストを対象ファイルの隣に配置する](docs/adr/0002-colocate-vitest-tests.md)
+
+## React Routerとの性能比較
+
+`benchmarks/react-router/` にReact RouterのSSR比較アプリ、`benchmarks/sveltekit/` に同じ機能のSvelteKit比較アプリを用意しています。`mise run bench` で本番ビルドをChromiumで計測できます。導入範囲・計測条件・限界は [比較手順](benchmarks/README.md)、測定結果は [性能比較レポート](benchmarks/report.md) を参照してください。

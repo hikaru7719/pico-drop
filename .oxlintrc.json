@@ -39,5 +39,13 @@
 	],
 	"options": {
 		"typeAware": true
-	}
+	},
+	"overrides": [
+		{
+			"files": ["benchmarks/run.mjs", "benchmarks/react-router/app/*.tsx"],
+			"rules": {
+				"eslint/max-lines-per-function": "off"
+			}
+		}
+	]
 }

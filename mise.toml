@@ -40,11 +40,11 @@ depends = ["//frontend:build", "//backend:build", "//docs:build"]
 
 [tasks.lint]
 description = "ソースとテストを型情報付きoxlintで検査する"
-run = "oxlint --type-aware --deny-warnings frontend backend shared docs vitest.config.ts vitest.e2e.config.ts"
+run = "oxlint --type-aware --deny-warnings frontend backend shared docs benchmarks vitest.config.ts vitest.e2e.config.ts"
 
 [tasks."lint:fix"]
 description = "oxlintの自動修正を適用する"
-run = "oxlint --type-aware --deny-warnings --fix frontend backend shared docs vitest.config.ts vitest.e2e.config.ts"
+run = "oxlint --type-aware --deny-warnings --fix frontend backend shared docs benchmarks vitest.config.ts vitest.e2e.config.ts"
 
 [tasks.format]
 description = "sharedを含むリポジトリ全体をoxfmtで整形する"
@@ -76,3 +76,16 @@ run = "pnpm exec vitest run --config vitest.e2e.config.ts"
 
 [tasks."test:shared"]
 run = "pnpm exec vitest run --project shared"
+
+[tasks."bench:build"]
+description = "React Router / SvelteKitの比較用SSRアプリをビルドする"
+run = "pnpm --filter '@pico-drop/bench-*' build"
+
+[tasks."bench:check"]
+description = "性能比較用アプリの型を検査する"
+run = "pnpm --filter '@pico-drop/bench-*' check"
+
+[tasks.bench]
+description = "本番SSRビルドをChromiumで比較する（結果はbenchmarks/results/latest.json）"
+depends = ["bench:build"]
+run = "node benchmarks/run.mjs"

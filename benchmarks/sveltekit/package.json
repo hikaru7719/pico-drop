@@ -1,0 +1,19 @@
+{
+	"name": "@pico-drop/bench-sveltekit",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "vite build",
+		"start": "node build/index.js",
+		"check": "svelte-kit sync && svelte-check --tsconfig tsconfig.json"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-node": "5.5.7",
+		"@sveltejs/kit": "2.70.3",
+		"@sveltejs/vite-plugin-svelte": "7.3.1",
+		"svelte": "5.57.1",
+		"svelte-check": "4.7.6",
+		"typescript": "6.0.3",
+		"vite": "8.3.1"
+	}
+}
