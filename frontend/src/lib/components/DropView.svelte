@@ -51,7 +51,7 @@
 	};
 	let {
 		accountControls,
-		senderAuthenticated = true,
+		senderAuthenticated = false,
 		incomingToken = '',
 		shareLink = '',
 		linkExpiresAt,
@@ -228,9 +228,12 @@
 					class="sharing-guide"
 					aria-label="写真を共有する流れ"
 				>
-					<span>写真を選ぶ</span><span aria-hidden="true">→</span><span
-						>QRを見せる</span
-					><span aria-hidden="true">→</span><span>相手が受け取る</span>
+					<span>{senderAuthenticated ? '写真を選ぶ' : 'ログイン・登録'}</span
+					><span aria-hidden="true">→</span><span
+						>{senderAuthenticated ? 'QRを見せる' : '写真を選ぶ'}</span
+					><span aria-hidden="true">→</span><span
+						>{senderAuthenticated ? '相手が受け取る' : 'QRで渡す'}</span
+					>
 				</div>
 			</section>
 		</div>
@@ -306,111 +309,117 @@
 			{:else}
 				<section
 					class="card photos"
-					aria-labelledby="photos-heading"
+					aria-labelledby={senderAuthenticated ? 'photos-heading' : undefined}
+					aria-label={senderAuthenticated
+						? undefined
+						: '写真を送るためのログイン・新規登録'}
 				>
 					{@render accountControls?.()}
-					<h2 id="photos-heading">写真を選んで共有する</h2>
-					<p class="section-description">
-						渡したい写真を、この端末から選んでください。
-					</p>
-					<label
-						class:disabled={!!request || selecting || creatingLink}
-						class:has-selection={selected.length > 0}
-						class="picker"
-						><span
-							class="photo-icon"
-							aria-hidden="true"
-							><svg
-								viewBox="0 0 48 48"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="1.8"
-								><rect
-									x="7"
-									y="9"
-									width="34"
-									height="30"
-									rx="5"
-								/><circle
-									cx="17"
-									cy="19"
-									r="3"
-								/><path d="m8 33 10-9 8 7 6-6 9 9" /></svg
-							></span
-						><strong
-							>{selecting
-								? '写真を確認中…'
-								: selected.length
-									? `${selected.length}枚の写真を選びました`
-									: '写真を選ぶ'}</strong
-						><span
-							>{selected.length
-								? `${formatBytes(selectedBytes)} · 押して選び直す`
-								: '10枚まで・合計50MBまで'}</span
-						><input
-							bind:this={input}
-							type="file"
-							accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-							multiple
-							disabled={!!request || selecting || creatingLink}
-							onchange={select}
-						/></label
-					>
-					{#if selected.length}
-						<div class="selection-heading">
-							<span>選択した写真 · {selected.length}枚</span>
-						</div>
-						<ul class="file-list">
-							{#each selected as file, index}<li>
-									<span>{file.name}</span><small>{formatBytes(file.size)}</small
-									>
-									<button
-										class="clear-selection"
-										aria-label={`${file.name}を選択から外す`}
-										title="この写真を選択から外す"
-										disabled={!!request || selecting || creatingLink}
-										onclick={() => {
-											selected = selected.filter(
-												(_, fileIndex) => fileIndex !== index
-											);
-											metadata = metadata.filter(
-												(_, fileIndex) => fileIndex !== index
-											);
-											if (input) input.value = '';
-										}}
-										><svg
-											viewBox="0 0 20 20"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="1.5"
-											stroke-linecap="round"
-											aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8" /></svg
-										></button
-									>
-								</li>{/each}
-						</ul>
+					{#if senderAuthenticated}
+						<h2 id="photos-heading">写真を選んで共有する</h2>
+						<p class="section-description">
+							渡したい写真を、この端末から選んでください。
+						</p>
+						<label
+							class:disabled={!!request || selecting || creatingLink}
+							class:has-selection={selected.length > 0}
+							class="picker"
+							><span
+								class="photo-icon"
+								aria-hidden="true"
+								><svg
+									viewBox="0 0 48 48"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.8"
+									><rect
+										x="7"
+										y="9"
+										width="34"
+										height="30"
+										rx="5"
+									/><circle
+										cx="17"
+										cy="19"
+										r="3"
+									/><path d="m8 33 10-9 8 7 6-6 9 9" /></svg
+								></span
+							><strong
+								>{selecting
+									? '写真を確認中…'
+									: selected.length
+										? `${selected.length}枚の写真を選びました`
+										: '写真を選ぶ'}</strong
+							><span
+								>{selected.length
+									? `${formatBytes(selectedBytes)} · 押して選び直す`
+									: '10枚まで・合計50MBまで'}</span
+							><input
+								bind:this={input}
+								type="file"
+								accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+								multiple
+								disabled={!!request || selecting || creatingLink}
+								onchange={select}
+							/></label
+						>
+						{#if selected.length}
+							<div class="selection-heading">
+								<span>選択した写真 · {selected.length}枚</span>
+							</div>
+							<ul class="file-list">
+								{#each selected as file, index}<li>
+										<span>{file.name}</span><small
+											>{formatBytes(file.size)}</small
+										>
+										<button
+											class="clear-selection"
+											aria-label={`${file.name}を選択から外す`}
+											title="この写真を選択から外す"
+											disabled={!!request || selecting || creatingLink}
+											onclick={() => {
+												selected = selected.filter(
+													(_, fileIndex) => fileIndex !== index
+												);
+												metadata = metadata.filter(
+													(_, fileIndex) => fileIndex !== index
+												);
+												if (input) input.value = '';
+											}}
+											><svg
+												viewBox="0 0 20 20"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+												stroke-linecap="round"
+												aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8" /></svg
+											></button
+										>
+									</li>{/each}
+							</ul>
+						{/if}
+						<p class="hint">
+							元の画質で送ります。写真に含まれる撮影場所などの情報も、そのまま相手に渡ります。
+						</p>
+						<button
+							class="primary send-button"
+							disabled={!senderAuthenticated ||
+								!metadata.length ||
+								selecting ||
+								creatingLink ||
+								connection === 'connecting'}
+							onclick={() => {
+								flowStarted = true;
+								createLink();
+							}}
+							>{creatingLink || connection === 'connecting'
+								? 'QRを準備中…'
+								: '写真を渡す'}</button
+						>
+						<p class="hint sharing-note">
+							QRは10分間・1人だけ有効です。受け取る人のログインや位置情報の許可は不要です。
+						</p>
 					{/if}
-					<p class="hint">
-						元の画質で送ります。写真に含まれる撮影場所などの情報も、そのまま相手に渡ります。
-					</p>
-					<button
-						class="primary send-button"
-						disabled={!senderAuthenticated ||
-							!metadata.length ||
-							selecting ||
-							creatingLink ||
-							connection === 'connecting'}
-						onclick={() => {
-							flowStarted = true;
-							createLink();
-						}}
-						>{creatingLink || connection === 'connecting'
-							? 'QRを準備中…'
-							: '写真を渡す'}</button
-					>
-					<p class="hint sharing-note">
-						QRは10分間・1人だけ有効です。受け取る人のログインや位置情報の許可は不要です。
-					</p>
 				</section>
 			{/if}
 		</div>

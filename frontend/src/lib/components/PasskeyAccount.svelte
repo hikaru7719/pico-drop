@@ -79,8 +79,11 @@
 			onclick={() => run(logout)}>ログアウト</button
 		>
 	{:else}
-		<h2>パスキーで続ける</h2>
-		<p>写真を送るにはログインが必要です。受け取る人の登録は不要です。</p>
+		<h2>写真を送る準備をしましょう</h2>
+		<p>
+			ログインまたは新規登録すると、送る写真を選べます。受け取る人の登録は不要です。
+		</p>
+		<h3>アカウントをお持ちの方</h3>
 		<button
 			class="login"
 			disabled={pending || !supported}
@@ -92,6 +95,7 @@
 				void run(register);
 			}}
 		>
+			<h3>初めての方は新規登録</h3>
 			<label
 				>初めての方は表示名を入力<input
 					bind:value={name}
@@ -119,12 +123,12 @@
 
 <style>
 	.account {
-		margin: 0 0 28px;
-		padding: 0 0 28px;
-		border-bottom: 1px solid #e5e5e7;
+		margin: 0;
+		padding: 0;
 		color: #1d1d1f;
 	}
 	.account.authenticated {
+		border-bottom: 1px solid #e5e5e7;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -135,6 +139,14 @@
 	h2 {
 		font-size: 18px;
 		line-height: 1.5;
+		margin: 0;
+	}
+	h3 {
+		font-size: 13px;
+		font-weight: 600;
+		margin: 24px 0 12px;
+	}
+	form h3 {
 		margin: 0;
 	}
 	p {
@@ -155,6 +167,8 @@
 	}
 	form {
 		margin-top: 24px;
+		padding-top: 24px;
+		border-top: 1px solid #e5e5e7;
 	}
 	button,
 	input {

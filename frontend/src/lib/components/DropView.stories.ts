@@ -28,6 +28,7 @@ const meta = {
 	component: DropView,
 	parameters: { layout: 'fullscreen' },
 	args: {
+		senderAuthenticated: true,
 		connection: 'online',
 		session: me,
 		connect: fn(),
@@ -64,7 +65,11 @@ export const LinkReady: Story = {
 };
 export const JoinLink: Story = {
 	name: '05 共有内容を確認中',
-	args: { incomingToken: 'a'.repeat(64), connection: 'connecting' }
+	args: {
+		senderAuthenticated: false,
+		incomingToken: 'a'.repeat(64),
+		connection: 'connecting'
+	}
 };
 export const ChoosePhotos: Story = {
 	name: '06 写真を選ぶ',
@@ -88,6 +93,7 @@ export const SendingRequest: Story = {
 export const IncomingRequest: Story = {
 	name: '10 受信の承諾',
 	args: {
+		senderAuthenticated: false,
 		request: {
 			...request,
 			from: friend,

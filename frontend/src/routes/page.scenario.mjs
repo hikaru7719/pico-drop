@@ -80,7 +80,16 @@ async function join(page, link) {
 	await page.goto(link);
 	const count = await peerCount(page);
 	await page.getByRole('button', { name: '受け取る', exact: true }).waitFor();
+	await assertAnonymousReceiver(page);
 	assert.equal(await peerCount(page), count);
+}
+async function assertAnonymousReceiver(page) {
+	const login = page.getByRole('region', {
+		name: '送信者のログイン',
+		exact: true
+	});
+	assert.equal(await login.count(), 0);
+	assert.equal(await page.locator('input[type=file]').count(), 0);
 }
 async function peerCount(page) {
 	return page.evaluate(() => window.peerCount);
@@ -218,7 +227,7 @@ async function finish(a, b) {
 try {
 	await scenario();
 	console.log(
-		'PASS: passkey registration/logout/login, anonymous send disabled, short-lived links, revoke, reject, single use, no RTC before approval, multi-photo RTC, SHA-256 match, mobile layout, save fallback, discard, disconnect without location permission'
+		'PASS: passkey registration/logout/login, authentication-first sender flow, short-lived links, revoke, reject, single use, no RTC before approval, multi-photo RTC, SHA-256 match, mobile layout, save fallback, discard, disconnect without location permission'
 	);
 } finally {
 	for (const context of contexts) {
@@ -233,6 +242,7 @@ async function verifyPasskeyLogin(page) {
 	await clickButton(page, 'パスキーを作成してはじめる');
 	await loggedIn(page);
 	await clickButton(page, 'ログアウト');
+	await assertAuthScreen(page);
 	await clickButton(page, 'パスキーでログイン');
 	await loggedIn(page);
 }
@@ -244,11 +254,21 @@ async function loggedIn(page) {
 		.waitFor();
 }
 
+async function assertAuthScreen(page) {
+	await page.getByRole('heading', { name: '初めての方は新規登録' }).waitFor();
+	assert.equal(await page.locator('input[type=file]').count(), 0);
+	assert.equal(
+		await page.getByRole('button', { name: '写真を渡す', exact: true }).count(),
+		0
+	);
+}
+
 async function prepareSender(page) {
-	const photo = await selectPhotos(page);
-	const send = page.getByRole('button', { name: '写真を渡す', exact: true });
-	assert.equal(await send.isDisabled(), true);
+	await assertAuthScreen(page);
 	await verifyPasskeyLogin(page);
+	await page.reload();
+	await loggedIn(page);
+	const photo = await selectPhotos(page);
 	await page.screenshot({ path: '/tmp/pico-drop-auth.png', fullPage: true });
 	return photo;
 }
