@@ -108,11 +108,11 @@
 		font-size: 13px;
 	}
 	small {
-		font-size: 10px;
+		font-size: 13px;
 	}
 	figcaption {
 		padding: 12px;
-		font-size: 12px;
+		font-size: 14px;
 		line-height: 1.6;
 		overflow-wrap: anywhere;
 	}
@@ -130,12 +130,12 @@
 		font-weight: 600;
 	}
 	.original span {
-		font-size: 11px;
+		font-size: 13px;
 	}
 	.metadata,
 	.hint {
 		color: #6c7064;
-		font-size: 11px;
+		font-size: 13px;
 	}
 	.metadata {
 		margin: 8px 0 0;
@@ -162,7 +162,7 @@
 		border-radius: 6px;
 		background: transparent;
 		color: #a23d24;
-		font-size: 12px;
+		font-size: 14px;
 	}
 	button:not(:disabled):hover {
 		background: #ece8dc;

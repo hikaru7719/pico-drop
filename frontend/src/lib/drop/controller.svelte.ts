@@ -32,6 +32,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 	let session = $state<Session>();
 	let connection = $state<'idle' | 'connecting' | 'online' | 'offline'>('idle');
 	let incomingToken = $state('');
+	let invitationUsed = $state(false);
 	let shareLink = $state('');
 	let linkExpiresAt = $state<number>();
 	let creatingLink = $state(false);
@@ -59,7 +60,6 @@ export function createDropController(view: ViewCallbacks = {}) {
 	let generation = 0;
 	let signalQueue = Promise.resolve();
 	let disposed = false;
-	const sending = $derived(!!request && request.from.id === session?.id);
 	const total = $derived(
 		request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0
 	);
@@ -68,10 +68,6 @@ export function createDropController(view: ViewCallbacks = {}) {
 		'転送が止まりました。画面を開いたまま再試行してください。';
 	const CONFIRM_EXPIRED =
 		'受け取るかどうかを確認する時間が過ぎました。新しい共有リンクで送り直してください。';
-	const RECEIVED_NOTICE =
-		'写真を受け取りました。保存するには、下のボタンを押してください。';
-	const SENT_NOTICE =
-		'すべての写真が相手の端末に届きました。元の写真と同じデータであることも確認できました。';
 	const PREVIOUS_PHOTOS =
 		'前に受け取った写真がこの画面に残っているため、新しい写真は受け取りませんでした。保存できたことを確認して、画面内の写真を削除してください。';
 	const REJECTED_NOTICE = '写真の受け取りを断りました。';
@@ -88,7 +84,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 		unsupported:
 			'このブラウザでは写真を共有できません。写真のファイル名を押して、1枚ずつダウンロードしてください。'
 	};
-	function discard() {
+	function clearReceived() {
 		photoCollection?.dispose();
 		photoCollection = undefined;
 		photosExpireAt = undefined;
@@ -98,6 +94,27 @@ export function createDropController(view: ViewCallbacks = {}) {
 		received = [];
 		completed = false;
 	}
+	function discard() {
+		clearReceived();
+		error = '';
+		notice = '画面内の写真を削除しました。端末に保存した写真は残っています。';
+	}
+	function restartSharing(keepPhotos: boolean) {
+		completed = false;
+		error = '';
+		notice = '';
+		if (keepPhotos) {
+			void createLink();
+		} else {
+			clearSelection();
+		}
+	}
+	function clearSelection() {
+		selected = [];
+		metadata = [];
+		view.clearSelection?.();
+	}
+
 	function closePeer() {
 		abort.abort();
 		peer?.close();
@@ -154,7 +171,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 	}
 	function retainOrDiscard() {
 		if (!completed) {
-			discard();
+			clearReceived();
 		} else if (received.length && !photoCollection) {
 			retainPhotos();
 		}
@@ -259,6 +276,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 			connection !== 'connecting' &&
 			!request &&
 			!!incomingToken &&
+			!invitationUsed &&
 			!(completed && received.length)
 		);
 	}
@@ -338,8 +356,6 @@ export function createDropController(view: ViewCallbacks = {}) {
 		metadata = result;
 	}
 	function selectionFailed(e: unknown) {
-		selected = [];
-		metadata = [];
 		error = e instanceof Error ? e.message : '写真を選び直してください。';
 	}
 	async function selectFiles(files: File[]) {
@@ -352,12 +368,20 @@ export function createDropController(view: ViewCallbacks = {}) {
 		}
 	}
 	async function select(files: File[]) {
-		if (shareLink || creatingLink || request) {
+		if (shareLink || creatingLink || selecting || request) {
 			return;
 		}
 		selecting = true;
 		error = '';
+		notice = '';
 		await selectFiles(files);
+		view.clearSelection?.();
+	}
+
+	async function addPhotos(files: File[]) {
+		if (files.length) {
+			await select([...selected, ...files]);
+		}
 	}
 
 	function finishAction(type: 'accept' | 'reject' | 'cancel') {
@@ -366,7 +390,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 			return;
 		}
 		disconnect();
-		discard();
+		clearReceived();
 		notice = type === 'reject' ? REJECTED_NOTICE : '転送を中止しました。';
 	}
 	function sendAction(type: 'accept' | 'reject' | 'cancel', id: string) {
@@ -423,7 +447,8 @@ export function createDropController(view: ViewCallbacks = {}) {
 	function resetRequest(message: RequestInfo) {
 		clearTimeout(watchdog);
 		resetLink();
-		discard();
+		clearReceived();
+		invitationUsed = !!incomingToken;
 		request = message;
 		bytes = 0;
 		phase = 'waiting';
@@ -452,14 +477,14 @@ export function createDropController(view: ViewCallbacks = {}) {
 	) {
 		if (reason === 'complete') {
 			completed = true;
-			notice = sending ? SENT_NOTICE : RECEIVED_NOTICE;
+			notice = '';
 		} else {
 			failedOutcome(reason);
 		}
 	}
 	function failedOutcome(reason: keyof typeof endMessages) {
 		error = endMessages[reason];
-		discard();
+		clearReceived();
 	}
 
 	type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
@@ -623,19 +648,28 @@ export function createDropController(view: ViewCallbacks = {}) {
 		abort = new AbortController();
 		await prepareTransfer(transfer, abort.signal);
 	}
-	async function shareReceived() {
-		const result = await sharePhotos(received.map((item) => item.file));
-		notice = shareMessages[result];
+	async function shareFiles(files: File[]) {
+		const collection = photoCollection;
+		const result = await sharePhotos(files);
+		if (collection === photoCollection && received.length) {
+			notice = shareMessages[result];
+		}
 	}
 	async function tryShare() {
 		try {
-			await shareReceived();
+			await shareFiles(received.map((item) => item.file));
 		} catch {
-			error = '共有できませんでした。各写真のダウンロードをお試しください。';
+			shareFailed();
 		} finally {
 			sharing = false;
 		}
 	}
+	function shareFailed() {
+		if (received.length) {
+			error = '共有できませんでした。各写真のダウンロードをお試しください。';
+		}
+	}
+
 	async function save() {
 		if (!photoCollection?.checkExpiry()) {
 			return;
@@ -646,6 +680,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 	}
 
 	function photosExpired() {
+		error = '';
 		completed = false;
 		photosExpireAt = undefined;
 		notice =
@@ -678,9 +713,11 @@ export function createDropController(view: ViewCallbacks = {}) {
 	}
 	async function shareConverted(jpeg: File) {
 		try {
-			notice = shareMessages[await sharePhotos([jpeg])];
+			await shareFiles([jpeg]);
 		} catch {
-			error = '共有できませんでした。JPEGをダウンロードしてください。';
+			if (received.length) {
+				error = '共有できませんでした。JPEGをダウンロードしてください。';
+			}
 		}
 	}
 	function leave() {
@@ -689,7 +726,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 		view.clearSelection?.();
 		disposed = true;
 		disconnect();
-		discard();
+		clearReceived();
 	}
 	function resume(e: PageTransitionEvent) {
 		checkPhotoExpiry();
@@ -716,13 +753,18 @@ export function createDropController(view: ViewCallbacks = {}) {
 
 	function applyInvitation(token: string) {
 		if (/^[a-f0-9]{64}$/.test(token)) {
-			incomingToken = token;
-			flowStarted = true;
-			void joinLink();
+			joinInvitation(token);
 		} else {
 			error =
 				'共有リンクが正しくありません。送信者に作り直してもらってください。';
 		}
+	}
+
+	function joinInvitation(token: string) {
+		invitationUsed = false;
+		incomingToken = token;
+		flowStarted = true;
+		void joinLink();
 	}
 
 	function mount() {
@@ -795,6 +837,9 @@ export function createDropController(view: ViewCallbacks = {}) {
 		get sharing() {
 			return sharing;
 		},
+		get invitationUsed() {
+			return invitationUsed;
+		},
 		get incomingToken() {
 			return incomingToken;
 		},
@@ -817,6 +862,8 @@ export function createDropController(view: ViewCallbacks = {}) {
 		shareInvitation,
 		copyInvitation,
 		select,
+		addPhotos,
+		restartSharing,
 		action,
 		save,
 		discard,

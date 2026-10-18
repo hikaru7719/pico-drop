@@ -31,7 +31,7 @@ try {
 	const stories = Object.values(index.entries).filter(
 		(entry) => entry.type === 'story'
 	);
-	assert.equal(stories.length, 21);
+	assert.equal(stories.length, 24);
 	for (const story of stories) {
 		await page.goto(
 			`${baseURL}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`
@@ -58,6 +58,8 @@ try {
 	);
 	await verifyPhotoContext();
 	await verifyReceivedActions();
+	await verifyCompletion();
+	await verifyPreview();
 	assert.deepEqual(errors, []);
 	assert.deepEqual(apiCalls, []);
 	console.log(
@@ -84,8 +86,7 @@ async function verifySenderStory(name) {
 	await story(name);
 	const photos = page.getByRole('region', { name: '今回の共有の写真' });
 	await photos.getByText('weekend.png', { exact: true }).waitFor();
-	const editable = ['photos-selected', 'sent'].includes(name);
-	assert.equal(await photos.getByRole('button').count(), editable ? 1 : 0);
+	await verifyEditable(photos, name === 'photos-selected');
 	await photos.locator('img').evaluate((img) => img.decode());
 	assert.equal(await page.getByRole('heading', { level: 1 }).count(), 0);
 }
@@ -114,4 +115,37 @@ async function verifyConvertedPhoto() {
 
 function control(role, name) {
 	return page.getByRole(role, { name, exact: true });
+}
+
+async function verifyCompletion() {
+	await story('sent');
+	await visible(page.getByRole('heading', { name: '送信完了', exact: true }));
+	await visible(control('button', '同じ写真をもう一度共有'));
+	await visible(control('button', '別の写真を選ぶ'));
+	await story('discarded');
+	await visible(page.getByRole('heading', { name: '受け取りは終了しました' }));
+	await visible(control('button', '再接続する'), false);
+	await visible(page.getByText('新しいQR・共有リンク', { exact: false }));
+}
+async function verifyPreview() {
+	await story('photos-selected');
+	const trigger = control('button', 'weekend.pngを拡大する');
+	await trigger.click();
+	await visible(page.getByRole('dialog'));
+	await page.keyboard.press('Escape');
+	await visible(page.getByRole('dialog'), false);
+	await verifyFocus(trigger);
+}
+
+async function verifyEditable(photos, editable) {
+	assert.equal(
+		await photos.getByRole('button', { name: /選択から外す/ }).count(),
+		editable ? 1 : 0
+	);
+}
+async function verifyFocus(trigger) {
+	assert.equal(
+		await trigger.evaluate((button) => button === document.activeElement),
+		true
+	);
 }

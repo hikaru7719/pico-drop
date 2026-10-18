@@ -46,7 +46,7 @@
 			{/each}
 		</ul>
 	</div>
-	{#if files.length > 3}<p class="scroll-hint">
+	{#if files.length > 1}<p class="scroll-hint">
 			横にスクロールして、すべての写真を確認できます。
 		</p>{/if}
 </div>
@@ -62,7 +62,7 @@
 	}
 	.summary span {
 		color: #6c7064;
-		font-size: 12px;
+		font-size: 14px;
 		font-weight: 400;
 	}
 	ul {
@@ -80,13 +80,13 @@
 		outline-offset: 4px;
 	}
 	li {
-		flex: 0 0 88px;
+		flex: 0 0 120px;
 		min-width: 0;
 	}
 	.name {
 		display: block;
 		overflow-wrap: anywhere;
-		font-size: 11px;
+		font-size: 13px;
 		line-height: 1.4;
 		margin-top: 6px;
 	}
@@ -98,14 +98,14 @@
 		border-radius: 6px;
 		background: transparent;
 		color: #6c7064;
-		font-size: 12px;
+		font-size: 14px;
 	}
 	button:not(:disabled):hover {
 		background: #ece8dc;
 	}
 	.scroll-hint {
 		color: #6c7064;
-		font-size: 11px;
+		font-size: 13px;
 		line-height: 1.6;
 		margin: 6px 0 0;
 	}

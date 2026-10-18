@@ -174,12 +174,12 @@ function unsupportedShare() {
 }
 async function saveAndDiscard(b) {
 	await b.evaluate(unsupportedShare);
-	await b
-		.getByRole('button', { name: '写真を保存・共有する', exact: true })
-		.click();
+	await clickButton(b, '写真を保存・共有する');
 	await shareFallback(b);
+	await beginPendingShare(b);
 	await clickButton(b, '画面内の写真を削除する');
-	assert.equal(await b.locator('.gallery a').count(), 0);
+	await b.evaluate(() => window.finishShare());
+	await verifyDiscarded(b);
 }
 async function shareFallback(b) {
 	await b
@@ -198,7 +198,7 @@ async function selectPhotos(a) {
 		path: new URL('./page.browser-fixture.js', import.meta.url).pathname
 	});
 	const photo = await readPhoto(a);
-	await a.locator('input[type=file]').setInputFiles(photoFiles(photo));
+	await verifyAddingPhotos(a, photo);
 	return photo;
 }
 async function readPhoto(a) {
@@ -224,6 +224,9 @@ async function scenario() {
 }
 async function finish(a, b) {
 	await saveAndDiscard(b);
+	await clickButton(a, '同じ写真をもう一度共有');
+	await readQr(a);
+	await clickButton(a, '共有を取り消す');
 	await disconnect(a, b);
 	assert.deepEqual(errors, []);
 }
@@ -286,4 +289,69 @@ async function verifySelectedPhotos(page) {
 
 function decodePreviews(images) {
 	return Promise.all(images.map((image) => image.decode()));
+}
+
+async function verifyAddingPhotos(page, photo) {
+	const input = page.locator('.picker input');
+	const [first, next] = photoFiles(photo);
+	await input.setInputFiles(first);
+	await page.getByText('trip.jpg', { exact: true }).waitFor();
+	await input.setInputFiles(next);
+	await verifySelectedPhotos(page);
+	await rejectExcessPhotos(page, photo);
+}
+async function rejectExcessPhotos(page, photo) {
+	const files = excessPhotos(photo);
+	await page.locator('.picker input').setInputFiles(files);
+	await page
+		.getByRole('alert')
+		.filter({ hasText: '10枚・合計50MBまで' })
+		.waitFor();
+	await verifySelectedPhotos(page);
+}
+
+async function verifyDiscarded(b) {
+	await b.getByRole('heading', { name: '受け取りは終了しました' }).waitFor();
+	await verifyOldNoticeCleared(b);
+	assert.equal(await b.locator('.gallery a').count(), 0);
+	await b
+		.getByRole('status')
+		.filter({ hasText: '画面内の写真を削除しました' })
+		.waitFor();
+}
+
+function excessPhotos(photo) {
+	return Array.from({ length: 9 }, (_, i) => ({
+		name: `extra-${i}.jpg`,
+		mimeType: 'image/jpeg',
+		buffer: photo
+	}));
+}
+
+async function beginPendingShare(page) {
+	await page.evaluate(() =>
+		Object.defineProperty(navigator, 'canShare', {
+			configurable: true,
+			value: () => true
+		})
+	);
+	await page.evaluate(mockPendingShare);
+	await clickButton(page, '写真を保存・共有する');
+}
+function mockPendingShare() {
+	const pending = Promise.withResolvers();
+	window.finishShare = pending.resolve;
+	Object.defineProperty(navigator, 'share', {
+		configurable: true,
+		value: () => pending.promise
+	});
+}
+
+async function verifyOldNoticeCleared(b) {
+	assert.equal(
+		await b
+			.getByText('このブラウザでは写真を共有できません', { exact: false })
+			.count(),
+		0
+	);
 }

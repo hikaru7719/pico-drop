@@ -245,3 +245,81 @@ test('unmount removes listeners and ignores queued socket messages', async () =>
 	assert.equal(app.sockets[0].messages.length, 0);
 	assertStopped(app);
 });
+
+const firstPhoto = new File(['first'], 'first.jpg');
+const nextPhoto = new File(['next'], 'next.jpg');
+test('adding photos validates the combined selection', async () => {
+	const app = setup();
+	await app.controller.select([firstPhoto]);
+	await app.controller.addPhotos([nextPhoto]);
+	assert.deepEqual(app.controller.selected, [firstPhoto, nextPhoto]);
+	assert.deepEqual(vi.mocked(describePhotos).mock.lastCall, [
+		[firstPhoto, nextPhoto]
+	]);
+});
+test('invalid additions preserve the existing photos and metadata', async () => {
+	const app = setup();
+	await app.controller.select([firstPhoto]);
+	rejectSelection();
+	await app.controller.addPhotos([nextPhoto]);
+	assert.deepEqual(app.controller.selected, [firstPhoto]);
+	assert.deepEqual(app.controller.metadata, files);
+	assert.match(app.controller.error, /10枚/);
+});
+test('cancelling the additional file picker preserves the selection', async () => {
+	const app = setup();
+	await app.controller.select([firstPhoto]);
+	await app.controller.addPhotos([]);
+	assert.deepEqual(app.controller.selected, [firstPhoto]);
+	assert.equal(vi.mocked(describePhotos).mock.calls.length, 1);
+});
+test('discard replaces old notices and clears errors', async () => {
+	const app = setup();
+	app.controller.revokeLink();
+	vi.mocked(describePhotos).mockRejectedValueOnce(new Error('古いエラー'));
+	await app.controller.select([firstPhoto]);
+	app.controller.discard();
+	assert.equal(app.controller.error, '');
+	assert.match(app.controller.notice, /画面内の写真を削除しました/);
+});
+async function completeSender(app: PageFixture) {
+	await app.controller.select([firstPhoto]);
+	await app.controller.createLink();
+	await ready(app);
+	await requestTransfer(app);
+	await emit(app, { type: 'ended', id: 'transfer', reason: 'complete' });
+}
+test('sharing the same photos after completion starts a fresh session', async () => {
+	const app = setup();
+	await completeSender(app);
+	app.controller.restartSharing(true);
+	await flush();
+	assert.equal(app.sessions, 2);
+	assert.equal(app.controller.completed, false);
+	assert.deepEqual(app.controller.selected, [firstPhoto]);
+});
+test('choosing different photos clears the completed selection', async () => {
+	const app = setup();
+	await completeSender(app);
+	app.controller.restartSharing(false);
+	assert.equal(app.controller.completed, false);
+	assert.deepEqual(app.controller.selected, []);
+	assert.deepEqual(app.controller.metadata, []);
+	assert.equal(app.sessions, 1);
+});
+test('a consumed invitation cannot be joined again after rejection', async () => {
+	const app = setup({ token: 'b'.repeat(64) });
+	await flush();
+	await ready(app);
+	await requestTransfer(app);
+	app.controller.action('reject');
+	await app.controller.joinLink();
+	assert.equal(app.controller.invitationUsed, true);
+	assert.equal(app.sessions, 1);
+});
+
+function rejectSelection() {
+	vi.mocked(describePhotos).mockRejectedValueOnce(
+		new Error('写真は10枚・合計50MBまで選べます。')
+	);
+}

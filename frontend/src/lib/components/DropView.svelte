@@ -18,6 +18,9 @@
 		accountControls?: Snippet;
 		senderAuthenticated?: boolean;
 		incomingToken?: string;
+		invitationUsed?: boolean;
+		addPhotos?: (files: File[]) => void;
+		restartSharing?: (keepPhotos: boolean) => void;
 		shareLink?: string;
 		linkExpiresAt?: number;
 		creatingLink?: boolean;
@@ -59,6 +62,9 @@
 		accountControls,
 		senderAuthenticated = false,
 		incomingToken = '',
+		invitationUsed = false,
+		addPhotos = () => {},
+		restartSharing = () => {},
 		shareLink = '',
 		linkExpiresAt,
 		creatingLink = false,
@@ -147,6 +153,14 @@
 			offset: words.slice(0, index).join('').length
 		}));
 
+	const sent = $derived(
+		completed && !received.length && !request && !incomingToken
+	);
+	const receiverStopped = $derived(
+		!!incomingToken &&
+			!request &&
+			(connection === 'idle' || connection === 'offline')
+	);
 	const sending = $derived(!!request && request.from.id === session?.id);
 	const total = $derived(
 		request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0
@@ -194,7 +208,9 @@
 			class="identity"
 			role="status"
 		>
-			<span class="identity-label">この端末の名前</span>
+			<span class="identity-label"
+				>{connection === 'online' ? 'この端末の名前' : '共有の状態'}</span
+			>
 			<span class="badge"
 				><span
 					class:online={connection === 'online'}
@@ -205,8 +221,12 @@
 					: connection === 'connecting'
 						? '接続中…'
 						: connection === 'idle'
-							? '未接続'
-							: 'オフライン'}</span
+							? completed
+								? '受け渡し完了'
+								: receiverStopped
+									? '受け取り終了'
+									: '写真を選んで共有'
+							: '接続できませんでした'}</span
 			>
 		</div>
 	</header>
@@ -262,13 +282,47 @@
 		>
 			{notice}
 		</div>{/if}
-	{#if connection === 'offline'}<button
+	{#if connection === 'offline' && incomingToken && !invitationUsed}<button
 			class="primary reconnect"
 			onclick={connect}>再接続する</button
 		>{/if}
-	{#if !request && !(completed && received.length)}
+	{#if sent}
+		<section
+			class="card sent"
+			aria-labelledby="sent-heading"
+		>
+			<h2 id="sent-heading">送信完了</h2>
+			<p role="status">
+				すべての写真が相手の端末に届きました。元の写真と同じデータであることも確認できました。
+			</p>
+			<PhotoSelection files={selected} />
+			<p class="hint">相手の端末への保存は、受け取った人が行います。</p>
+			<div class="next-actions">
+				<button
+					class="primary"
+					onclick={() => restartSharing(true)}>同じ写真をもう一度共有</button
+				>
+				<button onclick={() => restartSharing(false)}>別の写真を選ぶ</button>
+			</div>
+		</section>
+	{/if}
+	{#if !request && !completed}
 		<div class="workspace">
-			{#if incomingToken}
+			{#if receiverStopped}
+				<section
+					class="card"
+					aria-labelledby="ended-heading"
+				>
+					<h2 id="ended-heading">受け取りは終了しました</h2>
+					<p class="description">
+						もう一度受け取るには、送る人に新しいQR・共有リンクを作ってもらってください。
+					</p>
+					<a
+						class="home-link"
+						href="/">自分も写真を送る</a
+					>
+				</section>
+			{:else if incomingToken}
 				<section class="card">
 					<h2>共有リンクから写真を受け取る</h2>
 					<p class="description">
@@ -372,11 +426,11 @@
 								>{selecting
 									? '写真を確認中…'
 									: selected.length
-										? '写真を選び直す'
+										? '写真を追加'
 										: '写真を選ぶ'}</strong
 							><span
 								>{selected.length
-									? '選び直すと、今の写真が入れ替わります'
+									? '選んだ写真を残して、合計10枚・50MBまで'
 									: '10枚まで・合計50MBまで'}</span
 							><input
 								bind:this={input}
@@ -385,10 +439,28 @@
 								multiple
 								disabled={!!request || selecting || creatingLink}
 								onchange={(event) =>
-									select(Array.from(event.currentTarget.files ?? []))}
+									addPhotos(Array.from(event.currentTarget.files ?? []))}
 							/></label
 						>
 
+						{#if selected.length}
+							<label class="replace-picker"
+								>すべて選び直す<input
+									type="file"
+									aria-label="すべて選び直す"
+									accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+									multiple
+									disabled={selecting || creatingLink}
+									onchange={(event) => {
+										const files = Array.from(event.currentTarget.files ?? []);
+										if (files.length) {
+											select(files);
+										}
+										event.currentTarget.value = '';
+									}}
+								/></label
+							>
+						{/if}
 						<p class="hint">
 							元の画質で送ります。写真に含まれる撮影場所などの情報も、そのまま相手に渡ります。
 						</p>
@@ -470,16 +542,37 @@
 			aria-labelledby="received-heading"
 		>
 			<h2 id="received-heading">{received.length}枚の写真を受け取りました</h2>
-			<p class="description">
-				まとめて保存するか、写真を選んで1枚ずつダウンロードできます。iPhoneでは共有先の「画像を保存」を選んでください。
-			</p>
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex (Allow keyboard scrolling of received photos.) -->
+			<div
+				class="gallery"
+				role="region"
+				aria-label="受け取った写真"
+				tabindex="0"
+			>
+				{#each received as item, index (item.file)}
+					<ReceivedPhotoCard
+						photo={item}
+						previewFailed={() => previewFailed(index)}
+						convert={(mode) => convertPhoto(index, mode)}
+						shareJpeg={() => shareJpeg(index)}
+						checkExpiry={checkPhotoExpiry}
+					/>
+				{/each}
+			</div>
+			{#if received.length > 1}<p class="gallery-hint">
+					横にスクロールして、1枚ずつ確認できます。
+				</p>{/if}
 			<div class="save-collection">
 				<button
 					class="primary"
 					disabled={sharing}
 					onclick={save}>写真を保存・共有する</button
 				>
-				<p class="hint">全{received.length}枚の元の写真が対象です。</p>
+				<p class="hint">
+					{received.length > 1
+						? `全${received.length}枚をまとめて保存。`
+						: ''}iPhoneでは「画像を保存」を選んでください。
+				</p>
 			</div>
 			<div class="expiry-note">
 				{#if photosExpireAt}<strong
@@ -491,21 +584,8 @@
 					受信から10分たつか、このページを閉じると、画面内の写真は削除されます。端末に保存した写真は残ります。
 				</p>
 			</div>
-			<div class="gallery">
-				{#each received as item, index (item.file)}
-					<ReceivedPhotoCard
-						photo={item}
-						previewFailed={() => previewFailed(index)}
-						convert={(mode) => convertPhoto(index, mode)}
-						shareJpeg={() => shareJpeg(index)}
-						checkExpiry={checkPhotoExpiry}
-					/>
-				{/each}
-			</div>
 			<div class="discard-collection">
-				<p class="hint">
-					次の写真を受け取る前に、端末に保存できたことを確認してください。
-				</p>
+				<p class="hint">端末に保存できたことを確認してから削除してください。</p>
 				<button
 					class="text-button"
 					onclick={discard}>画面内の写真を削除する</button
@@ -522,6 +602,38 @@
 </main>
 
 <style>
+	.next-actions {
+		display: grid;
+		gap: 12px;
+		margin-top: 24px;
+	}
+	.home-link {
+		display: inline-block;
+		padding: 12px 0;
+	}
+	.replace-picker {
+		position: relative;
+		display: block;
+		width: fit-content;
+		margin: 8px auto 0;
+		padding: 12px;
+		font-size: 14px;
+		color: #a23d24;
+		cursor: pointer;
+	}
+	.replace-picker input {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		opacity: 0;
+		cursor: inherit;
+	}
+	.replace-picker:focus-within,
+	.gallery:focus-visible {
+		outline: 3px solid #b64629;
+		outline-offset: 4px;
+	}
 	:global(body) {
 		background-image: radial-gradient(#837f6820 0.6px, transparent 0.6px);
 		background-size: 7px 7px;
@@ -593,7 +705,7 @@
 		flex-wrap: wrap;
 		gap: 12px;
 		margin-top: 24px;
-		font-size: 12px;
+		font-size: 14px;
 		color: #555f53;
 	}
 	.sharing-guide [aria-hidden] {
@@ -601,7 +713,7 @@
 	}
 	.section-description {
 		margin: 8px 0 20px;
-		font-size: 13px;
+		font-size: 14px;
 		color: #6c7064;
 	}
 	.picker.has-selection {
@@ -713,7 +825,7 @@
 		color: #555f53;
 		align-items: center;
 		gap: 8px;
-		font-size: 12px;
+		font-size: 14px;
 		font-weight: 500;
 		font-variant-numeric: tabular-nums;
 		letter-spacing: 0.015em;
@@ -887,7 +999,7 @@
 		cursor: inherit;
 	}
 	.picker > span:last-of-type {
-		font-size: 12px;
+		font-size: 14px;
 		color: #6c7064;
 	}
 	.photo-icon {
@@ -896,7 +1008,7 @@
 		color: #b64629;
 	}
 	.hint {
-		font-size: 12px;
+		font-size: 14px;
 		color: #6c7064;
 		line-height: 1.8;
 		margin: 16px 0 0;
@@ -912,7 +1024,7 @@
 		color: #a23d24;
 		padding: 11px 18px;
 		border-radius: 6px;
-		font-size: 13px;
+		font-size: 14px;
 		min-height: 44px;
 	}
 	.primary {
@@ -960,16 +1072,26 @@
 	}
 
 	.gallery {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		display: flex;
+		overflow-x: auto;
+		scroll-snap-type: x proximity;
+		padding-bottom: 8px;
 		gap: 16px;
 		margin-top: 24px;
 	}
-	.gallery :global(figure:only-child),
-	.gallery :global(figure:has(details[open])) {
-		grid-column: 1 / -1;
+	.gallery :global(figure) {
+		flex: 0 0 85%;
+		scroll-snap-align: start;
+	}
+	.gallery :global(figure:only-child) {
+		flex-basis: 100%;
 	}
 
+	.gallery-hint {
+		margin: 8px 0 0;
+		font-size: 13px;
+		color: #6c7064;
+	}
 	.save-collection {
 		margin: 20px 0;
 	}
@@ -984,7 +1106,7 @@
 		padding: 12px 16px;
 		background: #f4f0e7;
 		border-radius: 6px;
-		font-size: 12px;
+		font-size: 14px;
 		color: #555f53;
 	}
 	.expiry-note p {

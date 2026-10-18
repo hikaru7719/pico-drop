@@ -40,6 +40,8 @@ const meta = {
 		shareInvitation: fn(),
 		copyInvitation: fn(),
 		select: fn(),
+		addPhotos: fn(),
+		restartSharing: fn(),
 		action: fn(),
 		removePhoto: fn(),
 		convertPhoto: fn(),
@@ -127,8 +129,7 @@ export const Sent: Story = {
 		selected: [file],
 		metadata: files,
 		completed: true,
-		notice:
-			'すべての写真が相手の端末に届きました。元の写真と同じデータであることも確認できました。'
+		connection: 'idle'
 	}
 };
 export const Received: Story = {
@@ -137,7 +138,7 @@ export const Received: Story = {
 		photosExpireAt: Date.now() + 600_000,
 		completed: true,
 		received: [{ file, url: brandIcon, preview: true }],
-		notice: '写真を受け取りました。保存するには、下のボタンを押してください。'
+		connection: 'idle'
 	}
 };
 export const UnsupportedPreview: Story = {
@@ -188,5 +189,34 @@ export const ConvertedPhoto: Story = {
 				jpegUrl: brandIcon
 			}
 		]
+	}
+};
+
+export const Discarded: Story = {
+	name: '21 写真を削除済み',
+	args: {
+		incomingToken: 'a'.repeat(64),
+		invitationUsed: true,
+		connection: 'idle',
+		notice: '画面内の写真を削除しました。端末に保存した写真は残っています。'
+	}
+};
+export const ReceivedExpired: Story = {
+	name: '22 保存期限切れ',
+	args: {
+		...Discarded.args,
+		notice:
+			'受信から10分たったため、画面内の写真を削除しました。端末に保存した写真は残っています。'
+	}
+};
+export const ManyReceived: Story = {
+	name: '23 10枚の写真を受信',
+	args: {
+		...Received.args,
+		received: ManyPhotos.args!.selected!.map((photo) => ({
+			file: photo,
+			url: brandIcon,
+			preview: true
+		}))
 	}
 };
