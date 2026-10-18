@@ -4,6 +4,7 @@
 	import type { ReceivedPhoto } from '$lib/photos/received';
 	import TransferProgress from './TransferProgress.svelte';
 	import ShareQr from './ShareQr.svelte';
+	import PhotoPost from './PhotoPost.svelte';
 	import { formatBytes } from '$lib/photos';
 	import type {
 		PhotoMeta,
@@ -214,6 +215,8 @@
 	>
 		<div class="intro-clip">
 			<section class="intro">
+				<PhotoPost />
+				<p class="eyebrow">A LITTLE PHOTO DELIVERY</p>
 				<h1 aria-label={headline}>
 					{#key headlineReplay}
 						{#each headlineWords as { word, offset }}<span
@@ -550,11 +553,73 @@
 		</section>
 	{/if}
 	<footer>
-		<span>写真はサーバーに保存されません</span>
+		<span
+			class="footer-mark"
+			aria-hidden="true">Pico Drop /</span
+		><span>写真はサーバーに保存されません</span>
 	</footer>
 </main>
 
 <style>
+	:global(body) {
+		background-image: radial-gradient(#837f6820 0.6px, transparent 0.6px);
+		background-size: 7px 7px;
+	}
+	.intro > .eyebrow {
+		font-family: ui-monospace, monospace;
+		font-size: 10px;
+		font-weight: 600;
+		letter-spacing: 0.18em;
+		color: #88664c;
+		margin: 0 0 16px;
+	}
+	.footer-mark {
+		font-weight: 700;
+		letter-spacing: -0.03em;
+		color: #283f35;
+	}
+	.brand-icon {
+		background: #b64629;
+		color: #fffdf8;
+		padding: 5px;
+		border-radius: 9px 9px 9px 2px;
+		box-sizing: content-box;
+	}
+	.sharing-guide {
+		padding-top: 20px;
+		border-top: 1px solid #dedcd1;
+		width: fit-content;
+		margin-inline: auto;
+	}
+	.picker .photo-icon {
+		transform: rotate(-6deg);
+	}
+	@media (min-width: 801px) {
+		main:not(.in-flow):not(:has(.alert)) {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+			column-gap: 64px;
+			align-items: start;
+		}
+		main:not(.in-flow):not(:has(.alert)) header {
+			grid-column: 1 / -1;
+			width: 100%;
+			max-width: none;
+			margin-bottom: 56px;
+			padding-bottom: 24px;
+			border-bottom: 1px solid #dedcd1;
+		}
+		main:not(.in-flow):not(:has(.alert)) footer {
+			grid-column: 1 / -1;
+		}
+		main:not(.in-flow):not(:has(.alert)) .workspace {
+			width: 100%;
+		}
+		.headline-word {
+			display: block;
+		}
+	}
+
 	.brand-icon {
 		width: 32px;
 		height: 32px;
@@ -568,15 +633,15 @@
 		gap: 12px;
 		margin-top: 24px;
 		font-size: 12px;
-		color: #515156;
+		color: #555f53;
 	}
 	.sharing-guide [aria-hidden] {
-		color: #86868b;
+		color: #858875;
 	}
 	.section-description {
 		margin: 8px 0 20px;
 		font-size: 13px;
-		color: #6e6e73;
+		color: #6c7064;
 	}
 	.picker.has-selection {
 		border-style: solid;
@@ -590,12 +655,12 @@
 	}
 	summary:focus-visible,
 	.share-link:focus-visible {
-		outline: 3px solid #0071e3;
+		outline: 3px solid #b64629;
 		outline-offset: 4px;
 	}
 	details {
 		margin-top: 20px;
-		border-block: 1px solid #e5e5e7;
+		border-block: 1px solid #dedcd1;
 		font-size: 14px;
 	}
 
@@ -613,8 +678,8 @@
 	}
 	:global(body) {
 		margin: 0;
-		background: #f5f5f7;
-		color: #1d1d1f;
+		background-color: #f4f0e7;
+		color: #283f35;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 	}
 	:global(*) {
@@ -634,13 +699,13 @@
 	:global(button:focus-visible),
 	:global(a:focus-visible),
 	.picker:focus-within {
-		outline: 3px solid #0071e3;
+		outline: 3px solid #b64629;
 		outline-offset: 4px;
 	}
 	main {
-		max-width: 1000px;
+		max-width: 1160px;
 		margin: auto;
-		padding: 32px clamp(20px, 5vw, 64px);
+		padding: 32px clamp(20px, 4vw, 48px);
 	}
 	header {
 		display: flex;
@@ -660,7 +725,7 @@
 	}
 	.identity-label {
 		display: block;
-		color: #6e6e73;
+		color: #6c7064;
 		font-size: 10px;
 		letter-spacing: 0.055em;
 		line-height: 1.5;
@@ -670,19 +735,19 @@
 		display: inline-flex;
 		align-items: center;
 		flex-shrink: 0;
-		color: #1d1d1f;
+		color: #283f35;
 		text-decoration: none;
 	}
 	.wordmark {
-		font-size: 20px;
-		font-weight: 600;
-		letter-spacing: normal;
+		font-size: 23px;
+		font-weight: 800;
+		letter-spacing: -0.065em;
 		line-height: 1.4;
 	}
 	.badge {
 		display: flex;
 		justify-content: flex-end;
-		color: #515156;
+		color: #555f53;
 		align-items: center;
 		gap: 8px;
 		font-size: 12px;
@@ -695,7 +760,7 @@
 		height: 5px;
 		flex-shrink: 0;
 		border-radius: 50%;
-		background: #86868b;
+		background: #858875;
 	}
 	.dot.online {
 		background: #248a3d;
@@ -723,14 +788,14 @@
 		margin-bottom: 40px;
 	}
 	.intro {
-		padding: 48px 0 36px;
+		padding: 36px 0;
 		text-align: center;
 	}
 	h1 {
-		font-size: clamp(38px, 6.2vw, 62px);
-		font-weight: 650;
+		font-size: clamp(32px, 4.3vw, 50px);
+		font-weight: 750;
 		line-height: 1.3;
-		letter-spacing: -0.055em;
+		letter-spacing: -0.045em;
 		text-wrap: balance;
 		margin: 16px 0 20px;
 	}
@@ -749,7 +814,7 @@
 		top: 0.12em;
 		width: 2px;
 		height: 0.88em;
-		background: #0066cc;
+		background: #a23d24;
 		animation: type-caret var(--caret-duration) linear var(--type-delay) both;
 	}
 	.headline-character.last-character::after {
@@ -797,7 +862,7 @@
 		line-height: 1.8;
 	}
 	.intro > p {
-		color: #6e6e73;
+		color: #6c7064;
 		font-size: 16px;
 	}
 	.workspace {
@@ -812,10 +877,12 @@
 		max-width: 640px;
 		margin-inline: auto;
 		padding: 28px;
-		background: #ffffff;
-		border: 1px solid #e5e5e7;
-		box-shadow: 0 8px 32px #1d1d1f06;
-		border-radius: 22px;
+		background: #fffdf8;
+		border: 1px solid #dedcd1;
+		box-shadow:
+			0 5px 0 #dedcd14d,
+			0 18px 48px #283f3508;
+		border-radius: 8px;
 	}
 	.card > button,
 	.reconnect {
@@ -840,9 +907,9 @@
 		flex-direction: column;
 		gap: 12px;
 		min-height: 190px;
-		border: 1px dashed #a8c9eb;
-		border-radius: 14px;
-		background: #f5f9ff;
+		border: 1px dashed #b8a58b;
+		border-radius: 6px;
+		background: #f6f0e5;
 		cursor: pointer;
 	}
 	.picker.disabled {
@@ -858,38 +925,38 @@
 	}
 	.picker > span:last-of-type {
 		font-size: 12px;
-		color: #6e6e73;
+		color: #6c7064;
 	}
 	.photo-icon {
 		font-size: 45px;
 		line-height: 1;
-		color: #0071e3;
+		color: #b64629;
 	}
 	.hint {
 		font-size: 12px;
-		color: #6e6e73;
+		color: #6c7064;
 		line-height: 1.8;
 		margin: 16px 0 0;
 	}
 	.description {
 		font-size: 14px;
-		color: #6e6e73;
+		color: #6c7064;
 		margin-top: 12px;
 	}
 	button {
-		border: 1px solid #d2d2d7;
+		border: 1px solid #cdcbbc;
 		background: transparent;
-		color: #0066cc;
+		color: #a23d24;
 		padding: 11px 18px;
-		border-radius: 10px;
+		border-radius: 6px;
 		font-size: 13px;
 		min-height: 44px;
 	}
 	.primary {
-		background: #0071e3;
-		border-color: #0071e3;
+		background: #b64629;
+		border-color: #b64629;
 		color: #ffffff;
-		font-weight: 650;
+		font-weight: 750;
 	}
 	.text-button {
 		border: 0;
@@ -909,7 +976,7 @@
 		justify-content: space-between;
 		gap: 12px;
 		margin-top: 16px;
-		color: #6e6e73;
+		color: #6c7064;
 		font-size: 12px;
 	}
 	.clear-selection {
@@ -921,15 +988,15 @@
 		padding: 0;
 		border: 0;
 		border-radius: 50%;
-		color: #6e6e73;
+		color: #6c7064;
 	}
 	.clear-selection svg {
 		width: 20px;
 		height: 20px;
 	}
 	.clear-selection:not(:disabled):hover {
-		background: #f0f0f3;
-		color: #1d1d1f;
+		background: #ece8dc;
+		color: #283f35;
 	}
 	.file-list {
 		margin-top: 0;
@@ -941,7 +1008,7 @@
 		gap: 12px;
 		padding: 8px 0;
 		font-size: 12px;
-		border-bottom: 1px solid #e8e8ed;
+		border-bottom: 1px solid #e2dfd3;
 	}
 	.file-list span {
 		flex: 1;
@@ -952,7 +1019,7 @@
 	}
 	.file-list small {
 		white-space: nowrap;
-		color: #6e6e73;
+		color: #6c7064;
 	}
 	.alert {
 		width: 100%;
@@ -962,7 +1029,7 @@
 		padding: 16px 20px;
 		margin-bottom: 20px;
 		border-radius: 12px;
-		background: #edf4fc;
+		background: #eaf0e4;
 		font-size: 14px;
 		line-height: 1.7;
 	}
@@ -1003,7 +1070,7 @@
 		height: 180px;
 		object-fit: cover;
 		border-radius: 12px;
-		background: #f5f5f7;
+		background: #f4f0e7;
 	}
 	.no-preview {
 		display: flex;
@@ -1011,7 +1078,7 @@
 		align-items: center;
 		flex-direction: column;
 		font-size: 13px;
-		color: #6e6e73;
+		color: #6c7064;
 	}
 	figcaption {
 		display: flex;
@@ -1031,7 +1098,7 @@
 		white-space: nowrap;
 	}
 	a {
-		color: #0066cc;
+		color: #a23d24;
 	}
 	footer {
 		display: flex;
@@ -1043,7 +1110,7 @@
 		font-size: 11px;
 		letter-spacing: 0.045em;
 		line-height: 1.7;
-		color: #6e6e73;
+		color: #6c7064;
 	}
 	.photo-icon svg {
 		width: 48px;
@@ -1056,16 +1123,16 @@
 		overflow-wrap: anywhere;
 	}
 	.primary:not(:disabled):hover {
-		background: #0077ed;
+		background: #963820;
 	}
 	button:not(:disabled):active {
 		transform: scale(0.98);
 	}
 	.picker:not(.disabled):hover {
-		background: #eaf3ff;
+		background: #f0e6d5;
 	}
 	.picker strong {
-		color: #0066cc;
+		color: #a23d24;
 		font-size: 16px;
 		font-weight: 600;
 	}

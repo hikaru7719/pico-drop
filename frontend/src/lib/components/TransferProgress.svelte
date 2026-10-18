@@ -100,7 +100,7 @@
 		margin: 28px 0 24px;
 		padding: 24px;
 		border-radius: 18px;
-		background: #f6f8fb;
+		background: #f4f0e7;
 	}
 	.progress-heading {
 		display: flex;
@@ -114,19 +114,19 @@
 	}
 	.status {
 		margin: 0;
-		color: #1d1d1f;
+		color: #283f35;
 		font-size: 15px;
 		font-weight: 600;
 		line-height: 1.6;
 	}
 	.detail {
 		margin: 5px 0 0;
-		color: #6e6e73;
+		color: #6c7064;
 		font-size: 12px;
 		line-height: 1.7;
 	}
 	.percentage {
-		color: #004fa3;
+		color: #a23d24;
 		font-size: clamp(36px, 7vw, 48px);
 		font-weight: 500;
 		line-height: 1;
@@ -138,15 +138,15 @@
 		font-size: 18px;
 		letter-spacing: 0;
 		margin-left: 4px;
-		color: #6283a7;
+		color: #88664c;
 	}
 	.waiting {
-		color: #9cabbc;
+		color: #a4a18e;
 	}
 	.track {
 		height: 8px;
 		border-radius: 99px;
-		background: #e4eaf2;
+		background: #e2dfd3;
 		overflow: hidden;
 	}
 	.fill {
@@ -154,7 +154,7 @@
 		position: relative;
 		overflow: hidden;
 		border-radius: inherit;
-		background: linear-gradient(90deg, #004fa3, #398fe5);
+		background: linear-gradient(90deg, #a23d24, #d47748);
 		transition: width 300ms cubic-bezier(0.2, 0.7, 0.3, 1);
 	}
 	.light {
@@ -181,7 +181,7 @@
 		gap: 12px;
 		margin-top: 12px;
 		font-size: 11px;
-		color: #6e6e73;
+		color: #6c7064;
 		line-height: 1.6;
 	}
 	.bytes {

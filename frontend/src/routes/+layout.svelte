@@ -1,5 +1,5 @@
 <script lang="ts">
-	import favicon from '$lib/assets/pico-drop-icon.png';
+	import favicon from '$lib/assets/favicon.svg';
 
 	let { children } = $props();
 </script>
@@ -7,7 +7,7 @@
 <svelte:head>
 	<link
 		rel="icon"
-		type="image/png"
+		type="image/svg+xml"
 		href={favicon}
 	/>
 </svelte:head>

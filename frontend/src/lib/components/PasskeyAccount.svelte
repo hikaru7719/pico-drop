@@ -125,10 +125,10 @@
 	.account {
 		margin: 0;
 		padding: 0;
-		color: #1d1d1f;
+		color: #283f35;
 	}
 	.account.authenticated {
-		border-bottom: 1px solid #e5e5e7;
+		border-bottom: 1px solid #dedcd1;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -152,7 +152,7 @@
 	p {
 		font-size: 13px;
 		line-height: 1.8;
-		color: #6e6e73;
+		color: #6c7064;
 		overflow-wrap: anywhere;
 	}
 	form,
@@ -163,12 +163,12 @@
 	}
 	label {
 		font-size: 13px;
-		color: #515156;
+		color: #555f53;
 	}
 	form {
 		margin-top: 24px;
 		padding-top: 24px;
-		border-top: 1px solid #e5e5e7;
+		border-top: 1px solid #dedcd1;
 	}
 	button,
 	input {
@@ -176,32 +176,32 @@
 		font-size: 13px;
 		min-height: 44px;
 		padding: 12px 16px;
-		border: 1px solid #d2d2d7;
-		border-radius: 10px;
+		border: 1px solid #cdcbbc;
+		border-radius: 6px;
 	}
 	input {
 		width: 100%;
 		min-width: 0;
 		background: #fff;
-		color: #1d1d1f;
+		color: #283f35;
 	}
 	button {
 		cursor: pointer;
 		background: #fff;
-		color: #0066cc;
+		color: #a23d24;
 		font-weight: 600;
 	}
 	button:not(:disabled):hover {
-		background: #f5f9ff;
+		background: #f6f0e5;
 	}
 	.login {
 		width: 100%;
-		background: #0071e3;
-		border-color: #0071e3;
+		background: #b64629;
+		border-color: #b64629;
 		color: #fff;
 	}
 	.login:not(:disabled):hover {
-		background: #0077ed;
+		background: #963820;
 	}
 	.authenticated button {
 		flex-shrink: 0;
@@ -213,7 +213,7 @@
 		cursor: default;
 	}
 	input:focus-visible {
-		outline: 3px solid #0071e3;
+		outline: 3px solid #b64629;
 		outline-offset: 4px;
 	}
 	.hint {
@@ -224,6 +224,6 @@
 		color: #b42318;
 		background: #fff0ef;
 		padding: 12px;
-		border-radius: 10px;
+		border-radius: 6px;
 	}
 </style>
