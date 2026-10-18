@@ -157,6 +157,24 @@
 			class="brand"
 			href="/"
 			aria-label="Pico Drop ホーム"
+			><svg
+				class="brand-icon"
+				viewBox="0 0 32 32"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.8"
+				aria-hidden="true"
+				><rect
+					x="4"
+					y="8"
+					width="19"
+					height="20"
+					rx="4"
+				/><path d="m8 21 5-5 6 6M14 4h10a4 4 0 0 1 4 4v12" /><circle
+					cx="10"
+					cy="13"
+					r="1"
+				/></svg
 			><span
 				class="wordmark"
 				aria-hidden="true">Pico Drop</span
@@ -206,6 +224,14 @@
 					{/key}
 				</h1>
 				<p>写真を選んで、QRで渡す。<br />受け取りはログイン不要です。</p>
+				<div
+					class="sharing-guide"
+					aria-label="写真を共有する流れ"
+				>
+					<span>写真を選ぶ</span><span aria-hidden="true">→</span><span
+						>QRを見せる</span
+					><span aria-hidden="true">→</span><span>相手が受け取る</span>
+				</div>
 			</section>
 		</div>
 	</div>
@@ -284,8 +310,12 @@
 				>
 					{@render accountControls?.()}
 					<h2 id="photos-heading">写真を選んで共有する</h2>
+					<p class="section-description">
+						渡したい写真を、この端末から選んでください。
+					</p>
 					<label
 						class:disabled={!!request || selecting || creatingLink}
+						class:has-selection={selected.length > 0}
 						class="picker"
 						><span
 							class="photo-icon"
@@ -378,7 +408,7 @@
 							? 'QRを準備中…'
 							: '写真を渡す'}</button
 					>
-					<p class="hint">
+					<p class="hint sharing-note">
 						QRは10分間・1人だけ有効です。受け取る人のログインや位置情報の許可は不要です。
 					</p>
 				</section>
@@ -519,6 +549,50 @@
 </main>
 
 <style>
+	.brand-icon {
+		width: 32px;
+		height: 32px;
+		margin-right: 10px;
+	}
+	.sharing-guide {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 12px;
+		margin-top: 24px;
+		font-size: 12px;
+		color: #515156;
+	}
+	.sharing-guide [aria-hidden] {
+		color: #86868b;
+	}
+	.section-description {
+		margin: 8px 0 20px;
+		font-size: 13px;
+		color: #6e6e73;
+	}
+	.picker.has-selection {
+		border-style: solid;
+	}
+	.sharing-note {
+		text-align: center;
+	}
+	h2 {
+		overflow-wrap: anywhere;
+		line-height: 1.5;
+	}
+	summary:focus-visible,
+	.share-link:focus-visible {
+		outline: 3px solid #0071e3;
+		outline-offset: 4px;
+	}
+	details {
+		margin-top: 20px;
+		border-block: 1px solid #e5e5e7;
+		font-size: 14px;
+	}
+
 	summary {
 		cursor: pointer;
 		padding: 12px 0;
@@ -643,16 +717,16 @@
 		margin-bottom: 40px;
 	}
 	.intro {
-		padding: 68px 0 44px;
+		padding: 48px 0 36px;
 		text-align: center;
 	}
 	h1 {
 		font-size: clamp(38px, 6.2vw, 62px);
 		font-weight: 650;
-		line-height: 1.12;
+		line-height: 1.3;
 		letter-spacing: -0.055em;
 		text-wrap: balance;
-		margin: 20px 0 28px;
+		margin: 16px 0 20px;
 	}
 	.headline-word {
 		white-space: nowrap;
@@ -716,7 +790,7 @@
 	p {
 		line-height: 1.8;
 	}
-	.intro > p:last-child {
+	.intro > p {
 		color: #6e6e73;
 		font-size: 16px;
 	}
@@ -734,7 +808,7 @@
 		padding: 28px;
 		background: #ffffff;
 		border: 1px solid #e5e5e7;
-		box-shadow: 0 2px 8px #00000003;
+		box-shadow: 0 8px 32px #1d1d1f06;
 		border-radius: 22px;
 	}
 	.card > button,
@@ -744,7 +818,8 @@
 	}
 	.send-button {
 		margin-top: 24px;
-		min-width: 160px;
+		width: 100%;
+		min-height: 48px;
 	}
 	h2 {
 		font-size: 18px;
@@ -759,9 +834,9 @@
 		flex-direction: column;
 		gap: 12px;
 		min-height: 190px;
-		border: 1px solid transparent;
+		border: 1px dashed #a8c9eb;
 		border-radius: 14px;
-		background: #f5f5f7;
+		background: #f5f9ff;
 		cursor: pointer;
 	}
 	.picker.disabled {
@@ -793,7 +868,7 @@
 	.description {
 		font-size: 14px;
 		color: #6e6e73;
-		margin-top: 0;
+		margin-top: 12px;
 	}
 	button {
 		border: 1px solid #d2d2d7;
@@ -981,12 +1056,12 @@
 		transform: scale(0.98);
 	}
 	.picker:not(.disabled):hover {
-		background: #ededf0;
+		background: #eaf3ff;
 	}
 	.picker strong {
 		color: #0066cc;
-		font-size: 15px;
-		font-weight: 500;
+		font-size: 16px;
+		font-weight: 600;
 	}
 	button,
 	.picker {
@@ -1019,13 +1094,13 @@
 			padding-top: 24px;
 		}
 		.intro {
-			padding-top: 44px;
+			padding: 32px 0 28px;
 		}
 		.workspace {
 			grid-template-columns: 1fr;
 		}
 		.card {
-			padding: 22px;
+			padding: 24px 20px;
 		}
 		.badge {
 			font-size: 11px;

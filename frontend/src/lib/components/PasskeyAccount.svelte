@@ -69,6 +69,7 @@
 
 <section
 	class="account"
+	class:authenticated={!!account}
 	aria-label="送信者のログイン"
 >
 	{#if account}
@@ -81,6 +82,7 @@
 		<h2>パスキーで続ける</h2>
 		<p>写真を送るにはログインが必要です。受け取る人の登録は不要です。</p>
 		<button
+			class="login"
 			disabled={pending || !supported}
 			onclick={() => run(login)}>パスキーでログイン</button
 		>
@@ -117,49 +119,97 @@
 
 <style>
 	.account {
-		max-width: 52rem;
-		margin: 1.5rem auto;
-		padding: 1.25rem;
-		border: 1px solid #ddd;
-		border-radius: 1rem;
-		background: #fff;
-		color: #292929;
+		margin: 0 0 28px;
+		padding: 0 0 28px;
+		border-bottom: 1px solid #e5e5e7;
+		color: #1d1d1f;
+	}
+	.account.authenticated {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding-bottom: 20px;
+		margin-bottom: 24px;
 	}
 	h2 {
-		font-size: 1.2rem;
-		margin: 0 0 0.75rem;
+		font-size: 18px;
+		line-height: 1.5;
+		margin: 0;
 	}
 	p {
-		line-height: 1.7;
+		font-size: 13px;
+		line-height: 1.8;
+		color: #6e6e73;
+		overflow-wrap: anywhere;
 	}
 	form,
 	label {
 		display: grid;
-		gap: 0.75rem;
+		gap: 12px;
+		min-width: 0;
+	}
+	label {
+		font-size: 13px;
+		color: #515156;
 	}
 	form {
-		margin-top: 1.25rem;
+		margin-top: 24px;
 	}
 	button,
 	input {
 		font: inherit;
-		padding: 0.75rem 1rem;
-		border: 1px solid #bbb;
-		border-radius: 0.6rem;
+		font-size: 13px;
+		min-height: 44px;
+		padding: 12px 16px;
+		border: 1px solid #d2d2d7;
+		border-radius: 10px;
+	}
+	input {
+		width: 100%;
+		min-width: 0;
+		background: #fff;
+		color: #1d1d1f;
 	}
 	button {
 		cursor: pointer;
-		background: #f5f2ed;
+		background: #fff;
+		color: #0066cc;
+		font-weight: 600;
+	}
+	button:not(:disabled):hover {
+		background: #f5f9ff;
+	}
+	.login {
+		width: 100%;
+		background: #0071e3;
+		border-color: #0071e3;
+		color: #fff;
+	}
+	.login:not(:disabled):hover {
+		background: #0077ed;
+	}
+	.authenticated button {
+		flex-shrink: 0;
+		border: 0;
+		font-weight: 400;
 	}
 	button:disabled {
-		opacity: 0.5;
+		opacity: 0.45;
 		cursor: default;
 	}
+	input:focus-visible {
+		outline: 3px solid #0071e3;
+		outline-offset: 4px;
+	}
 	.hint {
-		font-size: 0.85rem;
-		color: #555;
+		font-size: 12px;
+		margin: 16px 0 0;
 	}
 	[role='alert'] {
-		color: #a12424;
+		color: #b42318;
+		background: #fff0ef;
+		padding: 12px;
+		border-radius: 10px;
 	}
 </style>
