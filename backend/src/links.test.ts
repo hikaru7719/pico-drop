@@ -1,27 +1,7 @@
 import { test, expect, vi } from 'vitest';
-import { readFile } from 'node:fs/promises';
-import { URL } from 'node:url';
-import { stripTypeScriptTypes } from 'node:module';
-import { routedToken } from './routing.ts';
+import { RoomHub } from './room-hub.ts';
 import { PasskeyAuth } from './auth.ts';
-import { createPhotoAccess } from './photo-access.ts';
 import * as protocol from '../../shared/protocol.ts';
-
-const source = (await readFile(new URL('./index.ts', import.meta.url), 'utf8'))
-	.replace(/\bimport\s[\s\S]*?\sfrom\s+['"][^'"]+['"];?/g, '')
-	.replace(/export default[\s\S]*?satisfies ExportedHandler<Bindings>;/, '');
-const factory = stripTypeScriptTypes(
-	`
-export function createHub(deps) {
-const { DurableObject, LIMITS, parseClient, authorizeTransfer, WebSocket, PasskeyAuth, routedToken, createPhotoAccess } = deps;
-${source.replace('export class NearbyHub', 'class NearbyHub')}
-return NearbyHub;
-}`,
-	{ mode: 'transform' }
-);
-const { createHub } = await import(
-	`data:text/javascript;base64,${Buffer.from(factory).toString('base64')}`
-);
 const files = [{ id: 'p', name: 'photo.jpg', type: 'image/jpeg', size: 8 }];
 class Socket {
 	data: any;
@@ -56,18 +36,18 @@ class Fixture {
 	hub: any;
 	queue = Promise.resolve();
 	constructor() {
-		const Hub = createHub(this.dependencies());
-		this.hub = new Hub(this.context());
+		this.hub = new RoomHub(
+			this.context() as never,
+			this.environment() as never
+		);
 	}
-	dependencies() {
-		return {
-			...protocol,
-			PasskeyAuth,
-			createPhotoAccess,
-			routedToken,
-			WebSocket: { OPEN: 1 },
-			DurableObject: this.base()
+	environment() {
+		const auth = new PasskeyAuth(this.storage() as never, {});
+		const remote = {
+			accountIdentity: (key: string) => auth.identity(key),
+			authorizeSend: (key: string) => auth.allowSend(key)
 		};
+		return { HUB: { idFromName: (name: string) => name, get: () => remote } };
 	}
 
 	seedIdentity() {
@@ -94,11 +74,6 @@ class Fixture {
 		return task;
 	}
 
-	base() {
-		return class {
-			constructor(public ctx: unknown) {}
-		};
-	}
 	storage() {
 		return {
 			get: async (key: string) => this.entries.get(key),
