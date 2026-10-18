@@ -43,6 +43,7 @@ async function openPage(context) {
 async function createLink(page) {
 	await page.getByRole('button', { name: '写真を渡す', exact: true }).click();
 	const link = await readQr(page);
+	await verifySelectedPhotos(page);
 	assert.equal(await verifyQrLayout(page), link);
 	await page.screenshot({ path: '/tmp/pico-drop-qr.png', fullPage: true });
 	return link;
@@ -123,6 +124,7 @@ async function receive(a, b) {
 	const link = await createLink(a);
 	await join(b, link);
 	await noPeers(a, b);
+	await verifySelectedPhotos(a);
 	await b.getByRole('button', { name: '受け取る', exact: true }).click();
 	await transferComplete(a, b);
 	return link;
@@ -132,6 +134,7 @@ async function transferComplete(a, b) {
 		.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true })
 		.waitFor({ timeout: 60_000 });
 	await a.getByRole('status').filter({ hasText: '同じデータ' }).waitFor();
+	await verifySelectedPhotos(a);
 }
 async function browserHashes(links) {
 	async function hash(link) {
@@ -271,4 +274,16 @@ async function prepareSender(page) {
 	const photo = await selectPhotos(page);
 	await page.screenshot({ path: '/tmp/pico-drop-auth.png', fullPage: true });
 	return photo;
+}
+
+async function verifySelectedPhotos(page) {
+	const photos = page.getByRole('region', { name: '今回の共有の写真' });
+	await photos.getByText('trip.jpg', { exact: true }).waitFor();
+	await photos.getByText('friends.jpg', { exact: true }).waitFor();
+	assert.equal(await photos.locator('img').count(), 2);
+	await photos.locator('img').evaluateAll(decodePreviews);
+}
+
+function decodePreviews(images) {
+	return Promise.all(images.map((image) => image.decode()));
 }

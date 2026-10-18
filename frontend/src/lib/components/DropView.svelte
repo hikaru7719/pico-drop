@@ -1,10 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { isHeic, type ConversionMode } from '../../../../shared/photos.ts';
+	import type { ConversionMode } from '../../../../shared/photos.ts';
 	import type { ReceivedPhoto } from '$lib/photos/received';
 	import TransferProgress from './TransferProgress.svelte';
 	import ShareQr from './ShareQr.svelte';
 	import PhotoPost from './PhotoPost.svelte';
+	import PhotoSelection from './PhotoSelection.svelte';
+	import ReceivedPhotoCard from './ReceivedPhotoCard.svelte';
 	import { formatBytes } from '$lib/photos';
 	import type {
 		PhotoMeta,
@@ -97,6 +99,7 @@
 	const inFlow = $derived(
 		started ||
 			flowStarted ||
+			selected.length > 0 ||
 			!!shareLink ||
 			!!incomingToken ||
 			!!request ||
@@ -147,7 +150,6 @@
 	const total = $derived(
 		request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0
 	);
-	const selectedBytes = $derived(selected.reduce((sum, f) => sum + f.size, 0));
 </script>
 
 <svelte:head>
@@ -280,7 +282,9 @@
 				</section>
 			{:else if shareLink}
 				<section class="card">
-					<h2>相手にQRを見せる</h2>
+					<h2>今回の共有</h2>
+					<PhotoSelection files={selected} />
+					<h3>相手にQRを見せる</h3>
 					<p class="description">
 						相手のスマートフォンのカメラで読み取って、表示されたリンクを開いてもらってください。
 					</p>
@@ -325,10 +329,20 @@
 				>
 					{@render accountControls?.()}
 					{#if senderAuthenticated}
-						<h2 id="photos-heading">写真を選んで共有する</h2>
+						<h2 id="photos-heading">今回の共有</h2>
 						<p class="section-description">
-							渡したい写真を、この端末から選んでください。
+							{selected.length
+								? 'この写真を、相手に渡します。'
+								: '渡したい写真を、この端末から選んでください。'}
 						</p>
+						{#if selected.length}
+							<PhotoSelection
+								files={selected}
+								editable
+								disabled={selecting || creatingLink}
+								remove={removePhoto}
+							/>
+						{/if}
 						<label
 							class:disabled={!!request || selecting || creatingLink}
 							class:has-selection={selected.length > 0}
@@ -357,11 +371,11 @@
 								>{selecting
 									? '写真を確認中…'
 									: selected.length
-										? `${selected.length}枚の写真を選びました`
+										? '写真を選び直す'
 										: '写真を選ぶ'}</strong
 							><span
 								>{selected.length
-									? `${formatBytes(selectedBytes)} · 押して選び直す`
+									? '選び直すと、今の写真が入れ替わります'
 									: '10枚まで・合計50MBまで'}</span
 							><input
 								bind:this={input}
@@ -373,33 +387,7 @@
 									select(Array.from(event.currentTarget.files ?? []))}
 							/></label
 						>
-						{#if selected.length}
-							<div class="selection-heading">
-								<span>選択した写真 · {selected.length}枚</span>
-							</div>
-							<ul class="file-list">
-								{#each selected as file, index}<li>
-										<span>{file.name}</span><small
-											>{formatBytes(file.size)}</small
-										>
-										<button
-											class="clear-selection"
-											aria-label={`${file.name}を選択から外す`}
-											title="この写真を選択から外す"
-											disabled={!!request || selecting || creatingLink}
-											onclick={() => removePhoto(index)}
-											><svg
-												viewBox="0 0 20 20"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="1.5"
-												stroke-linecap="round"
-												aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8" /></svg
-											></button
-										>
-									</li>{/each}
-							</ul>
-						{/if}
+
 						<p class="hint">
 							元の画質で送ります。写真に含まれる撮影場所などの情報も、そのまま相手に渡ります。
 						</p>
@@ -437,7 +425,11 @@
 					? `${request.to.name}に写真を送る`
 					: `${request.from.name}から写真を受け取る`}
 			</h2>
-			<p>{request.files.length}枚 · {formatBytes(total)}</p>
+			{#if sending}
+				<PhotoSelection files={selected} />
+			{:else}
+				<p>{request.files.length}枚 · {formatBytes(total)}</p>
+			{/if}
 			{#if phase === 'waiting'}
 				<p>
 					{sending
@@ -478,77 +470,45 @@
 		>
 			<h2 id="received-heading">{received.length}枚の写真を受け取りました</h2>
 			<p class="description">
-				「写真を保存・共有する」を押すと、保存先や共有先を選べます。iPhoneでは「画像を保存」を選んでください。受信が完了してから10分たつか、このページを閉じると、画面内の写真は削除されます。端末に保存した写真は残ります。次の写真を受け取る前に、保存できたことを確認して「画面内の写真を削除する」を押してください。
+				まとめて保存するか、写真を選んで1枚ずつダウンロードできます。iPhoneでは共有先の「画像を保存」を選んでください。
 			</p>
-			{#if photosExpireAt}<p class="hint">
-					この画面から保存できる期限：{new Date(
-						photosExpireAt
-					).toLocaleTimeString('ja-JP')}
-				</p>{/if}
-			{#if received.some((photo) => isHeic(photo.file.type))}
-				<p class="hint">
-					HEIC形式の写真で「プレビューを表示する」や「JPEGに変換する」を押すと、その写真をCloudflareに送って処理します。写真はサーバーに保存しません。JPEGに変換すると、画質が変わったり、撮影情報が引き継がれなかったりする場合があります。元の写真もそのまま保存できます。
-				</p>
-			{/if}
-			<div class="gallery">
-				{#each received as item, index}<figure>
-						{#if item.preview}<img
-								src={item.previewUrl ?? item.url}
-								alt={item.file.name}
-								onerror={() => previewFailed(index)}
-							/>{:else}<div class="no-preview">
-								プレビューは表示されていません<br /><small
-									>元の写真は保存できます</small
-								>
-							</div>{/if}
-						<figcaption>
-							<a
-								href={item.url}
-								onclick={(event) => {
-									if (!checkPhotoExpiry()) {
-										event.preventDefault();
-									}
-								}}
-								download={item.file.name}
-								>{item.file.name}（元の写真をダウンロード）</a
-							>
-							{#if isHeic(item.file.type)}
-								{#if !item.previewUrl}<button
-										disabled={item.busy}
-										onclick={() => convertPhoto(index, 'preview')}
-										>プレビューを表示する</button
-									>{/if}
-								{#if !item.jpegUrl}<button
-										disabled={item.busy}
-										onclick={() => convertPhoto(index, 'jpeg')}
-										>JPEGに変換する</button
-									>{/if}
-								{#if item.busy}<p role="status">変換中…</p>{/if}
-								{#if item.problem}<p role="status">{item.problem}</p>{/if}
-								{#if item.jpegUrl && item.jpeg}
-									<a
-										href={item.jpegUrl}
-										download={item.jpeg.name}
-										onclick={(event) => {
-											if (!checkPhotoExpiry()) {
-												event.preventDefault();
-											}
-										}}>JPEGをダウンロードする</a
-									>
-									<button onclick={() => shareJpeg(index)}
-										>JPEGを保存・共有する</button
-									>
-								{/if}
-							{/if}
-						</figcaption>
-					</figure>{/each}
-			</div>
-			<div class="actions">
+			<div class="save-collection">
 				<button
 					class="primary"
 					disabled={sharing}
 					onclick={save}>写真を保存・共有する</button
-				><button onclick={discard}>画面内の写真を削除する</button>
+				>
+				<p class="hint">全{received.length}枚の元の写真が対象です。</p>
+			</div>
+			<div class="expiry-note">
+				{#if photosExpireAt}<strong
+						>保存できる期限：{new Date(photosExpireAt).toLocaleTimeString(
+							'ja-JP'
+						)}</strong
+					>{/if}
+				<p>
+					受信から10分たつか、このページを閉じると、画面内の写真は削除されます。端末に保存した写真は残ります。
+				</p>
+			</div>
+			<div class="gallery">
+				{#each received as item, index (item.file)}
+					<ReceivedPhotoCard
+						photo={item}
+						previewFailed={() => previewFailed(index)}
+						convert={(mode) => convertPhoto(index, mode)}
+						shareJpeg={() => shareJpeg(index)}
+						checkExpiry={checkPhotoExpiry}
+					/>
+				{/each}
+			</div>
+			<div class="discard-collection">
+				<p class="hint">
+					次の写真を受け取る前に、端末に保存できたことを確認してください。
+				</p>
+				<button
+					class="text-button"
+					onclick={discard}>画面内の写真を削除する</button
+				>
 			</div>
 		</section>
 	{/if}
@@ -965,62 +925,6 @@
 		padding: 12px 0;
 		display: block;
 	}
-	.file-list {
-		list-style: none;
-		margin: 20px 0 0;
-		padding: 0;
-	}
-	.selection-heading {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		margin-top: 16px;
-		color: #6c7064;
-		font-size: 12px;
-	}
-	.clear-selection {
-		display: grid;
-		place-items: center;
-		width: 44px;
-		height: 44px;
-		flex-shrink: 0;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		color: #6c7064;
-	}
-	.clear-selection svg {
-		width: 20px;
-		height: 20px;
-	}
-	.clear-selection:not(:disabled):hover {
-		background: #ece8dc;
-		color: #283f35;
-	}
-	.file-list {
-		margin-top: 0;
-	}
-	.file-list li {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		padding: 8px 0;
-		font-size: 12px;
-		border-bottom: 1px solid #e2dfd3;
-	}
-	.file-list span {
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.file-list small {
-		white-space: nowrap;
-		color: #6c7064;
-	}
 	.alert {
 		width: 100%;
 		max-width: 640px;
@@ -1053,50 +957,54 @@
 	}
 
 	.gallery {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 20px;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 16px;
 		margin-top: 24px;
 	}
-	figure {
-		flex: 0 1 180px;
-		margin: 0;
-		min-width: 0;
+	.gallery :global(figure:only-child),
+	.gallery :global(figure:has(details[open])) {
+		grid-column: 1 / -1;
 	}
-	figure img,
-	.no-preview {
+
+	.save-collection {
+		margin: 20px 0;
+	}
+	.save-collection .primary {
 		width: 100%;
-		height: 180px;
-		object-fit: cover;
-		border-radius: 12px;
-		background: #f4f0e7;
 	}
-	.no-preview {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		flex-direction: column;
-		font-size: 13px;
-		color: #6c7064;
-	}
-	figcaption {
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-		font-size: 12px;
-		padding: 4px 0 12px;
-	}
-	figcaption button {
-		padding: 12px 8px;
-		font-size: 12px;
-	}
-	figcaption a {
+	.save-collection .hint {
+		margin-top: 8px;
 		text-align: center;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
+	.expiry-note {
+		padding: 12px 16px;
+		background: #f4f0e7;
+		border-radius: 6px;
+		font-size: 12px;
+		color: #555f53;
+	}
+	.expiry-note p {
+		margin: 4px 0 0;
+	}
+	.discard-collection {
+		margin-top: 24px;
+		padding-top: 4px;
+		border-top: 1px solid #dedcd1;
+	}
+	h3 {
+		margin: 20px 0 0;
+		font-size: 15px;
+	}
+	.picker.has-selection {
+		min-height: 64px;
+		gap: 4px;
+		padding: 12px;
+	}
+	.picker.has-selection .photo-icon {
+		display: none;
+	}
+
 	a {
 		color: #a23d24;
 	}
@@ -1178,12 +1086,8 @@
 		.badge {
 			font-size: 11px;
 		}
-		.gallery figure {
-			flex-basis: calc((100% - 20px) / 2);
-		}
-		figure img,
-		.no-preview {
-			height: 140px;
+		.gallery {
+			gap: 12px;
 		}
 	}
 </style>
