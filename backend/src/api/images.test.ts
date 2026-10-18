@@ -1,12 +1,10 @@
 import assert from 'node:assert/strict';
 import { test, vi, afterEach } from 'vitest';
-import { reservePhoto, type PhotoGrant } from './photo-access.ts';
-import {
-	photoRequest,
-	type PhotoAuthority,
-	type ImageService
-} from './images.ts';
-import { MAX_CONVERSION_BYTES } from '../../shared/photos.ts';
+import { reservePhoto, type PhotoGrant } from '../domain/photos.ts';
+import { photoRequest } from './images.ts';
+import type { PhotoAuthority } from '../application/images.ts';
+import { imageRenderer, type ImageService } from '../infrastructure/images.ts';
+import { MAX_CONVERSION_BYTES } from '../../../shared/photos.ts';
 
 const heic = new Uint8Array([
 	0, 0, 0, 16, 102, 116, 121, 112, 104, 101, 105, 99, 0, 0, 0, 0
@@ -71,7 +69,7 @@ class ConversionFixture {
 	}
 
 	run(request = this.request()) {
-		return photoRequest(request, this.images, this.authority);
+		return photoRequest(request, imageRenderer(this.images), this.authority);
 	}
 }
 

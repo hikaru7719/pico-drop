@@ -43,12 +43,12 @@ IP制限は `rate:<IPのSHA-256>` DOで管理し、認証DOやルームを変え
 
 ## クラスの責務
 
-Cloudflareに登録するDOクラスは、既存データとDOのIDを維持するため `NearbyHub` のままです。`nearby-hub.ts` の `NearbyHub` はHTTP・RPC・WebSocket・alarmの受付と委譲だけを担当し、実処理を次のクラスに分けています。新しいDO名前空間を作る変更ではないため、今回のクラス分離ではデータ移行は不要です。
+Cloudflareに登録するDOクラスは、既存データとDOのIDを維持するため `NearbyHub` のままです。`infrastructure/nearby-hub.ts` の `NearbyHub` はHTTP・RPC・WebSocket・alarmの受付と委譲だけを担当し、実処理を次のクラスに分けています。新しいDO名前空間を作る変更ではないため、今回のクラス分離ではデータ移行は不要です。
 
-| クラス        | ファイル                      | 責務                                                                        |
-| ------------- | ----------------------------- | --------------------------------------------------------------------------- |
-| `AuthHub`     | `backend/src/auth-hub.ts`     | 認証API・認証RPC・認証データの期限処理。署名検証などは `PasskeyAuth` に委譲 |
-| `RoomHub`     | `backend/src/room-hub.ts`     | 端末セッション・WebSocket・共有リンク・グループ転送・写真変換権限           |
-| `RateLimiter` | `backend/src/rate-limiter.ts` | IP単位の回数制限と期限処理                                                  |
+| クラス        | ファイル                                  | 責務                                                                                              |
+| ------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `AuthHub`     | `backend/src/infrastructure/auth-hub.ts`  | 認証API・認証RPC・認証データの期限処理。HTTPは `PasskeyAuth`、ユースケースは `AuthService` に委譲 |
+| `RoomHub`     | `backend/src/infrastructure/room-hub.ts`  | DO・WebSocketの接続。セッション・転送・写真変換権限は `RoomService` に委譲                        |
+| `RateLimiter` | `backend/src/application/rate-limiter.ts` | IP単位の回数制限と期限処理                                                                        |
 
-`RoomHub` は認証データを直接読み書きせず、認証DOへRPCで問い合わせます。入口は `hub:role` に用途を記録し、再起動後のalarmも担当クラスへ渡します。このキーがない既存DOでは従来の期限処理を使い、永続的なアカウントデータを保持します。`index.ts` はWorkerの入口とDOルーティングだけを担当します。
+`RoomHub` は認証データを直接読み書きせず、認証DOへRPCで問い合わせます。入口は `hub:role` に用途を記録し、再起動後のalarmも担当クラスへ渡します。このキーがない既存DOでは従来の期限処理を使い、永続的なアカウントデータを保持します。`index.ts` はHonoアプリとインフラ実装の組み立てを担当します。層の責務と依存方向は [ADR-0003](adr/0003-layered-backend-with-hono.md) を参照してください。

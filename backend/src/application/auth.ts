@@ -1,87 +1,39 @@
+import type { Account, Credential, Login, Ceremony } from '../domain/auth.ts';
 import {
+	randomSecret,
+	secretHash,
+	loginKey,
+	challengeKey,
+	sessionLoginKey
+} from '../domain/tokens.ts';
+import { ServiceError } from './errors.ts';
+import type {
 	generateRegistrationOptions,
 	generateAuthenticationOptions,
 	verifyRegistrationResponse,
 	verifyAuthenticationResponse,
-	type RegistrationResponseJSON,
-	type AuthenticationResponseJSON,
-	type WebAuthnCredential
+	RegistrationResponseJSON,
+	AuthenticationResponseJSON,
+	WebAuthnCredential
 } from '@simplewebauthn/server';
 
 type Reg = RegistrationResponseJSON;
 type Auth = AuthenticationResponseJSON;
 type AuthCheck = { ceremony: Ceremony; stored: Credential };
 export interface PasskeyVerifier {
+	generateRegistrationOptions: typeof generateRegistrationOptions;
+	generateAuthenticationOptions: typeof generateAuthenticationOptions;
 	verifyRegistrationResponse: typeof verifyRegistrationResponse;
 	verifyAuthenticationResponse: typeof verifyAuthenticationResponse;
 }
-const passkeyVerifier: PasskeyVerifier = {
-	verifyRegistrationResponse,
-	verifyAuthenticationResponse
-};
-
 export type AuthEnv = { AUTH_ORIGIN?: string };
 export interface AuthStore {
 	get<T>(key: string): Promise<T | undefined>;
 	put<T>(key: string, value: T): Promise<void>;
 	delete(key: string): Promise<boolean>;
 }
-export type Account = { id: string; name: string; disabled?: boolean };
-type Credential = { account: string; credential: WebAuthnCredential };
-type Login = { account: string; expiresAt: number };
-export type Ceremony = {
-	kind: 'register' | 'login';
-	challenge: string;
-	account?: Account;
-	expiresAt: number;
-};
 const LOGIN_MS = 7 * 24 * 60 * 60_000;
 const CHALLENGE_MS = 5 * 60_000;
-export const authJson = (data: unknown, status = 200) =>
-	Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
-export const randomSecret = () =>
-	Array.from(crypto.getRandomValues(new Uint8Array(32)), (n) =>
-		n.toString(16).padStart(2, '0')
-	).join('');
-
-export async function secretHash(value: string) {
-	const bytes = new TextEncoder().encode(value);
-	const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-	return Array.from(hash, (n) => n.toString(16).padStart(2, '0')).join('');
-}
-
-function cookieName(request: Request, kind: string) {
-	const secure = new URL(request.url).protocol === 'https:';
-	return `${secure ? '__Host-' : ''}pico_${kind}`;
-}
-
-export function readCookie(request: Request, kind: string) {
-	const prefix = cookieName(request, kind) + '=';
-	return (
-		(request.headers.get('Cookie') ?? '')
-			.split(';')
-			.map((part) => part.trim())
-			.find((part) => part.startsWith(prefix))
-			?.slice(prefix.length) ?? ''
-	);
-}
-
-function setCookie(request: Request, kind: string, value: string, age: number) {
-	const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
-	return `${cookieName(request, kind)}=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${secure}`;
-}
-
-export function authOrigin(request: Request, env: AuthEnv) {
-	const url = new URL(request.url);
-	const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
-	const origin = env.AUTH_ORIGIN ?? (local ? url.origin : '');
-	if (!origin || new URL(origin).origin !== origin || url.origin !== origin) {
-		throw new Error('認証の公開URLが設定されていません。');
-	}
-	requireSecureOrigin(url, local);
-	return new URL(origin);
-}
-
 const REGISTRATION = {
 	rpName: 'Pico Drop',
 	attestationType: 'none',
@@ -91,14 +43,13 @@ const REGISTRATION = {
 		userVerification: 'required'
 	}
 } as const;
-function registrationOptions(origin: URL, account: Account) {
-	return generateRegistrationOptions({
+type Passkeys = PasskeyVerifier;
+function registrationOptions(api: Passkeys, origin: URL, account: Account) {
+	return api.generateRegistrationOptions({
 		...REGISTRATION,
 		supportedAlgorithmIDs: [...REGISTRATION.supportedAlgorithmIDs],
 		rpID: origin.hostname,
-		userID: new Uint8Array(new TextEncoder().encode(account.id)),
-		userName: `${account.name} (${account.id.slice(0, 8)})`,
-		userDisplayName: account.name
+		...registrationUser(account)
 	});
 }
 
@@ -119,42 +70,10 @@ function displayName(body: unknown) {
 	return name.trim().replace(/[\p{Cc}\p{Cf}]/gu, '');
 }
 
-async function bodyJson(request: Request) {
-	if (!request.body) {
-		throw new Error('Body');
-	}
-	return new Response(limitedBody(request.body)).json() as Promise<unknown>;
-}
-
-function limitedBody(body: ReadableStream<Uint8Array>) {
-	return body.pipeThrough(bodyLimit(), { signal: AbortSignal.timeout(5000) });
-}
-
-function bodyLimit() {
-	let size = 0;
-	return new TransformStream<Uint8Array, Uint8Array>({
-		transform(chunk, controller) {
-			size += chunk.byteLength;
-			checkBodySize(size);
-			controller.enqueue(chunk);
-		}
-	});
-}
-
-const AUTH_ERROR =
-	'認証できませんでした。表示名やパスキーを確認して再試行してください。';
 const RATE_ERROR = '認証の試行が多すぎます。しばらく待ってください。';
 const SEND_ERROR =
 	'1日あたりの送信上限に達しました。時間をおいてお試しください。';
-const failedAuth = () => authJson({ error: AUTH_ERROR }, 400);
-const rateError = () => authJson({ error: RATE_ERROR }, 429);
 const credentialKey = (id: string) => 'auth:credential:' + id;
-const challengeKey = async (token: string) =>
-	'auth:challenge:' + (await secretHash(token));
-const loginKey = async (token: string) =>
-	'auth:login:' +
-	(/^v2\.[a-f0-9]{2}\./.exec(token)?.[0] ?? '') +
-	(await secretHash(token));
 type Rate = { count: number; expiresAt: number };
 function currentRate(old: Rate | undefined, duration: number): Rate {
 	return old && old.expiresAt > Date.now()
@@ -177,32 +96,31 @@ function checkCeremony(value: Ceremony | undefined, kind: Ceremony['kind']) {
 	return value;
 }
 
-function cookieResponse(
-	r: Request,
+function cookieResult(
 	data: unknown,
-	kind: string,
+	kind: 'auth' | 'challenge',
 	token: string
-) {
-	const age = (kind === 'auth' ? LOGIN_MS : CHALLENGE_MS) / 1000;
-	return withCookie(authJson(data), setCookie(r, kind, token, age));
+): AuthResult {
+	return { data, cookie: { kind, token } };
 }
-
-function withCookie(response: Response, cookie: string) {
-	response.headers.append('Set-Cookie', cookie);
-	return response;
+function loginResult(account: Account, token: string): AuthResult {
+	return {
+		...cookieResult({ account: { name: account.name } }, 'auth', token),
+		clearChallenge: true
+	};
 }
-
-function loginResponse(request: Request, account: Account, token: string) {
-	const response = cookieResponse(
-		request,
-		{ account: { name: account.name } },
-		'auth',
-		token
-	);
-	response.headers.append('Set-Cookie', setCookie(request, 'challenge', '', 0));
-	return response;
-}
-
+export type AuthInput = {
+	origin: URL;
+	auth: string;
+	challenge: string;
+	ip: string;
+	body(): Promise<unknown>;
+};
+export type AuthResult = {
+	data: unknown;
+	cookie?: { kind: 'auth' | 'challenge'; token: string };
+	clearChallenge?: boolean;
+};
 function checkAccount(
 	account: Account | undefined,
 	response: AuthenticationResponseJSON
@@ -222,22 +140,18 @@ export type AuthNetwork = {
 	issue(account: Account): Promise<string>;
 };
 
-export class PasskeyAuth {
+export class AuthService {
 	private verification: PasskeyVerification;
 	constructor(
-		private storage: AuthStore,
-		private env: AuthEnv,
-		private network?: AuthNetwork,
-		verifier: PasskeyVerifier = passkeyVerifier
+		protected storage: AuthStore,
+		protected network: AuthNetwork | undefined,
+		private verifier: PasskeyVerifier
 	) {
 		this.verification = new PasskeyVerification(verifier);
 	}
 
-	async loginKey(request: Request) {
-		const token = readCookie(request, 'auth');
-		return /^(?:v2\.[a-f0-9]{2}\.)?[a-f0-9]{64}$/.test(token)
-			? await loginKey(token)
-			: '';
+	async loginKey(input: AuthInput) {
+		return sessionLoginKey(input.auth);
 	}
 
 	async identity(key: string) {
@@ -251,52 +165,14 @@ export class PasskeyAuth {
 		return account && !account.disabled ? account : undefined;
 	}
 
-	async route(request: Request) {
-		if (request.method !== 'POST') {
-			return authJson({ error: 'Method not allowed' }, 405);
-		}
-		try {
-			return await this.post(request);
-		} catch {
-			return failedAuth();
+	async authorizeAction(input: AuthInput) {
+		if (!this.network && !(await this.rate(input))) {
+			throw new ServiceError('rate-limit', RATE_ERROR);
 		}
 	}
 
-	async post(request: Request) {
-		const action = this.action(request);
-		if (action === 'status') {
-			return this.status(request);
-		}
-		if (action === 'logout') {
-			return this.logout(request);
-		}
-		return this.authAction(request, action);
-	}
-
-	action(request: Request) {
-		authOrigin(request, this.env);
-		return new URL(request.url).pathname.slice('/api/auth/'.length);
-	}
-
-	async authAction(request: Request, action: string) {
-		const origin = authOrigin(request, this.env);
-		return this.network || (await this.rate(request))
-			? this.ceremonyRoute(request, origin, action)
-			: rateError();
-	}
-
-	ceremonyRoute(request: Request, origin: URL, action: string) {
-		const routes: Record<string, () => Promise<Response>> = {
-			'register/options': () => this.registerOptions(request, origin),
-			'login/options': () => this.loginOptions(request, origin),
-			'register/verify': () => this.registerVerify(request, origin),
-			'login/verify': () => this.loginVerify(request, origin)
-		};
-		return callRoute(routes, action);
-	}
-
-	async rate(request: Request) {
-		const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
+	async rate(request: AuthInput) {
+		const ip = request.ip;
 		return this.incrementRate('auth:rate:' + (await secretHash(ip)), 600_000);
 	}
 
@@ -309,33 +185,31 @@ export class PasskeyAuth {
 		return true;
 	}
 
-	async status(request: Request) {
+	async status(request: AuthInput) {
 		const account = await this.identity(await this.loginKey(request));
-		return authJson({ account: account ? { name: account.name } : null });
+		return { data: { account: account ? { name: account.name } : null } };
 	}
 
-	async logout(request: Request) {
+	async logout(request: AuthInput) {
 		const key = await this.loginKey(request);
 		if (key) {
 			await this.storage.delete(key);
 		}
-		const response = authJson({ account: null });
-		response.headers.append('Set-Cookie', setCookie(request, 'auth', '', 0));
-		return response;
+		return cookieResult({ account: null }, 'auth', '');
 	}
 
-	async registerOptions(request: Request, origin: URL) {
+	async registerOptions(request: AuthInput, origin: URL) {
 		const account = await newAccount(request);
 		if (this.network?.shard) {
 			account.id = `v2.${this.network.shard}.${account.id}`;
 		}
-		const options = await registrationOptions(origin, account);
+		const options = await registrationOptions(this.verifier, origin, account);
 		const value = ceremony('register', options.challenge, account);
 		return this.saveCeremony(request, options, value);
 	}
 
-	async loginOptions(request: Request, origin: URL) {
-		const options = await generateAuthenticationOptions({
+	async loginOptions(request: AuthInput, origin: URL) {
+		const options = await this.verifier.generateAuthenticationOptions({
 			rpID: origin.hostname,
 			userVerification: 'required'
 		});
@@ -343,17 +217,15 @@ export class PasskeyAuth {
 		return this.saveCeremony(request, options, value);
 	}
 
-	async saveCeremony(request: Request, options: unknown, value: Ceremony) {
-		await this.storage.delete(
-			await challengeKey(readCookie(request, 'challenge'))
-		);
+	async saveCeremony(request: AuthInput, options: unknown, value: Ceremony) {
+		await this.storage.delete(await challengeKey(request.challenge));
 		const token = this.newToken();
 		await this.storage.put(await challengeKey(token), value);
-		return cookieResponse(request, options, 'challenge', token);
+		return cookieResult(options, 'challenge', token);
 	}
 
-	async takeCeremony(request: Request, kind: Ceremony['kind']) {
-		const key = await challengeKey(readCookie(request, 'challenge'));
+	async takeCeremony(request: AuthInput, kind: Ceremony['kind']) {
+		const key = await challengeKey(request.challenge);
 		const value = this.network
 			? await this.network.take(key)
 			: await this.takeStoredCeremony(key);
@@ -366,9 +238,9 @@ export class PasskeyAuth {
 		return value;
 	}
 
-	async registerVerify(request: Request, origin: URL) {
+	async registerVerify(request: AuthInput, origin: URL) {
 		const value = await this.takeCeremony(request, 'register');
-		const response = (await bodyJson(request)) as RegistrationResponseJSON;
+		const response = (await request.body()) as RegistrationResponseJSON;
 		const credential = await this.verification.signup(response, origin, value);
 		await (this.network
 			? this.network.register(value.account!, credential)
@@ -386,9 +258,9 @@ export class PasskeyAuth {
 		await this.storage.put(key, stored);
 	}
 
-	async loginVerify(request: Request, origin: URL) {
+	async loginVerify(request: AuthInput, origin: URL) {
 		const ceremony = await this.takeCeremony(request, 'login');
-		const response = (await bodyJson(request)) as Auth;
+		const response = (await request.body()) as Auth;
 		const account = this.network
 			? await this.network.login(response, origin.origin, ceremony)
 			: await this.completeLogin(response, origin, ceremony);
@@ -431,20 +303,20 @@ export class PasskeyAuth {
 		);
 	}
 
-	async issueLogin(request: Request, account: Account) {
+	async issueLogin(request: AuthInput, account: Account) {
 		const key = await this.loginKey(request);
 		if (this.network) {
 			await this.network.revoke(key);
-			return loginResponse(request, account, await this.network.issue(account));
+			return loginResult(account, await this.network.issue(account));
 		}
 		return this.issueLocalLogin(request, account, key);
 	}
 
-	async issueLocalLogin(request: Request, account: Account, key: string) {
+	async issueLocalLogin(request: AuthInput, account: Account, key: string) {
 		await this.storage.delete(key);
 		const token = this.newToken();
 		await this.storeLogin(token, account.id);
-		return loginResponse(request, account, token);
+		return loginResult(account, token);
 	}
 
 	async storeLogin(token: string, account: string) {
@@ -504,31 +376,18 @@ function verified(value: boolean) {
 	}
 }
 
-async function newAccount(request: Request) {
-	const name = displayName(await bodyJson(request));
+async function newAccount(request: AuthInput) {
+	const name = displayName(await request.body());
 	if (!name) {
 		throw new Error('Name');
 	}
 	return { id: crypto.randomUUID(), name };
 }
 
-function callRoute(
-	routes: Record<string, () => Promise<Response>>,
-	action: string
-) {
-	return Object.hasOwn(routes, action)
-		? routes[action]()
-		: authJson({ error: 'Not found' }, 404);
-}
-
-function checkBodySize(size: number) {
-	if (size > 24_000) {
-		throw new Error('Body too large');
-	}
-}
-
-function requireSecureOrigin(url: URL, local: boolean) {
-	if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) {
-		throw new Error('HTTPS required');
-	}
+function registrationUser(account: Account) {
+	return {
+		userID: new Uint8Array(new TextEncoder().encode(account.id)),
+		userName: `${account.name} (${account.id.slice(0, 8)})`,
+		userDisplayName: account.name
+	};
 }

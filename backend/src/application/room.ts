@@ -1,6 +1,11 @@
-import { requestLoginKey } from './session-auth.ts';
-import { identity, allowSend, routedToken } from './routing.ts';
-import type { Bindings } from './bindings.ts';
+import { routedToken, secretHash as hash } from '../domain/tokens.ts';
+import { ServiceError } from './errors.ts';
+import type {
+	RoomRuntime,
+	RoomSocket,
+	RoomDependencies,
+	SessionInput
+} from './room-ports.ts';
 import {
 	createPhotoAccess,
 	consumePhoto,
@@ -17,7 +22,7 @@ import {
 	type ServerMessage,
 	type Session,
 	type TransferState
-} from '../../shared/protocol.ts';
+} from '../../../shared/protocol.ts';
 type Attachment = {
 	connectedAt: number;
 	authKey?: string;
@@ -29,17 +34,7 @@ type Attachment = {
 	requests?: number;
 	turnCount?: number;
 };
-const json = (data: unknown, status = 200) =>
-	Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
-async function hash(value: string) {
-	return Array.from(
-		new Uint8Array(
-			await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
-		),
-		(x) => x.toString(16).padStart(2, '0')
-	).join('');
-}
-function send(ws: WebSocket, message: ServerMessage) {
+function send(ws: RoomSocket, message: ServerMessage) {
 	try {
 		ws.send(JSON.stringify(message));
 	} catch {
@@ -48,15 +43,15 @@ function send(ws: WebSocket, message: ServerMessage) {
 }
 
 type LinkJoin = {
-	ws: WebSocket;
+	ws: RoomSocket;
 	a: Attachment;
 	key: string;
 	link: ShareLink;
-	owner: WebSocket;
+	owner: RoomSocket;
 };
 type TransferSockets = {
-	owner: WebSocket;
-	ws: WebSocket;
+	owner: RoomSocket;
+	ws: RoomSocket;
 	sender: Attachment;
 	a: Attachment;
 	t: TransferState;
@@ -76,7 +71,7 @@ type CreateLinkMessage = Extract<ClientMessage, { type: 'create-link' }>;
 type GroupStart = {
 	key: string;
 	link: ShareLink;
-	owner: WebSocket;
+	owner: RoomSocket;
 	member: GroupParticipant;
 };
 const REQUEST_LIMIT = '送信要求が多すぎます。1分後に再試行してください。';
@@ -109,40 +104,16 @@ function newSession(): Session {
 	};
 }
 
-function turnHeaders(token: string) {
-	return {
-		Authorization: `Bearer ${token}`,
-		'Content-Type': 'application/json'
-	};
-}
-function turnRequest(token: string): RequestInit {
-	return {
-		method: 'POST',
-		headers: turnHeaders(token),
-		body: JSON.stringify({ ttl: 900 }),
-		signal: AbortSignal.timeout(10_000)
-	};
-}
-
-async function turnServers(env: Bindings) {
-	const url = `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(env.TURN_KEY_ID!)}/credentials/generate-ice-servers`;
-	const response = await fetch(url, turnRequest(env.TURN_KEY_API_TOKEN!));
-	if (!response.ok) {
-		throw new Error('TURN');
-	}
-	const data = (await response.json()) as { iceServers: unknown[] };
-	return json({ iceServers: data.iceServers, relay: true });
-}
 function sessionExpired(a: Attachment, now: number) {
 	return (
 		(!a.session && a.connectedAt < now - 10_000) ||
 		(a.session && a.session.expiresAt <= now)
 	);
 }
-export class RoomHub {
+export class RoomService {
 	constructor(
-		private ctx: DurableObjectState,
-		private env: Bindings
+		protected ctx: RoomRuntime,
+		private dependencies: RoomDependencies
 	) {}
 	async consumePhoto(token: string, id: string, mode: string) {
 		return this.ctx.blockConcurrencyWhile(() =>
@@ -154,64 +125,28 @@ export class RoomHub {
 			revokePhoto(this.ctx.storage, token)
 		);
 	}
-	async fetch(request: Request): Promise<Response> {
-		const path = new URL(request.url).pathname;
-		const upgrade =
-			request.headers.get('Upgrade')?.toLowerCase() === 'websocket';
-		if (path === '/api/ws' && upgrade) {
-			return this.upgradeSocket();
-		}
-		return this.post(request, path);
+	async createSession(input: SessionInput) {
+		return this.ctx.blockConcurrencyWhile(() => this.issueSession(input));
 	}
-	async post(request: Request, path: string) {
-		if (request.method !== 'POST') {
-			return json({ error: 'Method not allowed' }, 405);
-		}
-		return this.postRoute(request, path);
-	}
-	async postRoute(request: Request, path: string) {
-		if (path === '/api/session') {
-			return this.ctx.blockConcurrencyWhile(() => this.createSession(request));
-		}
-		return path === '/api/ice'
-			? this.ice(request)
-			: json({ error: 'Method not allowed' }, 405);
-	}
-	async upgradeSocket() {
-		if (this.ctx.getWebSockets().length >= 200) {
-			return json({ error: '混み合っています。後でお試しください。' }, 503);
-		}
-		return this.acceptSocket();
-	}
-	async acceptSocket() {
-		const pair = new WebSocketPair();
-		this.ctx.acceptWebSocket(pair[1]);
-		pair[1].serializeAttachment({
-			connectedAt: Date.now()
-		} satisfies Attachment);
-		await this.schedule();
-		return new Response(null, { status: 101, webSocket: pair[0] });
-	}
-	async createSession(request: Request) {
-		const room = new URL(request.url).searchParams.get('room') ?? undefined;
+	async issueSession(input: SessionInput) {
+		const room = input.room;
 		await this.ctx.storage.put('routing:room', room ?? '');
 		const session = { ...newSession(), token: routedToken(room), room };
-		return this.storeSession(request, session);
+		return this.storeSession(input.authKey, session);
 	}
-	async storeSession(request: Request, session: Session) {
-		const stored = await this.sessionIdentity(request, session);
+	async storeSession(authKey: string, session: Session) {
+		const stored = await this.sessionIdentity(authKey, session);
 		await this.ctx.storage.put(
 			'session:' + (await hash(session.token)),
 			stored
 		);
 		await this.schedule();
-		return json(session, 201);
+		return session;
 	}
 	async sessionAccount(key: string) {
-		return identity(this.env, key);
+		return this.dependencies.identity(key);
 	}
-	async sessionIdentity(request: Request, session: Session) {
-		const authKey = await requestLoginKey(request);
+	async sessionIdentity(authKey: string, session: Session) {
 		const account = await this.sessionAccount(authKey);
 		if (account) {
 			session.name = account.name;
@@ -219,9 +154,7 @@ export class RoomHub {
 		const { token: _token, ...stored } = session;
 		return { ...stored, authKey: account ? authKey : undefined };
 	}
-	async iceSocket(request: Request) {
-		const token =
-			request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+	async iceSocket(token: string) {
 		if (!/^[a-f0-9]{64}$/.test(token)) {
 			return undefined;
 		}
@@ -235,27 +168,27 @@ export class RoomHub {
 			? this.socket(session.id)
 			: undefined;
 	}
-	async activeTransfer(ws: WebSocket) {
+	async activeTransfer(ws: RoomSocket) {
 		const a = this.attachment(ws);
 		const t =
 			a.transfer &&
 			(await this.ctx.storage.get<TransferState>('transfer:' + a.transfer));
 		return t && t.started && t.expiresAt > Date.now();
 	}
-	async ice(request: Request) {
-		const ws = await this.iceSocket(request);
+	async ice(token: string) {
+		const ws = await this.iceSocket(token);
 		if (!ws) {
-			return json({ error: 'Unauthorized' }, 401);
+			throw new ServiceError('unauthorized', 'Unauthorized');
 		}
 		if (!(await this.activeTransfer(ws))) {
-			return json({ error: '転送の確認が必要です。' }, 403);
+			throw new ServiceError('forbidden', '転送の確認が必要です。');
 		}
 		return this.issueIce(ws);
 	}
-	async issueIce(ws: WebSocket) {
+	async issueIce(ws: RoomSocket) {
 		const latest = this.attachment(ws);
 		if ((latest.turnCount ?? 0) >= this.turnLimit(latest)) {
-			return json({ error: TURN_LIMIT }, 429);
+			throw new ServiceError('rate-limit', TURN_LIMIT);
 		}
 		latest.turnCount = (latest.turnCount ?? 0) + 1;
 		ws.serializeAttachment(latest);
@@ -265,31 +198,20 @@ export class RoomHub {
 		return a.linkKey ? LIMITS.participants * LIMITS.groupAttempts : 10;
 	}
 	async iceServers() {
-		if (!this.env.TURN_KEY_ID || !this.env.TURN_KEY_API_TOKEN) {
-			return json({
-				iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }],
-				relay: false
-			});
-		}
-		return this.turnServers();
-	}
-	async turnServers() {
 		try {
-			return await turnServers(this.env);
+			return await this.dependencies.iceServers();
 		} catch {
-			return json({ error: TURN_FAILED }, 503);
+			throw new ServiceError('unavailable', TURN_FAILED);
 		}
 	}
-	attachment(ws: WebSocket): Attachment {
+	attachment(ws: RoomSocket): Attachment {
 		return ws.deserializeAttachment() as Attachment;
 	}
 	socket(id: string) {
 		return this.ctx
-			.getWebSockets()
+			.getRoomSockets()
 			.find(
-				(ws) =>
-					this.attachment(ws).session?.id === id &&
-					ws.readyState === WebSocket.OPEN
+				(ws) => this.attachment(ws).session?.id === id && ws.readyState === 1
 			);
 	}
 	async schedule() {
@@ -299,7 +221,7 @@ export class RoomHub {
 			await this.ctx.storage.setAlarm(next);
 		}
 	}
-	clearTransfer(ws: WebSocket, id: string) {
+	clearTransfer(ws: RoomSocket, id: string) {
 		const a = this.attachment(ws);
 		if (a.transfer === id) {
 			delete a.transfer;
@@ -336,10 +258,10 @@ export class RoomHub {
 		const room = await this.ctx.storage.get<string>('routing:room');
 		return createPhotoAccess(this.ctx.storage, files, room);
 	}
-	async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
+	async webSocketMessage(ws: RoomSocket, raw: string | ArrayBuffer) {
 		await this.ctx.blockConcurrencyWhile(() => this.receive(ws, raw));
 	}
-	async receive(ws: WebSocket, raw: string | ArrayBuffer) {
+	async receive(ws: RoomSocket, raw: string | ArrayBuffer) {
 		try {
 			await this.handleRaw(ws, raw);
 		} catch (e) {
@@ -349,7 +271,7 @@ export class RoomHub {
 			});
 		}
 	}
-	messageRate(ws: WebSocket) {
+	messageRate(ws: RoomSocket) {
 		const a = this.attachment(ws);
 		if (!a.window || a.window < Date.now() - 60_000) {
 			Object.assign(a, { window: Date.now(), messages: 0, requests: 0 });
@@ -358,7 +280,7 @@ export class RoomHub {
 		ws.serializeAttachment(a);
 		return a;
 	}
-	async handleRaw(ws: WebSocket, raw: string | ArrayBuffer) {
+	async handleRaw(ws: RoomSocket, raw: string | ArrayBuffer) {
 		const text = controlMessage(raw);
 		const a = this.messageRate(ws);
 		if (this.closeOverLimit(ws, a)) {
@@ -366,14 +288,14 @@ export class RoomHub {
 		}
 		await this.handleMessage(ws, a, parseClient(JSON.parse(text)));
 	}
-	closeOverLimit(ws: WebSocket, a: Attachment) {
+	closeOverLimit(ws: RoomSocket, a: Attachment) {
 		if (a.messages! <= 240) {
 			return false;
 		}
 		ws.close(1008, 'Rate limit');
 		return true;
 	}
-	async handleMessage(ws: WebSocket, a: Attachment, m: ClientMessage) {
+	async handleMessage(ws: RoomSocket, a: Attachment, m: ClientMessage) {
 		if (m.type === 'auth' && !a.session) {
 			return this.authenticate(ws, a, m.token);
 		}
@@ -383,7 +305,7 @@ export class RoomHub {
 			await this.authenticatedMessage(ws, a, m);
 		}
 	}
-	async authenticatedMessage(ws: WebSocket, a: Attachment, m: ClientMessage) {
+	async authenticatedMessage(ws: RoomSocket, a: Attachment, m: ClientMessage) {
 		if (m.type === 'create-link') {
 			return this.createLink(ws, a, m);
 		}
@@ -392,7 +314,7 @@ export class RoomHub {
 		}
 		await this.otherMessage(ws, a, m);
 	}
-	async otherMessage(ws: WebSocket, a: Attachment, m: ClientMessage) {
+	async otherMessage(ws: RoomSocket, a: Attachment, m: ClientMessage) {
 		if (m.type === 'revoke-link') {
 			return this.revokeLink(ws, a);
 		}
@@ -421,7 +343,7 @@ export class RoomHub {
 			this.socket(session.id)
 		);
 	}
-	async authenticate(ws: WebSocket, a: Attachment, token: string) {
+	async authenticate(ws: RoomSocket, a: Attachment, token: string) {
 		const key = 'session:' + (await hash(token));
 		const session = await this.ctx.storage.get<StoredSession>(key);
 		if (this.invalidSession(session)) {
@@ -430,7 +352,7 @@ export class RoomHub {
 			await this.acceptSession(ws, a, { key, session: session! });
 		}
 	}
-	async acceptSession(ws: WebSocket, a: Attachment, stored: StoredIdentity) {
+	async acceptSession(ws: RoomSocket, a: Attachment, stored: StoredIdentity) {
 		const { key, session } = stored;
 		await this.ctx.storage.put(key, { ...session, used: true });
 		a.session = { ...device(session), expiresAt: session.expiresAt };
@@ -438,7 +360,7 @@ export class RoomHub {
 		ws.serializeAttachment(a);
 		send(ws, { type: 'ready', device: device(session) });
 	}
-	checkRequestRate(ws: WebSocket, a: Attachment) {
+	checkRequestRate(ws: RoomSocket, a: Attachment) {
 		a.requests = (a.requests ?? 0) + 1;
 		ws.serializeAttachment(a);
 		if (a.requests > 5) {
@@ -455,7 +377,7 @@ export class RoomHub {
 			expiresAt: Date.now() + LIMITS.requestMs
 		};
 	}
-	async revokeLink(ws: WebSocket, a: Attachment) {
+	async revokeLink(ws: RoomSocket, a: Attachment) {
 		if (a.linkKey) {
 			const key = a.linkKey;
 			delete a.linkKey;
@@ -464,14 +386,14 @@ export class RoomHub {
 			send(ws, { type: 'link-ended' });
 		}
 	}
-	async createLink(ws: WebSocket, a: Attachment, message: CreateLinkMessage) {
-		await allowSend(this.env, a.authKey ?? '');
+	async createLink(ws: RoomSocket, a: Attachment, message: CreateLinkMessage) {
+		await this.dependencies.allowSend(a.authKey ?? '');
 		this.checkRequestRate(ws, a);
 		this.checkLinkParticipant(a);
 		await this.revokeLink(ws, a);
 		return this.issueLink(ws, a, message);
 	}
-	async issueLink(ws: WebSocket, a: Attachment, message: CreateLinkMessage) {
+	async issueLink(ws: RoomSocket, a: Attachment, message: CreateLinkMessage) {
 		const token = routedToken(
 			await this.ctx.storage.get<string>('routing:room')
 		);
@@ -487,7 +409,7 @@ export class RoomHub {
 		}
 		return link;
 	}
-	async storeLink(ws: WebSocket, a: Attachment, link: ShareLink) {
+	async storeLink(ws: RoomSocket, a: Attachment, link: ShareLink) {
 		await this.ctx.storage.put(a.linkKey!, link);
 		ws.serializeAttachment(a);
 		await this.schedule();
@@ -497,7 +419,7 @@ export class RoomHub {
 			throw new Error('転送中です。完了後にお試しください。');
 		}
 	}
-	async joinLink(ws: WebSocket, a: Attachment, token: string) {
+	async joinLink(ws: RoomSocket, a: Attachment, token: string) {
 		this.checkRequestRate(ws, a);
 		this.checkLinkParticipant(a);
 		const key = 'link:' + (await hash(token));
@@ -510,7 +432,7 @@ export class RoomHub {
 			? this.joinGroup(context)
 			: this.consumeLink(context);
 	}
-	linkOwner(ws: WebSocket, link: ShareLink | undefined) {
+	linkOwner(ws: RoomSocket, link: ShareLink | undefined) {
 		const owner = link && this.socket(link.owner);
 		if (!link || link.expiresAt <= Date.now() || !owner || owner === ws) {
 			throw new Error(LINK_UNAVAILABLE);
@@ -533,7 +455,7 @@ export class RoomHub {
 		this.attachTransfer(owner, sender, t);
 		this.attachTransfer(ws, a, t);
 	}
-	attachTransfer(ws: WebSocket, a: Attachment, t: TransferState) {
+	attachTransfer(ws: RoomSocket, a: Attachment, t: TransferState) {
 		a.transfer = t.id;
 		ws.serializeAttachment(a);
 		send(ws, requestedMessage(t));
@@ -627,14 +549,14 @@ export class RoomHub {
 	async startNextGroupMember(
 		key: string,
 		link: ShareLink,
-		owner: WebSocket,
+		owner: RoomSocket,
 		member?: GroupParticipant
 	) {
 		if (member) {
 			await this.startGroupMember({ key, link, owner, member });
 		}
 	}
-	groupCanStart(link: ShareLink, owner: WebSocket) {
+	groupCanStart(link: ShareLink, owner: RoomSocket) {
 		return link.expiresAt > Date.now() && !this.attachment(owner).transfer;
 	}
 	async startGroupMember(context: GroupStart) {
@@ -744,10 +666,10 @@ export class RoomHub {
 			send(ws, { type: 'start', id });
 		}
 	}
-	async webSocketClose(ws: WebSocket) {
+	async webSocketClose(ws: RoomSocket) {
 		await this.ctx.blockConcurrencyWhile(() => this.closeSocket(ws));
 	}
-	async closeSocket(ws: WebSocket) {
+	async closeSocket(ws: RoomSocket) {
 		const a = this.attachment(ws);
 		await this.revokeLink(ws, a);
 		if (a.transfer) {
@@ -755,19 +677,19 @@ export class RoomHub {
 		}
 		ws.close();
 	}
-	async webSocketError(ws: WebSocket) {
+	async webSocketError(ws: RoomSocket) {
 		await this.webSocketClose(ws);
 	}
 	async alarm() {
 		await this.ctx.blockConcurrencyWhile(() => this.expire());
 	}
-	async expireSocket(ws: WebSocket, now: number) {
+	async expireSocket(ws: RoomSocket, now: number) {
 		const a = this.attachment(ws);
 		if (sessionExpired(a, now)) {
 			await this.closeExpired(ws, a);
 		}
 	}
-	async closeExpired(ws: WebSocket, a: Attachment) {
+	async closeExpired(ws: RoomSocket, a: Attachment) {
 		await this.revokeLink(ws, a);
 		if (a.transfer) {
 			await this.end(a.transfer, 'timeout');
@@ -789,7 +711,7 @@ export class RoomHub {
 		await this.ctx.storage.delete(key);
 	}
 	async expireLink(key: string) {
-		for (const ws of this.ctx.getWebSockets()) {
+		for (const ws of this.ctx.getRoomSockets()) {
 			const a = this.attachment(ws);
 			if (a.linkKey === key) {
 				await this.revokeLink(ws, a);
@@ -803,7 +725,7 @@ export class RoomHub {
 		}
 	}
 	async nextAlarm(now: number) {
-		if (this.ctx.getWebSockets().length) {
+		if (this.ctx.getRoomSockets().length) {
 			return now + 15_000;
 		}
 		const entries = await this.ctx.storage.list<Expiring>();
@@ -811,7 +733,7 @@ export class RoomHub {
 	}
 	async expire() {
 		const now = Date.now();
-		for (const ws of this.ctx.getWebSockets()) {
+		for (const ws of this.ctx.getRoomSockets()) {
 			await this.expireSocket(ws, now);
 		}
 		await this.expireEntries(now);

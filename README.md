@@ -8,11 +8,13 @@ Share photos with a link.
 
 ```text
 frontend/  SvelteKit / TypeScript / Cloudflare Workers
-backend/   TypeScript / Cloudflare Workers / Durable Objects
+backend/   Hono / TypeScript / Cloudflare Workers / Durable Objects
 docs/      設計方針・開発メモ
 ```
 
 frontend・backend・docsはpnpmワークスペースの独立したパッケージです。共通設定とlockfileをルートで管理します。
+
+バックエンドは `api/`（Hono）・`application/`（ユースケース）・`domain/`（業務ルール）・`infrastructure/`（Cloudflare等の実装）の4層に分離しています。依存方向と互換性の方針は [ADR-0003](docs/adr/0003-layered-backend-with-hono.md) を参照してください。
 
 依存パッケージはexactバージョンで指定し、`.npmrc` の `save-exact=true` により `pnpm add` でも固定します。更新時はpackage.jsonとlockfileをあわせて更新してください。
 
@@ -122,6 +124,7 @@ http://127.0.0.1:5174 で閲覧できます。`mise run dev` はアプリ用で�
 ## 意思決定の記録
 
 - [ADR-0001: タスク実行をmiseに集約する](docs/adr/0001-use-mise-for-task-execution.md)
+- [ADR-0003: バックエンドをレイヤードアーキテクチャにし、API層にHonoを使う](docs/adr/0003-layered-backend-with-hono.md)
 
 ## Storybook
 

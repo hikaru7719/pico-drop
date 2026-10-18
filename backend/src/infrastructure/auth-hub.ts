@@ -1,21 +1,26 @@
+import { PasskeyAuth } from '../api/auth.ts';
+import { passkeys } from './passkeys.ts';
+import { authShard } from '../domain/tokens.ts';
 import type {
 	WebAuthnCredential,
 	AuthenticationResponseJSON
 } from '@simplewebauthn/server';
-import { PasskeyAuth, type Account, type Ceremony } from './auth.ts';
-import { network, authShard } from './routing.ts';
+import type { Account, Ceremony } from '../domain/auth.ts';
+import { network } from './hub-network.ts';
 import type { Bindings } from './bindings.ts';
-import { expireRecords, scheduleExpiry } from './expiry.ts';
+import { expireRecords, scheduleExpiry } from '../application/expiry.ts';
 export class AuthHub {
 	constructor(
 		private ctx: DurableObjectState,
 		private env: Bindings
 	) {}
 	async accountIdentity(key: string) {
-		return this.auth().identity(key);
+		return this.auth().service.identity(key);
 	}
 	async authorizeSend(key: string) {
-		return this.ctx.blockConcurrencyWhile(() => this.auth().allowSend(key));
+		return this.ctx.blockConcurrencyWhile(() =>
+			this.auth().service.allowSend(key)
+		);
 	}
 	async revokeLogin(key: string) {
 		if (key) {
@@ -25,8 +30,8 @@ export class AuthHub {
 	async issueAccountLogin(account: Account) {
 		const shard = authShard(account.id);
 		const auth = this.auth(shard ? 'auth:' + shard : 'mvp');
-		const token = auth.newToken();
-		await auth.storeLogin(token, account.id);
+		const token = auth.service.newToken();
+		await auth.service.storeLogin(token, account.id);
 		await scheduleExpiry(this.ctx.storage);
 		return token;
 	}
@@ -36,7 +41,7 @@ export class AuthHub {
 		ceremony: Ceremony
 	) {
 		return this.ctx.blockConcurrencyWhile(() =>
-			this.auth().completeLogin(response, new URL(origin), ceremony)
+			this.auth().service.completeLogin(response, new URL(origin), ceremony)
 		);
 	}
 	async authRequest(request: Request) {
@@ -53,11 +58,11 @@ export class AuthHub {
 				this.registerAccount(account, credential)
 		};
 		const remote = this.env?.HUB ? network(this.env, name, local) : undefined;
-		return new PasskeyAuth(this.ctx.storage, this.env, remote);
+		return new PasskeyAuth(this.ctx.storage, this.env, remote, passkeys);
 	}
 	async consumeCeremony(key: string): Promise<Ceremony | undefined> {
 		return this.ctx.blockConcurrencyWhile(() =>
-			this.auth().takeStoredCeremony(key)
+			this.auth().service.takeStoredCeremony(key)
 		);
 	}
 	async registerAccount(
@@ -65,7 +70,7 @@ export class AuthHub {
 		credential: WebAuthnCredential
 	): Promise<void> {
 		return this.ctx.blockConcurrencyWhile(() =>
-			this.auth().storeAccount(account, credential)
+			this.auth().service.storeAccount(account, credential)
 		);
 	}
 	async alarm() {

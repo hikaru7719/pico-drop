@@ -1,7 +1,10 @@
+import type { RoomRuntime } from './room-ports.ts';
 import { expireRecords } from './expiry.ts';
 type Rate = { count: number; expiresAt: number };
 export class RateLimiter {
-	constructor(private ctx: DurableObjectState) {}
+	constructor(
+		private ctx: Pick<RoomRuntime, 'storage' | 'blockConcurrencyWhile'>
+	) {}
 	async limitRequest(kind: string) {
 		return this.ctx.blockConcurrencyWhile(() => this.applyRequestLimit(kind));
 	}

@@ -1,7 +1,8 @@
-import { routedToken } from './routing.ts';
-import type { PhotoMeta } from '../../shared/protocol.ts';
-import { PHOTO_LIFETIME_MS, isHeic } from '../../shared/photos.ts';
-import type { ConversionMode, PhotoAccess } from '../../shared/photos.ts';
+import { reservePhoto, type PhotoGrant } from '../domain/photos.ts';
+import { routedToken } from '../domain/tokens.ts';
+import type { PhotoMeta } from '../../../shared/protocol.ts';
+import { PHOTO_LIFETIME_MS } from '../../../shared/photos.ts';
+import type { PhotoAccess } from '../../../shared/photos.ts';
 
 export interface PhotoStore {
 	get(key: string): Promise<PhotoGrant | undefined>;
@@ -9,11 +10,6 @@ export interface PhotoStore {
 	delete(key: string): Promise<boolean>;
 }
 
-export type PhotoGrant = {
-	expiresAt: number;
-	files: PhotoMeta[];
-	uses: Record<string, number>;
-};
 const hex = (bytes: Uint8Array) =>
 	Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 const validToken = (token: string) => /^[a-f0-9]{64}$/.test(token);
@@ -35,30 +31,6 @@ export async function createPhotoAccess(
 	return { token, expiresAt };
 }
 
-export function reservePhoto(
-	grant: PhotoGrant | undefined,
-	id: string,
-	mode: string,
-	now = Date.now()
-) {
-	return !grant || grant.expiresAt <= now || !['preview', 'jpeg'].includes(mode)
-		? null
-		: reserveFile(grant, id, mode as ConversionMode);
-}
-
-function reserveFile(grant: PhotoGrant, id: string, mode: ConversionMode) {
-	const photo = grant.files.find((file) => file.id === id && isHeic(file.type));
-	return photo ? reserveUse(grant, photo, mode) : null;
-}
-
-function reserveUse(grant: PhotoGrant, photo: PhotoMeta, mode: ConversionMode) {
-	const key = `${photo.id}:${mode}`;
-	if ((grant.uses[key] ?? 0) >= 3) {
-		return null;
-	}
-	grant.uses[key] = (grant.uses[key] ?? 0) + 1;
-	return { photo, expiresAt: grant.expiresAt };
-}
 type PhotoQuery = { token: string; id: string; mode: string };
 export async function consumePhoto(storage: PhotoStore, query: PhotoQuery) {
 	if (!validToken(query.token)) {

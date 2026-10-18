@@ -1,15 +1,18 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import type {
 	AuthNetwork,
-	Account,
 	AuthStore,
 	PasskeyVerifier
-} from './auth.ts';
+} from '../application/auth.ts';
+import type { Account } from '../domain/auth.ts';
 import type {
 	verifyRegistrationResponse,
 	verifyAuthenticationResponse
 } from '@simplewebauthn/server';
-import { PasskeyAuth, authOrigin, secretHash } from './auth.ts';
+import { PasskeyAuth } from './auth.ts';
+import { authOrigin } from './http.ts';
+import { secretHash } from '../domain/tokens.ts';
+import { passkeys } from '../infrastructure/passkeys.ts';
 
 type Verifier = PasskeyVerifier;
 const authEnv = { AUTH_ORIGIN: 'https://photos.example' };
@@ -18,7 +21,12 @@ class Fixture {
 	auth: PasskeyAuth;
 	lastChallenge = '';
 	constructor(network?: AuthNetwork, verifier?: Verifier) {
-		this.auth = new PasskeyAuth(this.store(), authEnv, network, verifier);
+		this.auth = new PasskeyAuth(
+			this.store(),
+			authEnv,
+			network,
+			verifier ?? passkeys
+		);
 	}
 	store(): AuthStore {
 		return {
@@ -100,18 +108,18 @@ test('a challenge for the wrong operation is rejected', async () => {
 test('logout revokes the server session, including copies of the cookie', async () => {
 	const app = new Fixture();
 	const { key, cookie } = await app.identity();
-	expect(await app.auth.identity(key)).toMatchObject({ name: 'Guest' });
+	expect(await app.auth.service.identity(key)).toMatchObject({ name: 'Guest' });
 	await app.auth.route(app.request('logout', undefined, cookie));
-	expect(await app.auth.identity(key)).toBeUndefined();
+	expect(await app.auth.service.identity(key)).toBeUndefined();
 });
 
 test('send quota survives new browser sessions for the same account', async () => {
 	const app = new Fixture();
 	const { key } = await app.identity();
 	for (let i = 0; i < 30; i++) {
-		await app.auth.allowSend(key);
+		await app.auth.service.allowSend(key);
 	}
-	await expect(app.auth.allowSend(key)).rejects.toThrow('送信上限');
+	await expect(app.auth.service.allowSend(key)).rejects.toThrow('送信上限');
 });
 
 test('input size limits are enforced', async () => {
@@ -177,14 +185,14 @@ const authenticationInfo = {
 };
 function verifier() {
 	return {
-		verifyRegistrationResponse: vi
-			.fn<typeof verifyRegistrationResponse>()
-			.mockResolvedValue(registrationResult),
+		...passkeys,
+		verifyRegistrationResponse: registrationVerifier(),
 		verifyAuthenticationResponse: vi
 			.fn<typeof verifyAuthenticationResponse>()
-			.mockResolvedValue({ verified: true, authenticationInfo })
+			.mockResolvedValue(loginResult)
 	} satisfies PasskeyVerifier;
 }
+const loginResult = { verified: true, authenticationInfo };
 const registrationResult = {
 	verified: true as const,
 	registrationInfo: {
@@ -361,8 +369,8 @@ test.each(['expired', 'missing', 'disabled'])(
 		const app = new Fixture();
 		const { key } = await app.identity();
 		invalidateIdentity(app, key, reason);
-		expect(await app.auth.identity(key)).toBeUndefined();
-		await expect(app.auth.allowSend(key)).rejects.toThrow('ログイン');
+		expect(await app.auth.service.identity(key)).toBeUndefined();
+		await expect(app.auth.service.allowSend(key)).rejects.toThrow('ログイン');
 	}
 );
 function invalidateIdentity(app: Fixture, key: string, reason: string) {
@@ -375,7 +383,7 @@ function invalidateIdentity(app: Fixture, key: string, reason: string) {
 test('expired rate windows restart at one request', async () => {
 	const app = new Fixture();
 	app.entries.set('rate', { count: 30, expiresAt: Date.now() });
-	expect(await app.auth.incrementRate('rate', 1000)).toBe(true);
+	expect(await app.auth.service.incrementRate('rate', 1000)).toBe(true);
 	expect(app.entries.get('rate').count).toBe(1);
 });
 test('only known POST auth routes are accepted', async () => {
@@ -386,7 +394,7 @@ test('only known POST auth routes are accepted', async () => {
 	expect((await app.auth.route(app.request('unknown'))).status).toBe(404);
 });
 test('local HTTP development uses unprefixed non-secure cookies', async () => {
-	const auth = new PasskeyAuth(new Fixture().store(), {});
+	const auth = new PasskeyAuth(new Fixture().store(), {}, undefined, passkeys);
 	const request = new Request('http://localhost/api/auth/login/options', {
 		method: 'POST'
 	});
@@ -452,3 +460,9 @@ async function assertRemoteLogin(network: ReturnType<typeof remoteNetwork>) {
 	expect(network.issue).toHaveBeenCalledWith(remoteAccount);
 }
 afterEach(() => vi.restoreAllMocks());
+
+function registrationVerifier() {
+	return vi
+		.fn<typeof verifyRegistrationResponse>()
+		.mockResolvedValue(registrationResult);
+}

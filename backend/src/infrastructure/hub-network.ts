@@ -1,5 +1,6 @@
-import { randomSecret, readCookie, secretHash } from './auth.ts';
-import type { AuthNetwork, Ceremony, Account } from './auth.ts';
+import { authName, secretHash } from '../domain/tokens.ts';
+import type { AuthNetwork } from '../application/auth.ts';
+import type { Ceremony, Account } from '../domain/auth.ts';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 
 export interface AuthHub {
@@ -25,12 +26,6 @@ interface Environment<Id> {
 interface AccountAssertion {
 	response: { userHandle?: string };
 }
-export const authShard = (value: string) =>
-	/^v2\.([a-f0-9]{2})\./.exec(value)?.[1];
-export const authName = (value: string) => {
-	const shard = authShard(value);
-	return shard ? 'auth:' + shard : 'mvp';
-};
 export function hubFor<Id, Hub>(
 	env: { HUB: HubNamespace<Id, Hub> },
 	name: string
@@ -40,15 +35,6 @@ export function hubFor<Id, Hub>(
 export function accountRoute(response: AccountAssertion) {
 	const handle = response.response.userHandle ?? '';
 	return authName(atob(handle.replaceAll('-', '+').replaceAll('_', '/')));
-}
-export function authRoute(request: Request) {
-	const action = new URL(request.url).pathname.split('/').at(-1);
-	if (action === 'options') {
-		return 'auth:' + randomSecret().slice(0, 2);
-	}
-	const kind = action === 'verify' ? 'challenge' : 'auth';
-	const token = readCookie(request, kind);
-	return token ? authName(token) : 'auth:' + randomSecret().slice(0, 2);
 }
 export function loginRoute(key: string) {
 	return authName(key.slice('auth:login:'.length));
@@ -97,38 +83,15 @@ export async function allowSend<Id>(env: Environment<Id>, key: string) {
 }
 export async function requestRate<Id>(
 	env: Environment<Id>,
-	request: Request,
+	ip: string,
 	kind: string
 ) {
-	const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
 	return hubFor(env, 'rate:' + (await secretHash(ip))).limitRequest(kind);
 }
-export function roomRoute(request: Request) {
-	const url = new URL(request.url);
-	if (url.pathname === '/api/session') {
-		return url.searchParams.get('room') ?? randomSecret().slice(0, 16);
-	}
-	if (url.pathname === '/api/ws') {
-		return url.searchParams.get('room') ?? '';
-	}
-	return bearerRoom(request);
-}
-function bearerRoom(request: Request) {
-	const token =
-		request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
-	return /^[a-f0-9]{64}$/.test(token) ? token.slice(0, 16) : '';
-}
-export function routedToken(room: string | undefined) {
-	return room ? room + randomSecret().slice(16) : randomSecret();
-}
-
 export async function clearPreviousChallenge<Id>(
 	env: Environment<Id>,
-	request: Request
+	token: string
 ) {
-	const token = readCookie(request, 'challenge');
-	if (token && new URL(request.url).pathname.endsWith('/options')) {
-		const key = 'auth:challenge:' + (await secretHash(token));
-		await hubFor(env, authName(token)).consumeCeremony(key);
-	}
+	const key = 'auth:challenge:' + (await secretHash(token));
+	await hubFor(env, authName(token)).consumeCeremony(key);
 }

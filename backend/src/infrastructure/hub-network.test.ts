@@ -5,15 +5,15 @@ import {
 	identity,
 	allowSend,
 	type AuthHub,
-	authName,
-	authRoute,
 	loginRoute,
-	roomRoute,
-	routedToken,
 	requestRate,
 	clearPreviousChallenge
-} from './routing.ts';
-import { PasskeyAuth, type AuthStore } from './auth.ts';
+} from './hub-network.ts';
+import { PasskeyAuth } from '../api/auth.ts';
+import type { AuthStore } from '../application/auth.ts';
+import { passkeys } from './passkeys.ts';
+import { authName, routedToken } from '../domain/tokens.ts';
+import { authRoute, roomRoute } from '../api/routing.ts';
 const secret = 'a'.repeat(64);
 const request = (path: string, headers = {}) =>
 	new Request('https://photos.example' + path, { headers });
@@ -64,24 +64,21 @@ class Namespace implements AuthHub {
 }
 test('changing rooms cannot reset the IP rate limit', async () => {
 	const app = new Namespace();
-	for (const room of ['1111111111111111', '2222222222222222']) {
-		await requestRate(app.env, request('/api/session?room=' + room), 'session');
+	for (const _room of ['1111111111111111', '2222222222222222']) {
+		await requestRate(app.env, 'local', 'session');
 	}
 	expect(app.names[0]).toBe(app.names[1]);
 	expect(app.names[0]).toMatch(/^rate:/);
 });
 test('new options invalidate the old challenge on its original shard', async () => {
 	const app = new Namespace();
-	await clearPreviousChallenge(
-		app.env,
-		request('/api/auth/login/options', cookie)
-	);
+	await clearPreviousChallenge(app.env, 'v2.ab.' + secret);
 	expect(app.names).toEqual(['auth:ab']);
 	expect(app.consumeCeremony).toHaveBeenCalledOnce();
 });
 test('login lookup preserves the shard but stores only the secret hash', async () => {
 	const store: AuthStore = { get: vi.fn(), put: vi.fn(), delete: vi.fn() };
-	const auth = new PasskeyAuth(store, {});
+	const auth = new PasskeyAuth(store, {}, undefined, passkeys);
 	const key = await auth.loginKey(request('/', cookie));
 	expect(key).toMatch(/^auth:login:v2\.cd\.[a-f0-9]{64}$/);
 	expect(key).not.toContain(secret);
@@ -144,15 +141,6 @@ test('missing cookies choose random auth shards and missing room tokens stay emp
 	expect(roomRoute(request('/api/ice', { Authorization: 'invalid' }))).toBe('');
 	expect(routedToken(undefined)).toMatch(/^[a-f0-9]{64}$/);
 });
-test('only new options clear a previous ceremony', async () => {
-	const app = new Namespace();
-	await clearPreviousChallenge(
-		app.env,
-		request('/api/auth/login/verify', cookie)
-	);
-	await clearPreviousChallenge(app.env, request('/api/auth/login/options'));
-	expect(app.consumeCeremony).not.toHaveBeenCalled();
-});
 function assertRemoteVerification(app: Namespace) {
 	expect(app.verifyAccountLogin).toHaveBeenCalledWith(
 		assertion,
@@ -161,11 +149,7 @@ function assertRemoteVerification(app: Namespace) {
 	);
 }
 async function rateForIP(app: Namespace, ip: string) {
-	await requestRate(
-		app.env,
-		request('/api/session', { 'CF-Connecting-IP': ip }),
-		'session'
-	);
+	await requestRate(app.env, ip, 'session');
 }
 test('IP rate limiting uses the connecting IP and account routes accept empty handles', async () => {
 	const app = new Namespace();

@@ -3,11 +3,11 @@ import type {
 	AuthenticationResponseJSON,
 	WebAuthnCredential
 } from '@simplewebauthn/server';
-import type { Account, Ceremony } from './auth.ts';
+import type { Account, Ceremony } from '../domain/auth.ts';
 import type { Bindings } from './bindings.ts';
 import { AuthHub } from './auth-hub.ts';
 import { RoomHub } from './room-hub.ts';
-import { RateLimiter } from './rate-limiter.ts';
+import { RateLimiter } from '../application/rate-limiter.ts';
 
 type Role = 'auth' | 'room' | 'rate';
 // Keep the deployed class/namespace and IDs stable; business logic belongs to the handlers.
