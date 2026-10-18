@@ -1,5 +1,6 @@
 import { Links, Meta, Outlet, Scripts } from 'react-router';
 import '../../style.css';
+
 export default function Root() {
 	return (
 		<html lang="ja">

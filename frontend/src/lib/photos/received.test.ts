@@ -7,6 +7,7 @@ const photoAccess = () => ({
 	token: 'secret',
 	expiresAt: Date.now() + PHOTO_LIFETIME_MS
 });
+
 class PhotosFixture {
 	photos: ReceivedPhoto[] = [];
 	expired = false;
@@ -14,6 +15,7 @@ class PhotosFixture {
 	revoked: string[] = [];
 	result: Promise<Response> = Promise.resolve(new Response('JPEG'));
 	collection: ReceivedPhotos;
+
 	constructor() {
 		vi.useFakeTimers({ toFake: ['Date', 'setTimeout'], now: 10_000 });
 		this.mockIO();

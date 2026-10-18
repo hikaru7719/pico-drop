@@ -14,19 +14,23 @@ export class AuthHub {
 		private ctx: DurableObjectState,
 		private env: Bindings
 	) {}
+
 	async accountIdentity(key: string) {
 		return this.auth().service.identity(key);
 	}
+
 	async authorizeSend(key: string) {
 		return this.ctx.blockConcurrencyWhile(() =>
 			this.auth().service.allowSend(key)
 		);
 	}
+
 	async revokeLogin(key: string) {
 		if (key) {
 			await this.ctx.storage.delete(key);
 		}
 	}
+
 	async issueAccountLogin(account: Account) {
 		const shard = authShard(account.id);
 		const auth = this.auth(shard ? 'auth:' + shard : 'mvp');
@@ -35,6 +39,7 @@ export class AuthHub {
 		await scheduleExpiry(this.ctx.storage);
 		return token;
 	}
+
 	async verifyAccountLogin(
 		response: AuthenticationResponseJSON,
 		origin: string,
@@ -44,6 +49,7 @@ export class AuthHub {
 			this.auth().service.completeLogin(response, new URL(origin), ceremony)
 		);
 	}
+
 	async authRequest(request: Request) {
 		const response = await this.auth(
 			request.headers.get('X-Auth-Route') ?? 'mvp'
@@ -51,6 +57,7 @@ export class AuthHub {
 		await scheduleExpiry(this.ctx.storage);
 		return response;
 	}
+
 	auth(name = 'mvp'): PasskeyAuth {
 		const local = {
 			take: (key: string) => this.consumeCeremony(key),
@@ -60,11 +67,13 @@ export class AuthHub {
 		const remote = this.env?.HUB ? network(this.env, name, local) : undefined;
 		return new PasskeyAuth(this.ctx.storage, this.env, remote, passkeys);
 	}
+
 	async consumeCeremony(key: string): Promise<Ceremony | undefined> {
 		return this.ctx.blockConcurrencyWhile(() =>
 			this.auth().service.takeStoredCeremony(key)
 		);
 	}
+
 	async registerAccount(
 		account: Account,
 		credential: WebAuthnCredential
@@ -73,6 +82,7 @@ export class AuthHub {
 			this.auth().service.storeAccount(account, credential)
 		);
 	}
+
 	async alarm() {
 		await expireRecords(this.ctx.storage);
 	}

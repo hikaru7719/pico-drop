@@ -3,6 +3,7 @@
 	"private": true,
 	"type": "module",
 	"devDependencies": {
+		"@stylistic/eslint-plugin": "5.10.0",
 		"@vitest/coverage-v8": "4.1.11",
 		"happy-dom": "20.14.5",
 		"oxlint-tsgolint": "7.0.2003",

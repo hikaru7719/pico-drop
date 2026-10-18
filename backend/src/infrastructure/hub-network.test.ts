@@ -15,8 +15,10 @@ import { passkeys } from './passkeys.ts';
 import { authName, routedToken } from '../domain/tokens.ts';
 import { authRoute, roomRoute } from '../api/routing.ts';
 const secret = 'a'.repeat(64);
+
 const request = (path: string, headers = {}) =>
 	new Request('https://photos.example' + path, { headers });
+
 const cookie = {
 	Cookie: `__Host-pico_challenge=v2.ab.${secret}; __Host-pico_auth=v2.cd.${secret}`
 };
@@ -98,7 +100,9 @@ const assertion = {
 	},
 	clientExtensionResults: {}
 };
+
 const localNetwork = () => ({ take: vi.fn(), register: vi.fn() });
+
 const ceremony = {
 	kind: 'login' as const,
 	challenge: 'challenge',
@@ -141,6 +145,7 @@ test('missing cookies choose random auth shards and missing room tokens stay emp
 	expect(roomRoute(request('/api/ice', { Authorization: 'invalid' }))).toBe('');
 	expect(routedToken(undefined)).toMatch(/^[a-f0-9]{64}$/);
 });
+
 function assertRemoteVerification(app: Namespace) {
 	expect(app.verifyAccountLogin).toHaveBeenCalledWith(
 		assertion,
@@ -148,9 +153,11 @@ function assertRemoteVerification(app: Namespace) {
 		ceremony
 	);
 }
+
 async function rateForIP(app: Namespace, ip: string) {
 	await requestRate(app.env, ip, 'session');
 }
+
 test('IP rate limiting uses the connecting IP and account routes accept empty handles', async () => {
 	const app = new Namespace();
 	await rateForIP(app, '192.0.2.1');

@@ -12,6 +12,7 @@ type Responses = {
 	status: Status;
 	logout: Status;
 };
+
 export function authApi<K extends keyof Responses>(
 	path: K,
 	body?: unknown

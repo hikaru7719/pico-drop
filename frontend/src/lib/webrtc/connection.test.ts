@@ -25,6 +25,7 @@ class Channel extends EventTarget implements DataChannel {
 	onmessage: ((event: { data: unknown }) => void) | null = null;
 	send = vi.fn();
 	close = vi.fn();
+
 	message(value: unknown) {
 		this.onmessage!({ data: value });
 	}
@@ -48,6 +49,7 @@ class ConnectionFixture {
 		receiver: vi.fn()
 	} satisfies TransferCallbacks;
 	connection: TransferConnection;
+
 	constructor(sender = false) {
 		this.connection = new TransferConnection(
 			transfer,
@@ -57,9 +59,11 @@ class ConnectionFixture {
 		);
 		onTestFinished(() => this.abort.abort());
 	}
+
 	attach() {
 		this.connection.attach(this.channel);
 	}
+
 	async receiveFile() {
 		const header = { type: 'file', id: photo.id, sha256: await digest(data) };
 		this.channel.message(JSON.stringify(header));
@@ -83,6 +87,7 @@ test('receiver queues chunks and confirms only after the final acknowledgement',
 	assertCompleteSignal(f);
 	await assertReceived(f);
 });
+
 async function assertReceived(f: ConnectionFixture) {
 	expect(f.callbacks.received).toHaveBeenCalledOnce();
 	expect(await f.callbacks.received.mock.calls[0][0].arrayBuffer()).toEqual(
@@ -91,6 +96,7 @@ async function assertReceived(f: ConnectionFixture) {
 	expect(f.callbacks.progress).toHaveBeenCalledWith(8);
 	expect(f.channel.binaryType).toBe('arraybuffer');
 }
+
 test('sender streams photos and accepts confirmation only after all bytes are sent', async () => {
 	const f = new ConnectionFixture(true);
 	f.channel.readyState = 'open';
@@ -146,6 +152,7 @@ test('abort ignores open, confirmation, queued data and transport errors', async
 	f.connection.confirm(f.channel, '{"type":"verified"}');
 	await assertAborted(f);
 });
+
 async function assertAborted(f: ConnectionFixture) {
 	f.channel.onerror!();
 	await new Promise((resolve) => setTimeout(resolve, 0));
@@ -153,6 +160,7 @@ async function assertAborted(f: ConnectionFixture) {
 	expect(f.callbacks.open).not.toHaveBeenCalled();
 	expect(f.callbacks.received).not.toHaveBeenCalled();
 }
+
 test.each([new ArrayBuffer(LIMITS.chunk + 1), 'x'.repeat(1025)])(
 	'oversized messages fail before processing',
 	(value) => {
@@ -195,6 +203,7 @@ class BrowserPeer implements PeerConnection {
 	setRemoteDescription = vi.fn<PeerConnection['setRemoteDescription']>();
 	addIceCandidate = vi.fn<PeerConnection['addIceCandidate']>();
 	close = vi.fn();
+
 	constructor(readonly config: RTCConfiguration) {
 		BrowserPeer.latest = this;
 	}
@@ -207,6 +216,7 @@ test.each([true, false])(
 		assertPeerWiring(f, sender);
 	}
 );
+
 function assertPeerWiring(f: ConnectionFixture, sender: boolean) {
 	const pc = BrowserPeer.latest;
 	expect(pc.config.iceServers).toEqual([{ urls: 'stun:example.com' }]);
@@ -216,6 +226,7 @@ function assertPeerWiring(f: ConnectionFixture, sender: boolean) {
 	expect(f.callbacks.fail).toHaveBeenCalledOnce();
 	assertSignalLifecycle(f, pc);
 }
+
 function assertSignalLifecycle(f: ConnectionFixture, pc: BrowserPeer) {
 	pc.onicecandidate!({ candidate: { toJSON: () => ({ candidate: 'ice' }) } });
 	expect(f.callbacks.send).toHaveBeenLastCalledWith({
@@ -225,6 +236,7 @@ function assertSignalLifecycle(f: ConnectionFixture, pc: BrowserPeer) {
 	});
 	assertAbortedSignal(f, pc);
 }
+
 function assertAbortedSignal(f: ConnectionFixture, pc: BrowserPeer) {
 	f.callbacks.send.mockClear();
 	f.abort.abort();
@@ -239,12 +251,15 @@ function assertCompleteSignal(f: ConnectionFixture) {
 		id: transfer.id
 	});
 }
+
 function assertSenderComplete(f: ConnectionFixture) {
 	expect(f.callbacks.complete).toHaveBeenCalledOnce();
 	expect(f.channel.send).toHaveBeenLastCalledWith('{"type":"verified-ack"}');
 	expect(f.callbacks.open).toHaveBeenCalledOnce();
 }
+
 type ConnectionArgs = Parameters<typeof createTransferConnection>;
+
 async function connectBrowser(f: ConnectionFixture, sender: boolean) {
 	const args: ConnectionArgs = [transfer, f.abort.signal, sender, f.callbacks];
 	const connection = new TransferConnection(...args);

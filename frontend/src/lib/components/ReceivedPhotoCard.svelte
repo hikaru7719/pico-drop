@@ -15,6 +15,7 @@
 		shareJpeg: () => void;
 		checkExpiry: () => boolean;
 	} = $props();
+
 	function download(event: MouseEvent) {
 		if (!checkExpiry()) {
 			event.preventDefault();

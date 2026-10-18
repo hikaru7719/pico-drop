@@ -9,16 +9,19 @@ const allowed: Record<string, string[]> = {
 	api: ['api', 'application', 'domain'],
 	infrastructure: ['infrastructure', 'api', 'application', 'domain']
 };
+
 function sources(layer: string) {
 	return readdirSync(resolve(root, layer)).filter(
 		(name) => name.endsWith('.ts') && !name.endsWith('.test.ts')
 	);
 }
+
 function imports(source: string) {
 	return [...source.matchAll(/(?:from\s+|import\s*\()['"]([^'"]+)['"]/g)].map(
 		(match) => match[1]
 	);
 }
+
 function checkImport(layer: string, file: string, specifier: string) {
 	if (!specifier.startsWith('.')) {
 		return;
@@ -26,6 +29,7 @@ function checkImport(layer: string, file: string, specifier: string) {
 	const target = relative(root, resolve(root, layer, dirname(file), specifier));
 	checkTarget(layer, file, target);
 }
+
 function checkTarget(layer: string, file: string, target: string) {
 	if (target.startsWith('../')) {
 		expect(target.startsWith('../../shared/')).toBe(true);
@@ -35,6 +39,7 @@ function checkTarget(layer: string, file: string, target: string) {
 		target.split('/')[0]
 	);
 }
+
 for (const layer of Object.keys(allowed)) {
 	test(layer + ' respects the dependency direction', () => {
 		for (const file of sources(layer)) {

@@ -24,7 +24,9 @@ type Callbacks = {
 const FAILED = '変換できませんでした。元の写真は保存できます。';
 const TOO_LARGE = '変換は1枚20MiBまでです。元の写真を保存してください。';
 const NO_ACCESS = 'この写真を変換できません。元の写真を保存してください。';
+
 const authorization = (token: string) => ({ Authorization: `Bearer ${token}` });
+
 export function releasePhoto(photo: ReceivedPhoto) {
 	for (const url of [photo.url, photo.previewUrl, photo.jpegUrl]) {
 		if (url) {
@@ -67,6 +69,7 @@ export class ReceivedPhotos {
 	private timer: ReturnType<typeof setTimeout>;
 	private closed = false;
 	readonly expiresAt: number;
+
 	constructor(
 		private photos: ReceivedPhoto[],
 		private access: PhotoAccess | undefined,

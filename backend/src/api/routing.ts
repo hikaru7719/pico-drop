@@ -1,6 +1,7 @@
 import { randomSecret } from '../domain/tokens.ts';
 import { authName } from '../domain/tokens.ts';
 import { readCookie } from './http.ts';
+
 export function authRoute(request: Request) {
 	const action = new URL(request.url).pathname.split('/').at(-1);
 	if (action === 'options') {
@@ -10,6 +11,7 @@ export function authRoute(request: Request) {
 	const token = readCookie(request, kind);
 	return token ? authName(token) : 'auth:' + randomSecret().slice(0, 2);
 }
+
 export function roomRoute(request: Request) {
 	const url = new URL(request.url);
 	if (url.pathname === '/api/session') {
@@ -20,6 +22,7 @@ export function roomRoute(request: Request) {
 	}
 	return bearerRoom(request);
 }
+
 function bearerRoom(request: Request) {
 	const token =
 		request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';

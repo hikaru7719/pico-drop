@@ -15,6 +15,7 @@ class Socket implements SignalingSocket {
 	onclose: (() => void) | null = null;
 	send = vi.fn<SignalingSocket['send']>();
 	close = vi.fn<SignalingSocket['close']>();
+
 	message(data: string) {
 		this.onmessage!(new MessageEvent('message', { data }));
 	}
@@ -33,6 +34,7 @@ class Fixture {
 	message = vi.fn<(message: ServerMessage) => void>();
 	closed = vi.fn<() => void>();
 	signaling: Signaling;
+
 	constructor(room: string | undefined = session.room) {
 		this.signaling = new Signaling(
 			{ ...session, room },

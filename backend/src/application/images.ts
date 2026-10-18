@@ -36,6 +36,7 @@ export type ConversionInput = {
 	mode: string;
 	body: ReadableStream<Uint8Array> | null;
 };
+
 export async function convertPhoto(
 	input: ConversionInput,
 	renderer: ImageRenderer,
@@ -44,6 +45,7 @@ export async function convertPhoto(
 	const grant = await authority.consumePhoto(input.token, input.id, input.mode);
 	return convertWithinLimit({ ...input, renderer, grant: requireGrant(grant) });
 }
+
 function convertWithinLimit(job: Conversion) {
 	if (job.grant.photo.size > MAX_CONVERSION_BYTES) {
 		throw new ServiceError('too-large', TOO_LARGE);
@@ -70,6 +72,7 @@ async function transform(job: Conversion) {
 		job.grant.expiresAt
 	);
 }
+
 function validateImage(bytes: Uint8Array, expiresAt: number) {
 	if (!isHeifBytes(bytes)) {
 		throw new ServiceError('unsupported', 'HEIC/HEIF画像を確認してください。');
@@ -99,7 +102,9 @@ async function readAndClose(
 		await reader.cancel().catch(() => {});
 	}
 }
+
 type ImageReader = ReadableStreamDefaultReader<Uint8Array>;
+
 async function fillImage(reader: ImageReader, bytes: Uint8Array) {
 	const offset = await readChunks(reader, bytes);
 	if (offset !== bytes.length) {

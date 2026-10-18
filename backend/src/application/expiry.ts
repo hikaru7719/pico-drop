@@ -1,5 +1,6 @@
 import type { RecordStore } from './room-ports.ts';
 type Expiring = { expiresAt?: number };
+
 export async function scheduleExpiry(storage: RecordStore) {
 	const current = await storage.getAlarm();
 	const next = Date.now() + 15_000;
@@ -7,6 +8,7 @@ export async function scheduleExpiry(storage: RecordStore) {
 		await storage.setAlarm(next);
 	}
 }
+
 async function reschedule(storage: RecordStore) {
 	const entries = await storage.list<Expiring>();
 	const next = firstExpiry(entries.values());
@@ -14,6 +16,7 @@ async function reschedule(storage: RecordStore) {
 		await storage.setAlarm(Math.max(Date.now() + 15_000, next));
 	}
 }
+
 export async function expireRecords(storage: RecordStore) {
 	const entries = await storage.list<Expiring>();
 	for (const [key, value] of entries) {

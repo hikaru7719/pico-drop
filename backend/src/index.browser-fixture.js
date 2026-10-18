@@ -2,6 +2,7 @@ const sockets = [];
 class TestSocket {
 	queue = [];
 	waiter = undefined;
+
 	constructor(room) {
 		this.ws = new WebSocket(
 			location.origin.replace('http', 'ws') + '/api/ws?room=' + room
@@ -9,6 +10,7 @@ class TestSocket {
 		sockets.push(this.ws);
 		this.ws.onmessage = (e) => this.receive(JSON.parse(e.data));
 	}
+
 	receive(message) {
 		const resolve = this.waiter;
 		if (resolve) {
@@ -18,11 +20,13 @@ class TestSocket {
 			this.queue.push(message);
 		}
 	}
+
 	wait(type) {
 		return new Promise((resolve, reject) =>
 			this.waitForMessage(type, resolve, reject)
 		);
 	}
+
 	waitForMessage(type, resolve, reject) {
 		const timer = setTimeout(
 			() => reject(new Error('Timed out: ' + type)),
@@ -43,9 +47,11 @@ class TestSocket {
 		}
 		throw new Error('Missing ' + type);
 	}
+
 	send(message) {
 		this.ws.send(JSON.stringify(message));
 	}
+
 	async open(token) {
 		await new Promise((resolve) => {
 			this.ws.onopen = resolve;
@@ -53,24 +59,28 @@ class TestSocket {
 		this.send({ type: 'auth', token });
 		return this;
 	}
+
 	closed() {
 		return new Promise((resolve) => {
 			this.ws.onclose = (e) => resolve(e.code);
 		});
 	}
 }
+
 const session = async (room = '') =>
 	(
 		await fetch('/api/session' + (room ? '?room=' + room : ''), {
 			method: 'POST'
 		})
 	).json();
+
 async function participant(room) {
 	const identity = await session(room);
 	const socket = await new TestSocket(identity.room).open(identity.token);
 	await socket.next('ready');
 	return { identity, socket };
 }
+
 async function request(a, b) {
 	const files = [{ id: 'p', name: 'photo.jpg', type: 'image/jpeg', size: 8 }];
 	a.socket.send({ type: 'create-link', files });
@@ -78,6 +88,7 @@ async function request(a, b) {
 	b.socket.send({ type: 'join-link', token: link.token });
 	return requested(a, b);
 }
+
 async function requested(a, b) {
 	const transfer = await a.socket.next('requested');
 	const received = await b.socket.next('requested');
@@ -86,14 +97,17 @@ async function requested(a, b) {
 		sameRequest: JSON.stringify(transfer) === JSON.stringify(received)
 	};
 }
+
 async function errorFor(socket, message) {
 	socket.send(message);
 	return (await socket.next('error')).message;
 }
+
 async function iceStatus(token) {
 	const headers = { Authorization: 'Bearer ' + token };
 	return (await fetch('/api/ice', { method: 'POST', headers })).status;
 }
+
 async function preApproval(a, c, signal) {
 	const result = {};
 	result.preAccept = await errorFor(a.socket, signal);
@@ -108,6 +122,7 @@ async function accept(a, b, id) {
 	await a.socket.next('start');
 	await b.socket.next('start');
 }
+
 async function approved(a, b, signal) {
 	await accept(a, b, signal.id);
 	a.socket.send(signal);
@@ -125,6 +140,7 @@ async function cancelled(a, b, signal) {
 	await b.socket.next('ended');
 	return errorFor(a.socket, signal);
 }
+
 async function tokenChecks(a) {
 	const invalid = await new TestSocket(a.identity.room).open('0'.repeat(64));
 	const invalidCode = await invalid.closed();
@@ -133,6 +149,7 @@ async function tokenChecks(a) {
 	const replay = await new TestSocket(a.identity.room).open(a.identity.token);
 	return { invalidCode, replayCode: await replay.closed() };
 }
+
 function offer(id) {
 	return {
 		type: 'signal',
@@ -140,6 +157,7 @@ function offer(id) {
 		signal: { description: { type: 'offer', sdp: 'test' } }
 	};
 }
+
 async function transferChecks(a, b, c) {
 	const { transfer, sameRequest } = await request(a, b);
 	const signal = offer(transfer.id);
@@ -158,6 +176,7 @@ async function scenario() {
 	const isolation = await isolatedRoom(a);
 	return { ...transfer, ...isolation, ...(await tokenChecks(a)) };
 }
+
 window.runApiTests = async () => {
 	try {
 		return await scenario();

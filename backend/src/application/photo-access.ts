@@ -12,7 +12,9 @@ export interface PhotoStore {
 
 const hex = (bytes: Uint8Array) =>
 	Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+
 const validToken = (token: string) => /^[a-f0-9]{64}$/.test(token);
+
 export async function grantKey(token: string) {
 	const data = new TextEncoder().encode(token);
 	return (
@@ -32,6 +34,7 @@ export async function createPhotoAccess(
 }
 
 type PhotoQuery = { token: string; id: string; mode: string };
+
 export async function consumePhoto(storage: PhotoStore, query: PhotoQuery) {
 	if (!validToken(query.token)) {
 		return null;

@@ -8,6 +8,7 @@ class Socket {
 	data: any;
 	messages: any[] = [];
 	readyState = 1;
+
 	constructor(id: string) {
 		this.data = {
 			connectedAt: Date.now(),
@@ -15,18 +16,23 @@ class Socket {
 			session: testSession(id)
 		};
 	}
+
 	deserializeAttachment() {
 		return structuredClone(this.data);
 	}
+
 	serializeAttachment(data: any) {
 		this.data = structuredClone(data);
 	}
+
 	send(raw: string) {
 		this.messages.push(JSON.parse(raw));
 	}
+
 	close() {
 		this.readyState = 3;
 	}
+
 	last(type: string) {
 		return [...this.messages].reverse().find((m) => m.type === type);
 	}
@@ -37,12 +43,14 @@ class Fixture {
 	hub: any;
 	queue = Promise.resolve();
 	deadline: number | null = null;
+
 	constructor() {
 		this.hub = new RoomService(
 			this.context() as never,
 			this.environment() as never
 		);
 	}
+
 	environment() {
 		const auth = new AuthService(this.storage() as never, undefined, passkeys);
 		return {
@@ -59,6 +67,7 @@ class Fixture {
 		});
 		this.entries.set('auth:account:sender', { id: 'sender', name: 'Sender' });
 	}
+
 	context() {
 		this.seedIdentity();
 		return {
@@ -67,6 +76,7 @@ class Fixture {
 			blockConcurrencyWhile: (fn: () => unknown) => this.serialize(fn)
 		};
 	}
+
 	serialize(fn: () => unknown) {
 		const task = this.queue.then(fn);
 		this.queue = task.then(
@@ -86,17 +96,20 @@ class Fixture {
 			list: async () => new Map(this.entries)
 		};
 	}
+
 	put = async (key: string, value: any) =>
 		this.entries.set(key, structuredClone(value));
 	setAlarm = async (time: number) => {
 		this.deadline = time;
 	};
+
 	async message(index: number, message: unknown) {
 		await this.hub.webSocketMessage(
 			this.sockets[index],
 			JSON.stringify(message)
 		);
 	}
+
 	async link() {
 		await this.message(0, { type: 'create-link', files });
 		return this.sockets[0].last('link-created');
@@ -112,6 +125,7 @@ test('link is hashed, bounded to ten minutes, consumed once, and approval gates 
 	expect([...app.entries.keys()][0]).not.toContain(link.token);
 	await checkJoin(app, link.token);
 });
+
 async function checkJoin(app: Fixture, token: string) {
 	await app.message(1, { type: 'join-link', token });
 	const t = app.sockets[1].last('requested');
@@ -120,6 +134,7 @@ async function checkJoin(app: Fixture, token: string) {
 	expect(app.sockets[2].last('error').message).toMatch(/すでに使われた/);
 	await checkApproval(app, t.id);
 }
+
 async function checkApproval(app: Fixture, id: string) {
 	await app.message(0, { type: 'accept', id });
 	expect(app.sockets[0].last('error').message).toMatch(/受信者/);
@@ -127,6 +142,7 @@ async function checkApproval(app: Fixture, id: string) {
 	expect(app.sockets[0].last('start').id).toBe(id);
 	expect(app.sockets[1].last('start').id).toBe(id);
 }
+
 test('expired links reject entry even before the cleanup alarm', async () => {
 	vi.useFakeTimers();
 	try {
@@ -135,6 +151,7 @@ test('expired links reject entry even before the cleanup alarm', async () => {
 		vi.useRealTimers();
 	}
 });
+
 async function checkExpiry() {
 	const app = new Fixture();
 	const link = await app.link();
@@ -143,6 +160,7 @@ async function checkExpiry() {
 	expect(app.sockets[1].last('error').message).toMatch(/有効期限が切れた/);
 	expect(app.sockets[1].last('requested')).toBeUndefined();
 }
+
 for (const reason of ['revoke', 'disconnect', 'replace']) {
 	test(`${reason} invalidates the previous invitation`, async () => {
 		const app = new Fixture();
@@ -152,6 +170,7 @@ for (const reason of ['revoke', 'disconnect', 'replace']) {
 		expect(app.sockets[1].last('error').message).toMatch(/有効期限が切れた/);
 	});
 }
+
 async function invalidate(app: Fixture, reason: string) {
 	if (reason === 'disconnect') {
 		await app.hub.webSocketClose(app.sockets[0]);
@@ -159,6 +178,7 @@ async function invalidate(app: Fixture, reason: string) {
 		await app.message(0, invalidationMessage(reason));
 	}
 }
+
 test('self joining and legacy discovery cannot create a transfer', async () => {
 	const app = new Fixture();
 	const link = await app.link();
@@ -182,6 +202,7 @@ test('simultaneous participants consume an invitation only once', async () => {
 	);
 	assertSingleParticipant(app);
 });
+
 function assertSingleParticipant(app: Fixture) {
 	const requests = app.sockets[0].messages.filter(
 		(m) => m.type === 'requested'
@@ -189,6 +210,7 @@ function assertSingleParticipant(app: Fixture) {
 	expect(requests).toHaveLength(1);
 	expect(app.sockets.filter((ws) => ws.last('error'))).toHaveLength(1);
 }
+
 test('the alarm notifies the sender and releases expired invitations', async () => {
 	const app = new Fixture();
 	const link = await app.link();
@@ -205,6 +227,7 @@ test('joining near expiry preserves the separate approval and transfer deadlines
 		vi.useRealTimers();
 	}
 });
+
 async function checkSeparateDeadlines() {
 	const app = new Fixture();
 	const link = await app.link();
@@ -214,6 +237,7 @@ async function checkSeparateDeadlines() {
 	await checkApproval(app, app.sockets[1].last('requested').id);
 	await checkTransferDeadline(app);
 }
+
 async function checkTransferDeadline(app: Fixture) {
 	const id = app.sockets[1].last('requested').id;
 	const transfer = app.entries.get('transfer:' + id);
@@ -259,17 +283,21 @@ async function groupLink(app: Fixture) {
 	await app.message(0, { type: 'create-link', files, mode: 'group' });
 	return app.sockets[0].last('link-created');
 }
+
 async function joinGroup(app: Fixture, token: string, index: number) {
 	await app.message(index, { type: 'join-link', token });
 	return app.sockets[index].last('requested').id as string;
 }
+
 async function approveGroup(app: Fixture, id: string, index: number) {
 	await app.message(0, { type: 'approve', id });
 	await app.message(index, { type: 'accept', id });
 }
+
 function members(app: Fixture) {
 	return app.sockets[0].last('group-state').participants;
 }
+
 test('group requires sender confirmation and receiver consent before signaling', async () => {
 	const app = new Fixture();
 	const link = await groupLink(app);
@@ -280,6 +308,7 @@ test('group requires sender confirmation and receiver consent before signaling',
 	await app.message(0, { type: 'approve', id });
 	expect(app.sockets[0].last('start').id).toBe(id);
 });
+
 async function assertGroupPermissions(app: Fixture, id: string) {
 	await app.message(2, { type: 'approve', id });
 	await app.message(1, { type: 'approve', id });
@@ -288,6 +317,7 @@ async function assertGroupPermissions(app: Fixture, id: string) {
 	expect(app.sockets[0].last('signal')).toBeUndefined();
 	expect(app.sockets[2].last('group-state')).toBeUndefined();
 }
+
 test('same QR admits several recipients and transfers sequentially after completion', async () => {
 	const app = new Fixture();
 	const link = await groupLink(app);
@@ -297,6 +327,7 @@ test('same QR admits several recipients and transfers sequentially after complet
 	await approveGroup(app, second, 2);
 	await assertSequentialCompletion(app, first, second);
 });
+
 async function assertSequentialCompletion(
 	app: Fixture,
 	first: string,
@@ -306,6 +337,7 @@ async function assertSequentialCompletion(
 	await app.message(1, { type: 'complete', id: first });
 	assertNextStarted(app, second);
 }
+
 test('group admission is bounded even when six people join concurrently', async () => {
 	const app = new Fixture();
 	app.sockets.push(...[3, 4, 5, 6].map((i) => new Socket('guest-' + i)));
@@ -326,6 +358,7 @@ for (const kind of ['revoke', 'disconnect', 'expire']) {
 		await stopAndCheckGroup(app, link, kind);
 	});
 }
+
 async function stopAndCheckGroup(app: Fixture, link: any, kind: string) {
 	await stopDistribution(app, link, kind);
 	expect(app.sockets[2].last('start')).toBeUndefined();
@@ -335,6 +368,7 @@ async function stopAndCheckGroup(app: Fixture, link: any, kind: string) {
 	await app.message(2, { type: 'join-link', token: link.token });
 	expect(app.sockets[2].last('error').message).toMatch(/有効期限/);
 }
+
 for (const action of ['reject', 'fail', 'disconnect']) {
 	test(`individual ${action} does not stop the next recipient`, async () => {
 		const app = new Fixture();
@@ -346,6 +380,7 @@ for (const action of ['reject', 'fail', 'disconnect']) {
 		expect(app.sockets[2].last('start').id).toBe(second);
 	});
 }
+
 async function endMember(app: Fixture, id: string, action: string) {
 	if (action === 'disconnect') {
 		await app.hub.webSocketClose(app.sockets[1]);
@@ -353,6 +388,7 @@ async function endMember(app: Fixture, id: string, action: string) {
 		await app.message(1, { type: action, id });
 	}
 }
+
 test('failed recipient can retry twice in the same slot with fresh confirmation', async () => {
 	const app = new Fixture();
 	const link = await groupLink(app);
@@ -363,6 +399,7 @@ test('failed recipient can retry twice in the same slot with fresh confirmation'
 	expect(app.sockets[1].last('error').message).toMatch(/2回まで/);
 	expect(members(app)).toHaveLength(1);
 });
+
 async function failedAttempt(app: Fixture, token: string, attempt: number) {
 	const id = await joinGroup(app, token, 1);
 	expectFreshConfirmation(app, attempt);
@@ -370,6 +407,7 @@ async function failedAttempt(app: Fixture, token: string, attempt: number) {
 	await app.message(1, { type: 'fail', id });
 	expect(members(app)[0].status).toBe('failed');
 }
+
 test('anonymous sessions cannot create group distributions', async () => {
 	const app = new Fixture();
 	await app.message(1, { type: 'create-link', files, mode: 'group' });
@@ -383,14 +421,17 @@ function testSignal(id: string) {
 		signal: { description: { type: 'offer', sdp: '' } }
 	};
 }
+
 function memberStatuses(app: Fixture) {
 	return members(app).map((p: protocol.GroupParticipant) => p.status);
 }
+
 async function joinMany(app: Fixture, token: string) {
 	await Promise.all(
 		[1, 2, 3, 4, 5, 6].map((i) => app.message(i, { type: 'join-link', token }))
 	);
 }
+
 async function stopDistribution(app: Fixture, link: any, kind: string) {
 	if (kind === 'expire') {
 		await expireDistribution(app, link.expiresAt);
@@ -398,6 +439,7 @@ async function stopDistribution(app: Fixture, link: any, kind: string) {
 		await invalidate(app, kind);
 	}
 }
+
 function expectFreshConfirmation(app: Fixture, attempts: number) {
 	expect(members(app)[0]).toMatchObject({
 		attempts,
@@ -421,6 +463,7 @@ function assertQueued(app: Fixture) {
 	expect(app.sockets[2].last('start')).toBeUndefined();
 	expect(memberStatuses(app)).toEqual(['transferring', 'queued']);
 }
+
 async function expireDistribution(app: Fixture, expiresAt: number) {
 	await app.hub.expireEntry(app.sockets[0].data.linkKey, expiresAt, expiresAt);
 }
@@ -449,6 +492,7 @@ async function newConnection(app: Fixture, authKey = '') {
 	app.sockets.push(ws);
 	return { session, ws, index: app.sockets.length - 1 };
 }
+
 test('sessions store only a token hash and authenticate once after reconnect', async () => {
 	const app = new Fixture();
 	const { session, ws, index } = await newConnection(app, 'auth:login:test');
@@ -458,11 +502,13 @@ test('sessions store only a token hash and authenticate once after reconnect', a
 	expect(ws.last('ready').device.id).toBe(session.id);
 	await rejectSessionReplay(app, session.token);
 });
+
 async function rejectSessionReplay(app: Fixture, token: string) {
 	const { ws, index } = await newConnection(app);
 	await app.message(index, { type: 'auth', token });
 	expect(ws.readyState).toBe(3);
 }
+
 test('legacy anonymous sessions are supported without room metadata', async () => {
 	const app = new Fixture();
 	const session = await app.hub.createSession({ authKey: '' });
@@ -481,6 +527,7 @@ test.each(['missing', 'expired', 'used'])(
 		expect(ws.last('ready')).toBeUndefined();
 	}
 );
+
 function alterSession(app: Fixture, session: protocol.Session, kind: string) {
 	const entry = [...app.entries].find(([, value]) => value.id === session.id)!;
 	if (kind === 'missing') {
@@ -491,6 +538,7 @@ function alterSession(app: Fixture, session: protocol.Session, kind: string) {
 		entry[1].used = true;
 	}
 }
+
 test('ICE rejects invalid tokens and disconnected sessions', async () => {
 	const app = new Fixture();
 	const { session } = await newConnection(app);
@@ -500,6 +548,7 @@ test('ICE rejects invalid tokens and disconnected sessions', async () => {
 	alterSession(app, session, 'expired');
 	await iceError(app, session.token, 'unauthorized');
 });
+
 async function connectedSession(app: Fixture) {
 	const connection = await newConnection(app);
 	await app.message(connection.index, {
@@ -508,6 +557,7 @@ async function connectedSession(app: Fixture) {
 	});
 	return connection;
 }
+
 test('ICE requires an active transfer and consumes a bounded quota', async () => {
 	const app = new Fixture();
 	const { session, ws } = await connectedSession(app);
@@ -516,6 +566,7 @@ test('ICE requires an active transfer and consumes a bounded quota', async () =>
 	await exhaustIce(app, session.token);
 	await iceError(app, session.token, 'rate-limit');
 });
+
 function seedIceTransfer(app: Fixture, ws: Socket) {
 	ws.data.transfer = 'ice-transfer';
 	app.entries.set('transfer:ice-transfer', {
@@ -523,6 +574,7 @@ function seedIceTransfer(app: Fixture, ws: Socket) {
 		expiresAt: Date.now() + 10000
 	});
 }
+
 test.each(['missing', 'pending', 'expired'])(
 	'ICE rejects a %s transfer',
 	async (kind) => {
@@ -535,6 +587,7 @@ test.each(['missing', 'pending', 'expired'])(
 		});
 	}
 );
+
 function alterIceTransfer(app: Fixture, kind: string) {
 	const transfer = app.entries.get('transfer:ice-transfer');
 	if (kind === 'missing') {
@@ -545,6 +598,7 @@ function alterIceTransfer(app: Fixture, kind: string) {
 		transfer.expiresAt = 0;
 	}
 }
+
 test('group senders have a bounded larger ICE allowance', async () => {
 	const app = new Fixture();
 	const { session, ws } = await connectedSession(app);
@@ -628,11 +682,13 @@ test('a socket closing during an outgoing message does not break cleanup', async
 async function iceError(app: Fixture, token: string, code: string) {
 	await expect(app.hub.ice(token)).rejects.toMatchObject({ code });
 }
+
 async function exhaustIce(app: Fixture, token: string) {
 	for (let i = 0; i < 10; i++) {
 		expect(await app.hub.ice(token)).toEqual({ iceServers: [], relay: false });
 	}
 }
+
 function failingTurn(app: Fixture) {
 	return {
 		...app.environment(),

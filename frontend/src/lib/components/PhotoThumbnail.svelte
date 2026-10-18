@@ -5,11 +5,13 @@
 	let failed = $state(false);
 	let dialog = $state<HTMLDialogElement>();
 	let previewOpen = $state(false);
+
 	async function openPreview() {
 		previewOpen = true;
 		await tick();
 		dialog?.showModal();
 	}
+
 	$effect(() => {
 		const preview = URL.createObjectURL(file);
 		url = preview;

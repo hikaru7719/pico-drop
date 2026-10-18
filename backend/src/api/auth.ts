@@ -20,6 +20,7 @@ import { sessionLoginKey } from '../domain/tokens.ts';
 export class PasskeyAuth {
 	readonly service: AuthService;
 	private app = new Hono();
+
 	constructor(
 		storage: AuthStore,
 		private env: AuthEnv,
@@ -29,6 +30,7 @@ export class PasskeyAuth {
 		this.service = new AuthService(storage, network, verifier);
 		this.routes();
 	}
+
 	private routes() {
 		this.middleware();
 		this.app.post('/api/auth/status', (c) => this.execute(c.req.raw, 'status'));
@@ -37,6 +39,7 @@ export class PasskeyAuth {
 		this.app.onError(authError);
 		this.app.notFound(() => authJson({ error: 'Not found' }, 404));
 	}
+
 	private middleware() {
 		this.app.use('*', requirePost);
 		this.app.use('*', async (c, next) => {
@@ -44,6 +47,7 @@ export class PasskeyAuth {
 			await next();
 		});
 	}
+
 	private ceremonyRoutes() {
 		for (const action of CEREMONIES) {
 			const path = action.replace(/(Options|Verify)$/, '/$1').toLowerCase();
@@ -52,12 +56,15 @@ export class PasskeyAuth {
 			);
 		}
 	}
+
 	route(request: Request) {
 		return this.app.fetch(request);
 	}
+
 	async loginKey(request: Request) {
 		return sessionLoginKey(readCookie(request, 'auth'));
 	}
+
 	private input(request: Request): AuthInput {
 		return {
 			origin: authOrigin(request, this.env),
@@ -67,6 +74,7 @@ export class PasskeyAuth {
 			body: () => bodyJson(request)
 		};
 	}
+
 	private async execute(request: Request, action: AuthAction) {
 		const input = this.input(request);
 		if (action !== 'status' && action !== 'logout') {
@@ -93,11 +101,13 @@ type AuthAction =
 	| 'loginOptions'
 	| 'registerVerify'
 	| 'loginVerify';
+
 function authError(error: Error) {
 	return error instanceof ServiceError
 		? authJson({ error: error.message }, 429)
 		: authJson({ error: AUTH_ERROR }, 400);
 }
+
 function authResponse(request: Request, result: AuthResult) {
 	const response = authJson(result.data);
 	if (result.cookie) {
@@ -108,7 +118,9 @@ function authResponse(request: Request, result: AuthResult) {
 	}
 	return response;
 }
+
 type Cookie = NonNullable<AuthResult['cookie']>;
+
 function appendCookie(response: Response, request: Request, cookie: Cookie) {
 	const age = cookie.token ? (cookie.kind === 'auth' ? 604800 : 300) : 0;
 	response.headers.append(

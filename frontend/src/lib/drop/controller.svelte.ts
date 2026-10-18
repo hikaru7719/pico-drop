@@ -122,6 +122,7 @@ export function createDropController(
 		unsupported:
 			'このブラウザでは写真を共有できません。写真のファイル名を押して、1枚ずつダウンロードしてください。'
 	};
+
 	function clearReceived() {
 		photoCollection?.dispose();
 		photoCollection = undefined;
@@ -132,11 +133,13 @@ export function createDropController(
 		received = [];
 		completed = false;
 	}
+
 	function discard() {
 		clearReceived();
 		error = '';
 		notice = '画面内の写真を削除しました。端末に保存した写真は残っています。';
 	}
+
 	function restartSharing(keepPhotos: boolean) {
 		completed = false;
 		error = '';
@@ -147,6 +150,7 @@ export function createDropController(
 			clearSelection();
 		}
 	}
+
 	function clearSelection() {
 		selected = [];
 		metadata = [];
@@ -160,11 +164,13 @@ export function createDropController(
 		receiver?.dispose();
 		receiver = undefined;
 	}
+
 	function cleanupTransfer() {
 		closePeer();
 		clearTimeout(watchdog);
 		request = undefined;
 	}
+
 	function closeSignaling() {
 		generation++;
 		sessionAbort?.abort();
@@ -172,12 +178,14 @@ export function createDropController(
 		signaling?.close();
 		signaling = undefined;
 	}
+
 	function resetLink() {
 		clearTimeout(linkTimer);
 		shareLink = '';
 		linkExpiresAt = undefined;
 		creatingLink = false;
 	}
+
 	function disconnect(state: 'idle' | 'offline' = 'idle') {
 		closeSignaling();
 		cleanupTransfer();
@@ -188,12 +196,14 @@ export function createDropController(
 			stopGroupView();
 		}
 	}
+
 	function send(message: Parameters<SignalingConnection['send']>[0]) {
 		if (!signaling) {
 			throw new Error('再接続してください。');
 		}
 		signaling.send(message);
 	}
+
 	function cancelRequest() {
 		if (!request) {
 			return;
@@ -204,6 +214,7 @@ export function createDropController(
 			/* Already disconnected. */
 		}
 	}
+
 	function fail(cause: unknown) {
 		if (request?.group && connection === 'online') {
 			return failGroupTransfer(cause);
@@ -213,6 +224,7 @@ export function createDropController(
 		disconnect('offline');
 		retainOrDiscard();
 	}
+
 	function failGroupTransfer(cause: unknown) {
 		error = errorMessage(cause);
 		try {
@@ -223,6 +235,7 @@ export function createDropController(
 		cleanupTransfer();
 		clearReceived();
 	}
+
 	function retainOrDiscard() {
 		if (!completed) {
 			clearReceived();
@@ -230,6 +243,7 @@ export function createDropController(
 			retainPhotos();
 		}
 	}
+
 	function errorMessage(cause: unknown) {
 		return cause instanceof Error
 			? cause.message
@@ -240,6 +254,7 @@ export function createDropController(
 		clearTimeout(watchdog);
 		watchdog = setTimeout(() => fail(new Error(TRANSFER_STOPPED)), 60_000);
 	}
+
 	function prepareConnection() {
 		disconnect();
 		error = '';
@@ -248,9 +263,11 @@ export function createDropController(
 		creatingLink = !incomingToken;
 		sessionAbort = new AbortController();
 	}
+
 	function activeGeneration(current: number) {
 		return !disposed && current === generation;
 	}
+
 	function signalFailure(e: unknown, current: number) {
 		if (
 			activeGeneration(current) &&
@@ -259,6 +276,7 @@ export function createDropController(
 			fail(e);
 		}
 	}
+
 	function queueSignal(message: ServerMessage, current: number) {
 		signalQueue = signalQueue
 			.then(async () => {
@@ -268,6 +286,7 @@ export function createDropController(
 			})
 			.catch((e) => signalFailure(e, current));
 	}
+
 	function connectionClosed(current: number) {
 		if (activeGeneration(current)) {
 			disconnect('offline');
@@ -276,6 +295,7 @@ export function createDropController(
 			);
 		}
 	}
+
 	function checkBrowser() {
 		if (!window.isSecureContext || !window.RTCPeerConnection) {
 			throw new Error(
@@ -283,6 +303,7 @@ export function createDropController(
 			);
 		}
 	}
+
 	function openSignaling(next: Session, current: number) {
 		session = next;
 		signaling = dependencies.createSignaling(
@@ -291,6 +312,7 @@ export function createDropController(
 			() => connectionClosed(current)
 		);
 	}
+
 	async function openSession(current: number) {
 		checkBrowser();
 		const next = await dependencies.createSession(
@@ -311,6 +333,7 @@ export function createDropController(
 			}
 		}
 	}
+
 	async function connect() {
 		if (disposed || connection === 'connecting') {
 			return;
@@ -334,6 +357,7 @@ export function createDropController(
 		flowStarted = true;
 		creatingLink = true;
 	}
+
 	function canJoinLink() {
 		return (
 			connection !== 'connecting' &&
@@ -371,11 +395,13 @@ export function createDropController(
 		participants = participants.map(stoppedParticipant);
 		completed = false;
 	}
+
 	function stoppedParticipant(p: GroupParticipant): GroupParticipant {
 		return ['waiting', 'queued', 'transferring'].includes(p.status)
 			? { ...p, status: 'declined' }
 			: p;
 	}
+
 	function groupAction(type: 'approve' | 'cancel', id: string) {
 		try {
 			send({ type, id });
@@ -383,11 +409,13 @@ export function createDropController(
 			fail(e);
 		}
 	}
+
 	function canRetryGroup() {
 		return (
 			groupReceiver && !request && !received.length && connection === 'online'
 		);
 	}
+
 	function retryGroup() {
 		if (!canRetryGroup()) {
 			return;
@@ -395,6 +423,7 @@ export function createDropController(
 		error = '';
 		send({ type: 'join-link', token: incomingToken });
 	}
+
 	function linkCreated(
 		message: Extract<ServerMessage, { type: 'link-created' }>
 	) {
@@ -451,9 +480,11 @@ export function createDropController(
 		selected = files;
 		metadata = result;
 	}
+
 	function selectionFailed(e: unknown) {
 		error = e instanceof Error ? e.message : '写真を選び直してください。';
 	}
+
 	async function selectFiles(files: File[]) {
 		try {
 			await describeSelection(files);
@@ -463,6 +494,7 @@ export function createDropController(
 			selecting = false;
 		}
 	}
+
 	async function select(files: File[]) {
 		if (shareLink || creatingLink || selecting || request) {
 			return;
@@ -487,6 +519,7 @@ export function createDropController(
 		}
 		finishCancellation(type);
 	}
+
 	function finishCancellation(type: 'reject' | 'cancel') {
 		if (groupMode && shareLink) {
 			return;
@@ -495,6 +528,7 @@ export function createDropController(
 		clearReceived();
 		notice = type === 'reject' ? REJECTED_NOTICE : '転送を中止しました。';
 	}
+
 	function sendAction(type: 'accept' | 'reject' | 'cancel', id: string) {
 		try {
 			send({ type, id });
@@ -503,6 +537,7 @@ export function createDropController(
 			fail(e);
 		}
 	}
+
 	function action(type: 'accept' | 'reject' | 'cancel') {
 		if (request) {
 			sendAction(type, request.id);
@@ -518,6 +553,7 @@ export function createDropController(
 			sendCreateLink();
 		}
 	}
+
 	function sendCreateLink() {
 		send({
 			type: 'create-link',
@@ -525,9 +561,11 @@ export function createDropController(
 			...(groupMode ? { mode: 'group' as const } : {})
 		});
 	}
+
 	function startControlTimer() {
 		watchdog = setTimeout(controlTimedOut, 10_000);
 	}
+
 	function controlTimedOut() {
 		fail(
 			new Error(
@@ -543,6 +581,7 @@ export function createDropController(
 		}
 		failServerRequest(message);
 	}
+
 	function failServerRequest(message: string) {
 		resetLink();
 		if (request) {
@@ -552,6 +591,7 @@ export function createDropController(
 			disconnect('offline');
 		}
 	}
+
 	function declineWhileUnsaved(message: RequestInfo) {
 		if (!completed || !received.length || message.to.id !== session?.id) {
 			return false;
@@ -560,6 +600,7 @@ export function createDropController(
 		notice = PREVIOUS_PHOTOS;
 		return true;
 	}
+
 	function resetRequest(message: RequestInfo) {
 		clearTimeout(watchdog);
 		if (!groupMode) {
@@ -567,6 +608,7 @@ export function createDropController(
 		}
 		initializeRequest(message);
 	}
+
 	function initializeRequest(message: RequestInfo) {
 		groupReceiver = !!message.group && message.to.id === session?.id;
 		clearReceived();
@@ -575,6 +617,7 @@ export function createDropController(
 		bytes = 0;
 		phase = 'waiting';
 	}
+
 	function waitForApproval(message: RequestInfo) {
 		error = '';
 		notice = '';
@@ -584,6 +627,7 @@ export function createDropController(
 			approvalTimeout(message)
 		);
 	}
+
 	function approvalTimeout(message: RequestInfo) {
 		return (
 			(message.group
@@ -591,6 +635,7 @@ export function createDropController(
 				: LIMITS.requestMs) + 1000
 		);
 	}
+
 	async function requested(message: RequestInfo) {
 		if (declineWhileUnsaved(message)) {
 			return;
@@ -599,6 +644,7 @@ export function createDropController(
 		waitForApproval(message);
 		await showRequested();
 	}
+
 	async function showRequested() {
 		await tick();
 		if (!groupMode) {
@@ -616,18 +662,21 @@ export function createDropController(
 			failedOutcome(reason);
 		}
 	}
+
 	function failedOutcome(reason: keyof typeof endMessages) {
 		error = endMessages[reason];
 		clearReceived();
 	}
 
 	type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
+
 	async function ended(reason: EndReason, access?: PhotoAccess) {
 		if ((groupMode && shareLink) || (groupReceiver && reason === 'failed')) {
 			return groupEnded(reason);
 		}
 		return finishSingleTransfer(reason, access);
 	}
+
 	async function finishSingleTransfer(reason: EndReason, access?: PhotoAccess) {
 		transferOutcome(reason);
 		if (reason === 'complete' && received.length) {
@@ -636,6 +685,7 @@ export function createDropController(
 		disconnect();
 		return showReceived();
 	}
+
 	function groupEnded(reason: EndReason) {
 		cleanupTransfer();
 		clearReceived();
@@ -643,6 +693,7 @@ export function createDropController(
 			error = endMessages[reason];
 		}
 	}
+
 	async function showReceived() {
 		if (completed && received.length) {
 			await tick();
@@ -655,6 +706,7 @@ export function createDropController(
 		touch();
 		await start();
 	}
+
 	async function applyTransferMessage(
 		message: Extract<ServerMessage, { id: string }>
 	) {
@@ -663,6 +715,7 @@ export function createDropController(
 		}
 		return forwardTransferMessage(message);
 	}
+
 	async function forwardTransferMessage(
 		message: Extract<ServerMessage, { id: string }>
 	) {
@@ -691,6 +744,7 @@ export function createDropController(
 		}
 		return handleLinkMessage(message);
 	}
+
 	async function handleLinkMessage(
 		message: Exclude<ServerMessage, { type: 'ready' | 'link-created' }>
 	) {
@@ -700,20 +754,24 @@ export function createDropController(
 		}
 		return handleLinkEnd(message);
 	}
+
 	type LinkEndMessage = Exclude<
 		ServerMessage,
 		{ type: 'ready' | 'link-created' | 'group-state' }
 	>;
+
 	async function handleLinkEnd(message: LinkEndMessage) {
 		if (message.type === 'link-ended') {
 			return shareLink ? linkExpired() : resetLink();
 		}
 		return handleRequestMessage(message);
 	}
+
 	type RequestMessage = Exclude<
 		ServerMessage,
 		{ type: 'ready' | 'link-created' | 'link-ended' | 'group-state' }
 	>;
+
 	async function handleRequestMessage(message: RequestMessage) {
 		if (message.type === 'error') {
 			return serverError(message.message);
@@ -733,10 +791,12 @@ export function createDropController(
 		const config = (await response.json()) as IceConfig;
 		return { response, config };
 	}
+
 	function updateProgress(n: number) {
 		bytes = n;
 		touch();
 	}
+
 	function receivedPhoto(file: File) {
 		const preview = !['image/heic', 'image/heif'].includes(file.type);
 		const id = request?.files[received.length]?.id;
@@ -745,6 +805,7 @@ export function createDropController(
 			{ file, id, url: URL.createObjectURL(file), preview }
 		];
 	}
+
 	function checkIce(response: Response, config: IceConfig) {
 		if (!response.ok) {
 			throw new Error(config.error ?? '接続の準備に失敗しました。');
@@ -779,6 +840,7 @@ export function createDropController(
 			}
 		};
 	}
+
 	async function connectTransfer(
 		transfer: RequestInfo,
 		signal: AbortSignal,
@@ -789,6 +851,7 @@ export function createDropController(
 		const link = dependencies.createTransfer(transfer, signal, sender, cb);
 		await link.connect(config);
 	}
+
 	async function prepareTransfer(transfer: RequestInfo, signal: AbortSignal) {
 		const { response, config } = await fetchIce(signal);
 		if (signal.aborted || request?.id !== transfer.id) {
@@ -806,6 +869,7 @@ export function createDropController(
 		abort = new AbortController();
 		await prepareTransfer(transfer, abort.signal);
 	}
+
 	async function shareFiles(files: File[]) {
 		const collection = photoCollection;
 		const result = await dependencies.sharePhotos(files);
@@ -813,6 +877,7 @@ export function createDropController(
 			notice = shareMessages[result];
 		}
 	}
+
 	async function tryShare() {
 		try {
 			await shareFiles(received.map((item) => item.file));
@@ -822,6 +887,7 @@ export function createDropController(
 			sharing = false;
 		}
 	}
+
 	function shareFailed() {
 		if (received.length) {
 			error = '共有できませんでした。各写真のダウンロードをお試しください。';
@@ -844,6 +910,7 @@ export function createDropController(
 		notice =
 			'受信から10分たったため、画面内の写真を削除しました。端末に保存した写真は残っています。';
 	}
+
 	function retainPhotos(access?: PhotoAccess) {
 		photoCollection = new ReceivedPhotos(received, access, {
 			changed: updateReceived,
@@ -851,15 +918,19 @@ export function createDropController(
 		});
 		photosExpireAt = photoCollection.expiresAt;
 	}
+
 	function updateReceived(photos: ReceivedPhoto[]) {
 		received = photos;
 	}
+
 	function checkPhotoExpiry() {
 		return photoCollection?.checkExpiry() ?? false;
 	}
+
 	async function convertPhoto(index: number, mode: ConversionMode) {
 		await photoCollection?.convert(index, mode);
 	}
+
 	async function shareJpeg(index: number) {
 		if (!photoCollection?.checkExpiry()) {
 			return;
@@ -869,6 +940,7 @@ export function createDropController(
 			await shareConverted(jpeg);
 		}
 	}
+
 	async function shareConverted(jpeg: File) {
 		try {
 			await shareFiles([jpeg]);
@@ -878,6 +950,7 @@ export function createDropController(
 			}
 		}
 	}
+
 	function leave() {
 		selected = [];
 		metadata = [];
@@ -886,12 +959,14 @@ export function createDropController(
 		disconnect();
 		clearReceived();
 	}
+
 	function resume(e: PageTransitionEvent) {
 		checkPhotoExpiry();
 		if (e.persisted) {
 			disposed = false;
 		}
 	}
+
 	function unmount() {
 		leave();
 		window.removeEventListener('hashchange', readInvitation);
@@ -900,6 +975,7 @@ export function createDropController(
 		window.removeEventListener('focus', checkPhotoExpiry);
 		window.removeEventListener('visibilitychange', checkPhotoExpiry);
 	}
+
 	function readInvitation() {
 		const params = new URLSearchParams(window.location.hash.slice(1));
 		const token = params.get('share');
@@ -934,6 +1010,7 @@ export function createDropController(
 		window.addEventListener('visibilitychange', checkPhotoExpiry);
 		return unmount;
 	}
+
 	function removePhoto(index: number) {
 		if (shareLink || creatingLink || selecting || request) {
 			return;
@@ -942,6 +1019,7 @@ export function createDropController(
 		metadata = metadata.filter((_, i) => i !== index);
 		view.clearSelection?.();
 	}
+
 	function previewFailed(index: number) {
 		const photo = received[index];
 		if (photo) {

@@ -28,13 +28,16 @@ type SetupOptions = { pendingSession?: boolean; token?: string };
 class FakeSocket implements SignalingConnection {
 	closed = false;
 	messages: unknown[] = [];
+
 	constructor(
 		public emit: (message: ServerMessage) => void,
 		public disconnected: () => void
 	) {}
+
 	send(message: ClientMessage) {
 		this.messages.push(message);
 	}
+
 	close() {
 		this.closed = true;
 	}
@@ -77,11 +80,13 @@ class PageFixture {
 		sharePhotos: vi.fn<DropDependencies['sharePhotos']>(),
 		fetch: vi.fn<DropDependencies['fetch']>()
 	} satisfies DropDependencies;
+
 	constructor(private options: SetupOptions) {
 		vi.stubGlobal('window', this.window());
 		this.controller = createDropController(this.view, this.dependencies);
 		cleanups.push(this.controller.mount());
 	}
+
 	openSocket(...args: Parameters<DropDependencies['createSignaling']>) {
 		const socket = new FakeSocket(args[1], args[2]);
 		this.sockets.push(socket);
@@ -98,6 +103,7 @@ class PageFixture {
 			removeEventListener: (name: string) => this.events.delete(name)
 		};
 	}
+
 	location() {
 		return {
 			origin: 'https://example.com',
@@ -114,15 +120,19 @@ class PageFixture {
 				})
 			: this.session;
 	}
+
 	resolveSession() {
 		this.resolvePending(this.session);
 	}
 }
+
 async function emit(app: PageFixture, message: ServerMessage) {
 	app.sockets[0].emit(message);
 	await flush();
 }
+
 const setup = (options: SetupOptions = {}) => new PageFixture(options);
+
 const flush = async () => {
 	for (let i = 0; i < 12; i++) {
 		await Promise.resolve();
@@ -134,6 +144,7 @@ function assertIdle(app: PageFixture) {
 	assert.equal(app.sessions, 0);
 	assert.equal(app.sockets.length, 0);
 }
+
 test('opening and restoring the page do not contact signaling', async () => {
 	const app = setup();
 	await flush();
@@ -144,6 +155,7 @@ test('opening and restoring the page do not contact signaling', async () => {
 	assertIdle(app);
 });
 const files = [{ id: 'photo', name: 'photo.jpg', type: 'image/jpeg', size: 8 }];
+
 async function connectOnce(app: PageFixture) {
 	await app.controller.select([]);
 	await Promise.all([app.controller.createLink(), app.controller.createLink()]);
@@ -151,14 +163,17 @@ async function connectOnce(app: PageFixture) {
 	assert.equal(app.controller.connection, 'connecting');
 	assert.equal(app.sockets[0].messages.length, 0);
 }
+
 async function ready(app: PageFixture) {
 	app.sockets[0].emit({ type: 'ready', device: app.session });
 	await flush();
 }
+
 function assertStopped(app: PageFixture) {
 	assert.equal(app.sockets[0].closed, true);
 	assert.equal(app.controller.connection, 'idle');
 }
+
 test('authentication creates a link without requesting location; revocation closes signaling', async () => {
 	const app = setup();
 	await connectOnce(app);
@@ -169,6 +184,7 @@ test('authentication creates a link without requesting location; revocation clos
 	assertStopped(app);
 	assert.equal(app.controller.shareLink, '');
 });
+
 async function assertLinkCreated(app: PageFixture) {
 	await emit(app, {
 		type: 'link-created',
@@ -178,6 +194,7 @@ async function assertLinkCreated(app: PageFixture) {
 	const expected = 'https://example.com/#share=' + 'a'.repeat(64);
 	assert.equal(app.controller.shareLink, expected);
 }
+
 test('stopping an in-flight session request prevents a late WebSocket connection', async () => {
 	const app = setup({ pendingSession: true });
 	await app.controller.select([]);
@@ -205,6 +222,7 @@ test('a rejected link clears the busy state and permits retry', async () => {
 	assert.equal(app.controller.error, '期限切れ');
 	app.controller.revokeLink();
 });
+
 async function requestTransfer(app: PageFixture) {
 	await emit(app, {
 		type: 'requested',
@@ -214,6 +232,7 @@ async function requestTransfer(app: PageFixture) {
 		files
 	});
 }
+
 for (const reason of ['complete', 'cancelled'] as const) {
 	test(`transfer ${reason} closes signaling and clears link`, async () => {
 		const app = setup();
@@ -303,6 +322,7 @@ test('discard replaces old notices and clears errors', async () => {
 	assert.equal(app.controller.error, '');
 	assert.match(app.controller.notice, /画面内の写真を削除しました/);
 });
+
 async function completeSender(app: PageFixture) {
 	await app.controller.select([firstPhoto]);
 	await app.controller.createLink();
@@ -310,6 +330,7 @@ async function completeSender(app: PageFixture) {
 	await requestTransfer(app);
 	await emit(app, { type: 'ended', id: 'transfer', reason: 'complete' });
 }
+
 test('sharing the same photos after completion starts a fresh session', async () => {
 	const app = setup();
 	await completeSender(app);
@@ -351,6 +372,7 @@ async function startGroup(app: PageFixture) {
 	await ready(app);
 	await assertLinkCreated(app);
 }
+
 async function groupRequest(app: PageFixture) {
 	await emit(app, {
 		type: 'requested',
@@ -361,6 +383,7 @@ async function groupRequest(app: PageFixture) {
 		files
 	});
 }
+
 for (const reason of [
 	'complete',
 	'failed',
@@ -375,6 +398,7 @@ for (const reason of [
 		assertGroupStillOpen(app);
 	});
 }
+
 function assertGroupStillOpen(app: PageFixture) {
 	assert.equal(app.controller.connection, 'online');
 	assert.equal(app.sockets[0].closed, false);
@@ -382,6 +406,7 @@ function assertGroupStillOpen(app: PageFixture) {
 	assert.equal(app.controller.request, undefined);
 	assert.equal(app.controller.completed, false);
 }
+
 test('group request includes its mode and selected photos stay locked', async () => {
 	const app = setup();
 	await startGroup(app);
@@ -399,6 +424,7 @@ test('group receiver consent waits without opening a peer and failure permits re
 	await emit(app, { type: 'ended', id: 'group-transfer', reason: 'failed' });
 	assertGroupRetry(app);
 });
+
 async function incomingGroupRequest(app: PageFixture) {
 	await emit(app, {
 		type: 'requested',
@@ -409,6 +435,7 @@ async function incomingGroupRequest(app: PageFixture) {
 		files
 	});
 }
+
 function assertGroupRetry(app: PageFixture) {
 	assert.equal(app.controller.connection, 'online');
 	app.controller.retryGroup();
@@ -421,6 +448,7 @@ function assertGroupRetry(app: PageFixture) {
 function groupRequestFields() {
 	return { group: true, expiresAt: Date.now() + LIMITS.linkMs };
 }
+
 function assertGroupCreation(app: PageFixture) {
 	assert.deepEqual(app.sockets[0].messages[0], {
 		type: 'create-link',
@@ -450,21 +478,26 @@ class FakeTransfer {
 	peer = { close: vi.fn(), receive: vi.fn(async () => {}) };
 	receiver = { dispose: vi.fn() };
 	config?: IceConfig;
+
 	constructor(readonly args: Parameters<TransferFactory>) {}
+
 	get callbacks() {
 		return this.args[3];
 	}
+
 	async connect(config: IceConfig) {
 		this.config = config;
 		this.callbacks.peer(this.peer);
 		this.callbacks.receiver(this.receiver);
 	}
 }
+
 function mockIce(app: PageFixture) {
 	app.dependencies.fetch.mockImplementation(async () =>
 		Response.json({ iceServers: [], relay: true })
 	);
 }
+
 async function receiveRequest(app: PageFixture, group = false) {
 	await emit(app, {
 		type: 'requested',
@@ -475,6 +508,7 @@ async function receiveRequest(app: PageFixture, group = false) {
 		...(group ? groupRequestFields() : {})
 	});
 }
+
 async function startReceiver() {
 	const app = setup({ token: 'b'.repeat(64) });
 	await flush();
@@ -485,6 +519,7 @@ async function startReceiver() {
 	await vi.waitFor(() => expect(app.transfers).toHaveLength(1));
 	return app;
 }
+
 async function completedReceiver() {
 	const app = await startReceiver();
 	app.transfers[0].callbacks.received(firstPhoto);
@@ -492,6 +527,7 @@ async function completedReceiver() {
 	await emit(app, { type: 'ended', id: 'transfer', reason: 'complete' });
 	return app;
 }
+
 test('starting a receiver connects ICE and updates progress and view callbacks', async () => {
 	const app = await startReceiver();
 	const transfer = app.transfers[0];
@@ -502,6 +538,7 @@ test('starting a receiver connects ICE and updates progress and view callbacks',
 	expect(app.controller.relay).toBe(true);
 	assertTransferCallbacks(app, transfer);
 });
+
 function assertTransferCallbacks(app: PageFixture, transfer: FakeTransfer) {
 	expect(transfer.args[2]).toBe(false);
 	expect(transfer.callbacks.total).toBe(8);
@@ -510,6 +547,7 @@ function assertTransferCallbacks(app: PageFixture, transfer: FakeTransfer) {
 	expect(app.controller.session).toEqual(app.session);
 	expect(app.view.showTransfer).toHaveBeenCalledOnce();
 }
+
 test('transfer messages are matched by ID and forwarded to the active peer', async () => {
 	const app = await startReceiver();
 	const signal = { description: { type: 'offer' as const, sdp: 'remote' } };
@@ -526,11 +564,13 @@ test('completion retains photos, closes transport and shows received photos', as
 	expect(app.view.showReceived).toHaveBeenCalledOnce();
 	assertTransportClosed(app);
 });
+
 function assertTransportClosed(app: PageFixture) {
 	expect(app.transfers[0].peer.close).toHaveBeenCalledOnce();
 	expect(app.transfers[0].receiver.dispose).toHaveBeenCalledOnce();
 	expect(app.transfers[0].args[1].aborted).toBe(true);
 }
+
 test.each(['shared', 'cancelled', 'unsupported'] as const)(
 	'saving received photos reports %s',
 	async (result) => {
@@ -625,6 +665,7 @@ test('late ICE responses cannot recreate a cancelled transfer', async () => {
 	await requestTransfer(app);
 	await assertLateIceIgnored(app);
 });
+
 async function assertLateIceIgnored(app: PageFixture) {
 	const pending = Promise.withResolvers<Response>();
 	app.dependencies.fetch.mockReturnValue(pending.promise);
@@ -635,6 +676,7 @@ async function assertLateIceIgnored(app: PageFixture) {
 	await flush();
 	expect(app.transfers).toEqual([]);
 }
+
 test('share and copy invitation use browser APIs', async () => {
 	const app = setup();
 	await startGroup(app);
@@ -644,6 +686,7 @@ test('share and copy invitation use browser APIs', async () => {
 	expect(share.mock.calls[0][0].url).toBe(app.controller.shareLink);
 	await assertCopyInvitation(app);
 });
+
 async function assertCopyInvitation(app: PageFixture) {
 	const writeText = vi.fn(async () => {});
 	vi.stubGlobal('navigator', { clipboard: { writeText } });
@@ -651,6 +694,7 @@ async function assertCopyInvitation(app: PageFixture) {
 	expect(writeText).toHaveBeenCalledWith(app.controller.shareLink);
 	expect(app.controller.notice).toContain('コピーしました');
 }
+
 test.each([new Error('failed'), new DOMException('cancelled', 'AbortError')])(
 	'invitation share handles %s',
 	async (error) => {
@@ -714,6 +758,7 @@ test('group participants still waiting are declined when the link ends', async (
 	expect(statuses).toEqual(['declined', 'complete']);
 	expect(app.controller.error).toContain('有効期限');
 });
+
 async function emitParticipants(app: PageFixture) {
 	await emit(app, {
 		type: 'group-state',
@@ -723,6 +768,7 @@ async function emitParticipants(app: PageFixture) {
 		]
 	});
 }
+
 test('group retry is ignored before joining or while a transfer is active', async () => {
 	const app = setup({ token: 'b'.repeat(64) });
 	await flush();
@@ -777,11 +823,13 @@ test('new selections with a non-Error failure retain a helpful message', async (
 function expectLastAction(app: PageFixture, type: string) {
 	expect(app.sockets[0].messages.at(-1)).toEqual({ type, id: 'transfer' });
 }
+
 function mockIceFailure(app: PageFixture, error?: string) {
 	app.dependencies.fetch.mockImplementation(async () =>
 		Response.json({ error }, { status: 503 })
 	);
 }
+
 function iceResponse() {
 	const response = new Response();
 	vi.spyOn(response, 'json').mockResolvedValue({
@@ -790,6 +838,7 @@ function iceResponse() {
 	});
 	return response;
 }
+
 function expectGroupActions(app: PageFixture) {
 	expect(app.sockets[0].messages.slice(-2)).toEqual([
 		{ type: 'approve', id: 'participant' },
@@ -798,6 +847,7 @@ function expectGroupActions(app: PageFixture) {
 }
 
 type ParticipantStatus = GroupParticipant['status'];
+
 function participant(id: string, status: ParticipantStatus): GroupParticipant {
 	return {
 		id,

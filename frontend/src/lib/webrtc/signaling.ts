@@ -16,11 +16,14 @@ export interface SignalingSocket extends Pick<
 export interface SocketFactory {
 	(url: URL): SignalingSocket;
 }
+
 const browserSocket: SocketFactory = (url) => new WebSocket(url);
+
 export class Signaling implements SignalingConnection {
 	private ws: SignalingSocket;
 	private timer: ReturnType<typeof setTimeout>;
 	private closed = false;
+
 	constructor(
 		session: Session,
 		onMessage: (message: ServerMessage) => void,
@@ -31,6 +34,7 @@ export class Signaling implements SignalingConnection {
 		this.timer = setTimeout(() => this.ws.close(), 10_000);
 		this.listen(session, onMessage, onClose);
 	}
+
 	private listen(
 		session: Session,
 		onMessage: (message: ServerMessage) => void,
@@ -52,6 +56,7 @@ export class Signaling implements SignalingConnection {
 			this.ws.close();
 		}
 	}
+
 	private parse(event: MessageEvent): ServerMessage {
 		const message = JSON.parse(event.data) as ServerMessage;
 		if (message.type === 'ready') {
@@ -73,12 +78,14 @@ export class Signaling implements SignalingConnection {
 		}
 		this.ws.send(JSON.stringify(message));
 	}
+
 	close() {
 		this.closed = true;
 		clearTimeout(this.timer);
 		this.ws.close();
 	}
 }
+
 export async function createSession(
 	signal?: AbortSignal,
 	token = '',
@@ -88,6 +95,7 @@ export async function createSession(
 	const init = { method: 'POST', signal };
 	return readSession(await request('/api/session' + suffix, init));
 }
+
 async function readSession(response: Response): Promise<Session> {
 	const data = (await response.json()) as Session & { error?: string };
 	if (!response.ok) {

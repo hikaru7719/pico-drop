@@ -20,6 +20,7 @@ class Fixture {
 	entries = new Map<string, any>();
 	auth: PasskeyAuth;
 	lastChallenge = '';
+
 	constructor(network?: AuthNetwork, verifier?: Verifier) {
 		this.auth = new PasskeyAuth(
 			this.store(),
@@ -28,6 +29,7 @@ class Fixture {
 			verifier ?? passkeys
 		);
 	}
+
 	store(): AuthStore {
 		return {
 			get: async (key: string) => structuredClone(this.entries.get(key)),
@@ -37,6 +39,7 @@ class Fixture {
 			delete: async (key: string) => this.entries.delete(key)
 		};
 	}
+
 	request(path: string, body?: unknown, cookie = '') {
 		return new Request('https://photos.example/api/auth/' + path, {
 			method: 'POST',
@@ -44,12 +47,14 @@ class Fixture {
 			body: body === undefined ? undefined : JSON.stringify(body)
 		});
 	}
+
 	async begin(kind = 'register') {
 		const request = this.request(kind + '/options', { name: 'Guest' });
 		const response = await this.auth.route(request);
 		this.lastChallenge = ((await response.clone().json()) as any).challenge;
 		return response;
 	}
+
 	async identity() {
 		const token = 'a'.repeat(64);
 		const key = 'auth:login:' + (await secretHash(token));
@@ -58,8 +63,10 @@ class Fixture {
 		return { key, cookie: '__Host-pico_auth=' + token };
 	}
 }
+
 const cookieOf = (response: Response) =>
 	response.headers.get('Set-Cookie')!.split(';')[0];
+
 const challenges = (app: Fixture) =>
 	[...app.entries.keys()].filter((key) => key.startsWith('auth:challenge:'));
 
@@ -155,8 +162,10 @@ const REQUIRED_PASSKEY = {
 };
 const PROTECTED_COOKIE =
 	/^__Host-pico_challenge=.*HttpOnly; SameSite=Strict; Max-Age=300; Secure$/;
+
 const hasAccount = (app: Fixture) =>
 	[...app.entries.keys()].some((key) => key.startsWith('auth:account:'));
+
 async function verifyStatus(app: Fixture, kind: string, cookie: string) {
 	return (await app.auth.route(app.request(kind + '/verify', {}, cookie)))
 		.status;
@@ -183,6 +192,7 @@ const authenticationInfo = {
 	origin: 'https://photos.example',
 	rpID: 'photos.example'
 };
+
 function verifier() {
 	return {
 		...passkeys,
@@ -192,6 +202,7 @@ function verifier() {
 			.mockResolvedValue(loginResult)
 	} satisfies PasskeyVerifier;
 }
+
 const loginResult = { verified: true, authenticationInfo };
 const registrationResult = {
 	verified: true as const,
@@ -204,18 +215,21 @@ const registrationResult = {
 		...authenticationInfo
 	}
 };
+
 async function register(app: Fixture) {
 	const cookie = cookieOf(await app.begin());
 	return app.auth.route(
 		app.request('register/verify', { id: credential.id }, cookie)
 	);
 }
+
 function assertionBody(account: string) {
 	return {
 		id: credential.id,
 		response: { userHandle: btoa(account).replace(/=+$/, '') }
 	};
 }
+
 async function login(app: Fixture, account: string, cookie = '') {
 	const challenge = cookieOf(await app.begin('login'));
 	const cookies = [challenge, cookie].join('; ');
@@ -223,9 +237,11 @@ async function login(app: Fixture, account: string, cookie = '') {
 		app.request('login/verify', assertionBody(account), cookies)
 	);
 }
+
 function storedCredential(app: Fixture) {
 	return app.entries.get('auth:credential:credential');
 }
+
 async function sessionKey(app: Fixture, response: Response) {
 	return app.auth.loginKey(
 		app.request('status', undefined, cookieOf(response))
@@ -241,6 +257,7 @@ async function registeredApp() {
 	) as Account;
 	return { app, check, response, account };
 }
+
 function expectVerification(options: unknown, challenge: string) {
 	expect(options).toMatchObject({
 		expectedOrigin: 'https://photos.example',
@@ -249,6 +266,7 @@ function expectVerification(options: unknown, challenge: string) {
 		requireUserVerification: true
 	});
 }
+
 test('registration stores the verified credential and issues a protected login', async () => {
 	const { app, response, account, check } = await registeredApp();
 	expect(response.status).toBe(200);
@@ -259,6 +277,7 @@ test('registration stores the verified credential and issues a protected login',
 	);
 	assertSignupVerification(check, app.lastChallenge);
 });
+
 function assertSignupVerification(
 	check: ReturnType<typeof verifier>,
 	challenge: string
@@ -267,6 +286,7 @@ function assertSignupVerification(
 	expect(options.supportedAlgorithmIDs).toEqual([-7, -257]);
 	expectVerification(options, challenge);
 }
+
 test('successful login rotates the old session and advances the credential counter', async () => {
 	const { app, response, account, check } = await registeredApp();
 	const oldKey = await sessionKey(app, response);
@@ -319,6 +339,7 @@ test.each(['missing', 'disabled', 'handle'])(
 		).toBe(0);
 	}
 );
+
 function invalidateAccount(app: Fixture, account: Account, reason: string) {
 	if (reason === 'missing') {
 		app.entries.delete('auth:account:' + account.id);
@@ -329,6 +350,7 @@ function invalidateAccount(app: Fixture, account: Account, reason: string) {
 		});
 	}
 }
+
 test.each([
 	undefined,
 	null,
@@ -351,11 +373,13 @@ test('display names are trimmed and control characters removed', async () => {
 	);
 	expect(app.entries.get(challenges(app)[0]).account.name).toBe('AB');
 });
+
 async function status(app: Fixture, cookie = '') {
 	return (
 		await app.auth.route(app.request('status', undefined, cookie))
 	).json();
 }
+
 test('status reports public account data and logout also works without a cookie', async () => {
 	const app = new Fixture();
 	const { cookie } = await app.identity();
@@ -373,6 +397,7 @@ test.each(['expired', 'missing', 'disabled'])(
 		await expect(app.auth.service.allowSend(key)).rejects.toThrow('ログイン');
 	}
 );
+
 function invalidateIdentity(app: Fixture, key: string, reason: string) {
 	if (reason === 'expired') {
 		app.entries.get(key).expiresAt = Date.now();
@@ -380,6 +405,7 @@ function invalidateIdentity(app: Fixture, key: string, reason: string) {
 		invalidateAccount(app, { id: 'user', name: 'Guest' }, reason);
 	}
 }
+
 test('expired rate windows restart at one request', async () => {
 	const app = new Fixture();
 	app.entries.set('rate', { count: 30, expiresAt: Date.now() });
@@ -404,6 +430,7 @@ test('local HTTP development uses unprefixed non-secure cookies', async () => {
 	expect(response.headers.get('set-cookie')).not.toContain('Secure');
 });
 const remoteAccount = { id: 'v2.ab.user', name: 'Remote' };
+
 function remoteNetwork() {
 	return {
 		shard: 'ab',
@@ -414,10 +441,12 @@ function remoteNetwork() {
 		issue: vi.fn().mockResolvedValue('v2.ab.' + 'b'.repeat(64))
 	};
 }
+
 function networkFixture() {
 	const network = remoteNetwork();
 	return { network, app: new Fixture(network, verifier()) };
 }
+
 async function remoteRegister(
 	app: Fixture,
 	network: ReturnType<typeof remoteNetwork>
@@ -428,6 +457,7 @@ async function remoteRegister(
 	const request = app.request('register/verify', { id: credential.id }, cookie);
 	return { response: await app.auth.route(request), ceremony };
 }
+
 test('sharded registration uses network storage and rotates the remote session', async () => {
 	const { app, network } = networkFixture();
 	const { response, ceremony } = await remoteRegister(app, network);
@@ -436,11 +466,13 @@ test('sharded registration uses network storage and rotates the remote session',
 	expect(network.register).toHaveBeenCalledWith(ceremony.account, credential);
 	expect(network.issue).toHaveBeenCalledWith(ceremony.account);
 });
+
 const remoteCeremony = () => ({
 	kind: 'login',
 	challenge: 'challenge',
 	expiresAt: Date.now() + 1000
 });
+
 test('sharded login verifies on the account shard and revokes the previous login', async () => {
 	const { app, network } = networkFixture();
 	network.take.mockResolvedValue(remoteCeremony());
@@ -449,6 +481,7 @@ test('sharded login verifies on the account shard and revokes the previous login
 	expect(response.status).toBe(200);
 	await assertRemoteLogin(network);
 });
+
 async function assertRemoteLogin(network: ReturnType<typeof remoteNetwork>) {
 	expect(network.login).toHaveBeenCalledWith(
 		expect.objectContaining({ id: credential.id }),
@@ -459,6 +492,7 @@ async function assertRemoteLogin(network: ReturnType<typeof remoteNetwork>) {
 	expect(network.revoke).toHaveBeenCalledWith(oldKey);
 	expect(network.issue).toHaveBeenCalledWith(remoteAccount);
 }
+
 afterEach(() => vi.restoreAllMocks());
 
 function registrationVerifier() {

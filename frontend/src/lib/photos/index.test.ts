@@ -21,9 +21,11 @@ test('photo classification preserves HEIC', async () => {
 	assert.equal(photo.type, 'image/heic');
 	assert.equal(photo.name, 'camera.heic');
 });
+
 function mockShare(canShare: boolean, share: () => Promise<void>) {
 	vi.stubGlobal('navigator', { canShare: () => canShare, share });
 }
+
 const shareFiles = [new File([data], 'photo.jpg', { type: 'image/jpeg' })];
 test('share cancellation and completion remain distinct from confirmed photo-library saving', async () => {
 	mockShare(true, async () => {

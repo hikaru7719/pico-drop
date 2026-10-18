@@ -21,6 +21,7 @@ type ApiEnv<Bindings extends object> = {
 type ApiContext<Bindings extends object> = Context<ApiEnv<Bindings>>;
 const SESSION_LIMIT = '接続回数が多すぎます。1分後に再試行してください。';
 const AUTH_LIMIT = '認証の試行が多すぎます。しばらく待ってください。';
+
 export function createApp<Bindings extends object>(
 	gateway: (env: Bindings) => ApiGateway
 ) {
@@ -31,6 +32,7 @@ export function createApp<Bindings extends object>(
 	app.onError(serviceError);
 	return app;
 }
+
 function configure<B extends object>(
 	app: Hono<ApiEnv<B>>,
 	gateway: (env: B) => ApiGateway
@@ -41,6 +43,7 @@ function configure<B extends object>(
 	app.use('*', sameOrigin);
 	dependencies(app, gateway);
 }
+
 function dependencies<B extends object>(
 	app: Hono<ApiEnv<B>>,
 	gateway: (env: B) => ApiGateway
@@ -50,6 +53,7 @@ function dependencies<B extends object>(
 		await next();
 	});
 }
+
 function routes<B extends object>(app: Hono<ApiEnv<B>>) {
 	app.all('/api/auth', () => authJson({ error: 'Not found' }, 404));
 	app.post('/api/auth/*', (c) => routeAuth(c));
@@ -60,13 +64,16 @@ function routes<B extends object>(app: Hono<ApiEnv<B>>) {
 	}
 	app.all('/api/ws', (c) => routeRoom(c));
 }
+
 const SESSION_PATHS = [
 	'/api/session',
 	'/api/ice',
 	'/api/photos/convert',
 	'/api/photos/discard'
 ];
+
 const methodError = () => authJson({ error: 'Method not allowed' }, 405);
+
 async function routeAuth<Bindings extends object>(c: ApiContext<Bindings>) {
 	const gateway = c.get('gateway');
 	if (!(await allowedAuth(c))) {
@@ -75,18 +82,21 @@ async function routeAuth<Bindings extends object>(c: ApiContext<Bindings>) {
 	await clearPreviousChallenge(c.req.raw, gateway);
 	return forwardAuth(c.req.raw, gateway);
 }
+
 function forwardAuth(original: Request, gateway: ApiGateway) {
 	const name = authRoute(original);
 	const request = new Request(original);
 	request.headers.set('X-Auth-Route', name);
 	return gateway.hub(name).fetch(request);
 }
+
 async function clearPreviousChallenge(request: Request, gateway: ApiGateway) {
 	const token = readCookie(request, 'challenge');
 	if (token && new URL(request.url).pathname.endsWith('/options')) {
 		await gateway.clearChallenge(token);
 	}
 }
+
 function allowedAuth<Bindings extends object>(c: ApiContext<Bindings>) {
 	return (
 		c.req.path.endsWith('/status') ||
@@ -94,12 +104,14 @@ function allowedAuth<Bindings extends object>(c: ApiContext<Bindings>) {
 		c.get('gateway').rate(c.req.header('CF-Connecting-IP') ?? 'local', 'auth')
 	);
 }
+
 async function routeSession<Bindings extends object>(c: ApiContext<Bindings>) {
 	if (c.req.path === '/api/session' && !(await rate(c, 'session'))) {
 		return authJson({ error: SESSION_LIMIT }, 429);
 	}
 	return routeRoom(c);
 }
+
 function routeRoom<Bindings extends object>(c: ApiContext<Bindings>) {
 	const room = roomRoute(c.req.raw);
 	if (!/^[a-f0-9]{16}$/.test(room)) {
@@ -107,6 +119,7 @@ function routeRoom<Bindings extends object>(c: ApiContext<Bindings>) {
 	}
 	return forwardRoom(c, room);
 }
+
 function forwardRoom<B extends object>(c: ApiContext<B>, room: string) {
 	const gateway = c.get('gateway');
 	const hub = gateway.hub('room:' + room);

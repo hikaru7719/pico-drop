@@ -26,6 +26,7 @@ class Fixture {
 			this.deadline = value;
 		}
 	};
+
 	hub(env = {}) {
 		const ctx = {
 			storage: this.storage,
@@ -72,6 +73,7 @@ test('objects predating role metadata can still clean up expired records', async
 });
 
 const account = { id: 'user', name: 'Sender' };
+
 function seedLogin(app: Fixture) {
 	app.entries.set('auth:account:user', account);
 	app.entries.set('auth:login:old', {
@@ -79,6 +81,7 @@ function seedLogin(app: Fixture) {
 		expiresAt: Date.now() + 10000
 	});
 }
+
 async function exhaustQuota(app: Fixture) {
 	for (let i = 0; i < 20; i++) {
 		expect(await app.hub().limitRequest('session')).toBe(true);
@@ -144,11 +147,13 @@ test('auth rate quotas use the longer auth window', async () => {
 });
 
 const heic = { id: 'p', name: 'p.heic', type: 'image/heic', size: 16 };
+
 function post(app: Fixture, path: string) {
 	return app
 		.hub()
 		.fetch(new Request('http://localhost' + path, { method: 'POST' }));
 }
+
 function challenge(app: Fixture) {
 	return [...app.entries.keys()].find((key) =>
 		key.startsWith('auth:challenge:')

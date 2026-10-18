@@ -14,6 +14,7 @@ class Fixture {
 		images: { render: vi.fn() }
 	} satisfies ApiGateway;
 	app = createApp(() => this.gateway);
+
 	request(path: string, method = 'POST', headers: Record<string, string> = {}) {
 		return this.app.request(origin + path, {
 			method,
@@ -165,17 +166,21 @@ test('unexpected failures return an uncached JSON error without internal details
 function forwardedRoom(fixture: Fixture) {
 	return new URL(fixture.fetch.mock.calls[0][0].url).searchParams.get('room');
 }
+
 function forwardedHeader(fixture: Fixture, name: string) {
 	return fixture.fetch.mock.calls[0][0].headers.get(name);
 }
+
 function expectRandomAuth(fixture: Fixture) {
 	expect(fixture.gateway.hub).toHaveBeenCalledWith(
 		expect.stringMatching(/^auth:[a-f0-9]{2}$/)
 	);
 }
+
 function markUpgrade(fixture: Fixture) {
 	Object.defineProperty(fixture.response, 'webSocket', { value: {} });
 }
+
 function discardRequest(fixture: Fixture, token: string) {
 	return fixture.request('/api/photos/discard', 'POST', {
 		Authorization: 'Bearer ' + token

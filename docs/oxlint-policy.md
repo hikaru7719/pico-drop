@@ -13,7 +13,7 @@
 | オプショナル引数を極力使わない   | 該当する内蔵ルールはない。`oxc/no-optional-chaining` は `?.` の禁止であり、引数の `?` の禁止ではない。                                                                     |
 | 不等号を `<` / `<=` に統一する   | 該当する内蔵ルールはない。`count > 0` を `0 < count` にするとリテラル右辺の方針と衝突するため、現設定では右辺配置を優先する。                                              |
 
-未対応の要件はレビューで確認する。独自ルールや外部 ESLint プラグインは導入していない。既存の lint 対象・ファイル形式の範囲を引き継ぐため、この設定だけで Svelte テンプレート全体を検査できるわけではない。
+未対応の要件はレビューで確認する。空行の検査には外部 JS プラグイン `@stylistic/eslint-plugin` 5.10.0 を使用する。独自ルールは導入していない。既存の lint 対象・ファイル形式の範囲を引き継ぐため、この設定だけで Svelte テンプレート全体を検査できるわけではない。
 
 既存コードはルールに合わせて移行済み。`sendPhotos` は引数オブジェクトを受け取り、認証・位置取得・写真検証・転送・画面の状態更新を小さな関数に分割している。テストもシナリオと検証の補助関数に分割し、上限の緩和やファイル除外はしていない。
 
@@ -24,3 +24,14 @@
 検証: 型情報付き lint、型検査、ユニットテスト、APIテスト、2ブラウザ間のWebRTC転送テスト。型情報を必要とする診断が frontend/backend/shared/tests の TypeScript ファイルで実際に動くことも、一時的な違反例を使って確認した。
 
 参考: [ルール一覧](https://oxc.rs/docs/guide/usage/linter/rules)、[curly](https://oxc.rs/docs/guide/usage/linter/rules/eslint/curly)、[max-lines-per-function](https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-lines-per-function)、[max-params](https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-params)、[yoda](https://oxc.rs/docs/guide/usage/linter/rules/eslint/yoda)、[switch-exhaustiveness-check](https://oxc.rs/docs/guide/usage/linter/rules/typescript/switch-exhaustiveness-check)。
+
+## 関数・メソッド間の空行
+
+Oxfmt は既存の空行を維持するが、関数間に自動挿入しないため、Oxlint の `jsPlugins` で `@stylistic/eslint-plugin` を読み込む。実行は既存の Oxlint に統一し、ESLint を別途実行する必要はない。
+
+- `@stylistic/padding-line-between-statements`: 関数宣言の前後に空行を必須とする。export 付きの関数宣言、および変数に直接代入したアロー関数・関数式も対象。export 付きの宣言や関数式はセレクターで指定する。
+- `@stylistic/lines-between-class-members`: メソッド（コンストラクター・getter・setter を含む）の前後に空行を必須とする。フィールド同士には空行を強制しない。
+
+`mise run lint` / `mise run verify` で検査し、`mise run lint:fix` で不足する空行を補完する。その後 `mise run format` で通常の整形を行う。関数内の空行も既存の10行制限に数える。
+
+参考: [JS Plugins](https://oxc.rs/docs/guide/usage/linter/js-plugins)、[padding-line-between-statements](https://eslint.style/rules/padding-line-between-statements)、[lines-between-class-members](https://eslint.style/rules/lines-between-class-members)。

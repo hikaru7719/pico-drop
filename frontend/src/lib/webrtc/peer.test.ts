@@ -37,17 +37,21 @@ class PeerFixture implements PeerConnection {
 	channel = vi.fn();
 	fail = vi.fn();
 	peer: PhotoPeer;
+
 	constructor() {
 		vi.useFakeTimers();
 		this.peer = new PhotoPeer(this, this.signal, this.channel, this.fail);
 		onTestFinished(() => this.peer.close());
 	}
+
 	async setLocalDescription(value: RTCSessionDescriptionInit) {
 		this.localDescription = { ...value, sdp: value.sdp ?? '' };
 	}
+
 	async setRemoteDescription(value: RTCSessionDescriptionInit) {
 		this.remoteDescription = value;
 	}
+
 	change(state: RTCPeerConnectionState) {
 		this.connectionState = state;
 		this.onconnectionstatechange?.();

@@ -2,6 +2,7 @@ import { test, expect, vi } from 'vitest';
 import { roomApp } from './room.ts';
 import { ServiceError } from '../application/errors.ts';
 const origin = 'https://photos.example';
+
 function fixture() {
 	const service = {
 		createSession: vi.fn(async () => ({ token: 'token' })),
@@ -10,6 +11,7 @@ function fixture() {
 	const upgrade = vi.fn(async () => new Response('upgrade'));
 	return { service, upgrade, app: roomApp(service as never, upgrade) };
 }
+
 test('session HTTP adapter returns 201 and only passes the hashed login key', async () => {
 	const { app, service } = fixture();
 	const response = await sessionRequest(app);
@@ -58,12 +60,14 @@ test.each([
 });
 
 type RoomApp = ReturnType<typeof roomApp>;
+
 function sessionRequest(app: RoomApp) {
 	return app.request(origin + '/api/session?room=abc', {
 		method: 'POST',
 		headers: { Cookie: '__Host-pico_auth=v2.ab.' + 'a'.repeat(64) }
 	});
 }
+
 function iceRequest(app: RoomApp) {
 	return app.request(origin + '/api/ice', {
 		method: 'POST',

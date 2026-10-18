@@ -1,5 +1,5 @@
 {
-	"$schema": "https://unpkg.com/oxlint@1.85.0/configuration_schema.json",
+	"$schema": "https://unpkg.com/oxlint@1.88.0/configuration_schema.json",
 	"plugins": ["eslint", "typescript", "oxc", "unicorn"],
 	"categories": {
 		"correctness": "error"
@@ -22,7 +22,47 @@
 			}
 		],
 		"eslint/yoda": ["error", "never"],
-		"typescript/switch-exhaustiveness-check": "error"
+		"typescript/switch-exhaustiveness-check": "error",
+		"@stylistic/padding-line-between-statements": [
+			"error",
+			{
+				"blankLine": "always",
+				"prev": "*",
+				"next": [
+					"function",
+					{
+						"selector": ":matches(ExportNamedDeclaration, ExportDefaultDeclaration)[declaration.type=\"FunctionDeclaration\"], VariableDeclaration[declarations.0.init.type=/^(ArrowFunctionExpression|FunctionExpression)$/], ExportNamedDeclaration[declaration.declarations.0.init.type=/^(ArrowFunctionExpression|FunctionExpression)$/]"
+					}
+				]
+			},
+			{
+				"blankLine": "always",
+				"prev": [
+					"function",
+					{
+						"selector": ":matches(ExportNamedDeclaration, ExportDefaultDeclaration)[declaration.type=\"FunctionDeclaration\"], VariableDeclaration[declarations.0.init.type=/^(ArrowFunctionExpression|FunctionExpression)$/], ExportNamedDeclaration[declaration.declarations.0.init.type=/^(ArrowFunctionExpression|FunctionExpression)$/]"
+					}
+				],
+				"next": "*"
+			}
+		],
+		"@stylistic/lines-between-class-members": [
+			"error",
+			{
+				"enforce": [
+					{
+						"blankLine": "always",
+						"prev": "*",
+						"next": "method"
+					},
+					{
+						"blankLine": "always",
+						"prev": "method",
+						"next": "*"
+					}
+				]
+			}
+		]
 	},
 	"ignorePatterns": [
 		"**/node_modules/**",
@@ -47,5 +87,6 @@
 				"eslint/max-lines-per-function": "off"
 			}
 		}
-	]
+	],
+	"jsPlugins": ["@stylistic/eslint-plugin"]
 }

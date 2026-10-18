@@ -14,6 +14,7 @@ class ReceiverFixture {
 	files: File[] = [];
 	complete = false;
 	receiver: PhotoReceiver;
+
 	constructor(metadata = [meta]) {
 		this.receiver = new PhotoReceiver(
 			metadata,
@@ -24,6 +25,7 @@ class ReceiverFixture {
 			}
 		);
 	}
+
 	async begin(id = 'p', sha256: string | null = null) {
 		await this.receiver.consume(
 			JSON.stringify({
@@ -33,6 +35,7 @@ class ReceiverFixture {
 			})
 		);
 	}
+
 	async photo(id: string) {
 		await this.begin(id);
 		await this.receiver.consume(data.slice(0, 4));
@@ -41,6 +44,7 @@ class ReceiverFixture {
 		await this.receiver.consume(JSON.stringify({ type: 'file-end', id }));
 	}
 }
+
 async function assertReceivedFiles(f: ReceiverFixture) {
 	assert.equal(f.complete, true);
 	assert.equal(f.files.length, 2);
@@ -48,6 +52,7 @@ async function assertReceivedFiles(f: ReceiverFixture) {
 		assert.deepEqual(await file.arrayBuffer(), data);
 	}
 }
+
 test('multiple photos are received byte-for-byte and complete only after final marker', async () => {
 	const f = new ReceiverFixture([meta, { ...meta, id: 'p2' }]);
 	for (const id of ['p', 'p2']) {
@@ -86,9 +91,11 @@ class SenderFixture extends EventTarget implements SendChannel {
 	bufferedAmountLowThreshold = 0;
 	sends = 0;
 	controller = new AbortController();
+
 	send() {
 		this.sends++;
 	}
+
 	start() {
 		return sendPhotos({
 			channel: this,

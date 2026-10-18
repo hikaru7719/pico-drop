@@ -10,9 +10,11 @@ export interface ImageSource extends ImageOutput {
 export interface ImageService {
 	input(stream: ReadableStream<Uint8Array>): ImageSource;
 }
+
 export const imageRenderer = (images: ImageService): ImageRenderer => ({
 	render: (bytes, mode) => renderImage(images, bytes, mode)
 });
+
 function imageStream(bytes: Uint8Array) {
 	return new Blob([bytes as Uint8Array<ArrayBuffer>]).stream();
 }

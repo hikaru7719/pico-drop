@@ -134,20 +134,27 @@
 	const typingInterval = 180;
 	const headlineCycle = 250 + (headline.length - 1) * typingInterval + 3000;
 	let headlineReplay = $state(0);
+
 	function replayHeadline(replay: number) {
 		return setTimeout(() => {
 			headlineReplay = replay;
 		}, headlineCycle * replay);
 	}
+
 	function watchMotion(motion: MediaQueryList) {
 		const timers = [1, 2].map(replayHeadline);
+
 		const stop = () => timers.forEach(clearTimeout);
+
 		motion.addEventListener('change', stop);
-		return () => {
-			stop();
-			motion.removeEventListener('change', stop);
-		};
+		return () => unwatchMotion(motion, stop);
 	}
+
+	function unwatchMotion(motion: MediaQueryList, stop: () => void) {
+		stop();
+		motion.removeEventListener('change', stop);
+	}
+
 	$effect(() => {
 		if (inFlow) {
 			return;

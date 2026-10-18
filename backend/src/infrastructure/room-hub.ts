@@ -15,15 +15,18 @@ export class RoomHub extends RoomService {
 			iceServers: () => iceServers(env)
 		});
 	}
+
 	fetch(request: Request) {
 		return roomApp(this, () => this.upgradeSocket()).fetch(request);
 	}
+
 	async upgradeSocket() {
 		if (this.state.getWebSockets().length >= 200) {
 			return authJson({ error: '混み合っています。後でお試しください。' }, 503);
 		}
 		return this.acceptSocket();
 	}
+
 	private async acceptSocket() {
 		const pair = new WebSocketPair();
 		this.state.acceptWebSocket(pair[1]);
@@ -32,6 +35,7 @@ export class RoomHub extends RoomService {
 		return new Response(null, { status: 101, webSocket: pair[0] });
 	}
 }
+
 function runtime(state: DurableObjectState) {
 	return {
 		storage: state.storage,

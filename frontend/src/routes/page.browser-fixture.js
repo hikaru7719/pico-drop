@@ -6,6 +6,7 @@ function fillImage(image) {
 		image.data[i + 3] = 255;
 	}
 }
+
 window.testJpeg = () => {
 	const canvas = document.createElement('canvas');
 	canvas.width = 640;

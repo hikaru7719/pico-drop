@@ -5,20 +5,26 @@ import {
 	type PhotoMeta
 } from '../../../../shared/protocol.ts';
 const PHOTO_ERROR = 'JPEG・PNG・WebP・HEIC/HEIFの写真を選んでください。';
+
 const decode = (bytes: Uint8Array, start: number, end: number) =>
 	new TextDecoder().decode(bytes.slice(start, end));
+
 const isJpeg = (b: Uint8Array) =>
 	b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+
 const isPng = (b: Uint8Array) =>
 	[137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => b[i] === v);
+
 const isWebp = (b: Uint8Array) =>
 	decode(b, 0, 4) === 'RIFF' && decode(b, 8, 12) === 'WEBP';
+
 function heifType(b: Uint8Array, type: string) {
 	if (decode(b, 4, 8) !== 'ftyp') {
 		return '';
 	}
 	return heifBrand(decode(b, 8, 12), type);
 }
+
 function heifBrand(brand: string, type: string) {
 	if (['heic', 'heix', 'hevc', 'hevx'].includes(brand)) {
 		return 'image/heic';
@@ -38,6 +44,7 @@ function photoType(b: Uint8Array, type: string) {
 	}
 	return isWebp(b) ? 'image/webp' : heifType(b, type);
 }
+
 function photoMetadata(file: File, type: string): PhotoMeta {
 	return {
 		id: crypto.randomUUID(),
@@ -46,6 +53,7 @@ function photoMetadata(file: File, type: string): PhotoMeta {
 		type
 	};
 }
+
 async function describePhoto(file: File) {
 	const bytes = new Uint8Array(await file.slice(0, 64).arrayBuffer());
 	const type = photoType(bytes, file.type);
@@ -54,12 +62,14 @@ async function describePhoto(file: File) {
 	}
 	return photoMetadata(file, type);
 }
+
 function checkPhotoLimits(files: File[]) {
 	const total = files.reduce((n, f) => n + f.size, 0);
 	if (!files.length || files.length > LIMITS.files || total > LIMITS.bytes) {
 		throw new Error('写真は10枚・合計50MBまで選べます。');
 	}
 }
+
 export async function describePhotos(files: File[]): Promise<PhotoMeta[]> {
 	checkPhotoLimits(files);
 	const metadata = await Promise.all(files.map(describePhoto));
@@ -68,6 +78,7 @@ export async function describePhotos(files: File[]): Promise<PhotoMeta[]> {
 	}
 	return metadata;
 }
+
 export function formatBytes(bytes: number) {
 	if (bytes < 1024) {
 		return `${bytes} B`;
@@ -76,12 +87,14 @@ export function formatBytes(bytes: number) {
 		? `${(bytes / 1024 / 1024).toFixed(1)} MB`
 		: `${Math.ceil(bytes / 1024)} KB`;
 }
+
 export async function sharePhotos(files: File[]) {
 	if (!navigator.canShare?.({ files })) {
 		return 'unsupported' as const;
 	}
 	return shareSupported(files);
 }
+
 async function shareSupported(files: File[]) {
 	try {
 		await navigator.share({ files });
@@ -90,6 +103,7 @@ async function shareSupported(files: File[]) {
 		return shareFailure(e);
 	}
 }
+
 function shareFailure(e: unknown) {
 	if (e instanceof Error && e.name === 'AbortError') {
 		return 'cancelled' as const;

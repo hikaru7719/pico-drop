@@ -15,6 +15,7 @@ const browser = await chromium.launch({
 const baseURL = process.env.TEST_URL || 'http://localhost:5173';
 const contexts = [];
 const errors = [];
+
 function countPeers() {
 	window.peerCount = 0;
 	const Original = window.RTCPeerConnection;
@@ -25,6 +26,7 @@ function countPeers() {
 		}
 	};
 }
+
 async function device() {
 	const context = await browser.newContext({
 		viewport: { width: 390, height: 844 }
@@ -33,6 +35,7 @@ async function device() {
 	await context.addInitScript(countPeers);
 	return openPage(context);
 }
+
 async function openPage(context) {
 	const page = await context.newPage();
 	page.on('pageerror', (e) => errors.push(e.message));
@@ -40,6 +43,7 @@ async function openPage(context) {
 	await page.waitForLoadState('networkidle');
 	return page;
 }
+
 async function createLink(page) {
 	await page.getByRole('button', { name: '写真を渡す', exact: true }).click();
 	const link = await readQr(page);
@@ -48,6 +52,7 @@ async function createLink(page) {
 	await page.screenshot({ path: '/tmp/pico-drop-qr.png', fullPage: true });
 	return link;
 }
+
 async function readQr(page) {
 	const image = page.getByRole('img', { name: '写真を受け取るためのQRコード' });
 	await image.waitFor();
@@ -56,6 +61,7 @@ async function readQr(page) {
 	assert.ok(decoded, 'QR must be readable');
 	return decoded.data;
 }
+
 function qrPixels(image) {
 	const canvas = document.createElement('canvas');
 	canvas.width = image.naturalWidth;
@@ -84,6 +90,7 @@ async function join(page, link) {
 	await assertAnonymousReceiver(page);
 	assert.equal(await peerCount(page), count);
 }
+
 async function assertAnonymousReceiver(page) {
 	const login = page.getByRole('region', {
 		name: '送信者のログイン',
@@ -92,6 +99,7 @@ async function assertAnonymousReceiver(page) {
 	assert.equal(await login.count(), 0);
 	assert.equal(await page.locator('input[type=file]').count(), 0);
 }
+
 async function peerCount(page) {
 	return page.evaluate(() => window.peerCount);
 }
@@ -100,6 +108,7 @@ async function noPeers(a, b) {
 	assert.equal(await a.evaluate(() => window.peerCount), 0);
 	assert.equal(await b.evaluate(() => window.peerCount), 0);
 }
+
 async function clickButton(page, name) {
 	await page.getByRole('button', { name, exact: true }).click();
 }
@@ -110,6 +119,7 @@ async function revoked(a, b) {
 	await b.goto(link);
 	await b.getByRole('alert').filter({ hasText: '有効期限が切れた' }).waitFor();
 }
+
 async function rejected(a, b) {
 	await join(b, await createLink(a));
 	await noPeers(a, b);
@@ -120,6 +130,7 @@ async function rejected(a, b) {
 		.waitFor();
 	await noPeers(a, b);
 }
+
 async function receive(a, b) {
 	const link = await createLink(a);
 	await join(b, link);
@@ -129,6 +140,7 @@ async function receive(a, b) {
 	await transferComplete(a, b);
 	return link;
 }
+
 async function transferComplete(a, b) {
 	await b
 		.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true })
@@ -136,6 +148,7 @@ async function transferComplete(a, b) {
 	await a.getByRole('status').filter({ hasText: '同じデータ' }).waitFor();
 	await verifySelectedPhotos(a);
 }
+
 async function browserHashes(links) {
 	async function hash(link) {
 		const bytes = await (await fetch(link.href)).arrayBuffer();
@@ -143,14 +156,17 @@ async function browserHashes(links) {
 		const hex = Array.from(digest, (v) => v.toString(16).padStart(2, '0'));
 		return hex.join('');
 	}
+
 	return Promise.all(links.map(hash));
 }
+
 async function verifyPhotos(b, photo) {
 	const hashes = await b.locator('.gallery a').evaluateAll(browserHashes);
 	const expected = createHash('sha256').update(photo).digest('hex');
 	assert.deepEqual(hashes, Array(2).fill(expected));
 	await verifyLayout(b);
 }
+
 async function verifyLayout(b) {
 	assert.equal(
 		await b.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -161,17 +177,20 @@ async function verifyLayout(b) {
 		fullPage: true
 	});
 }
+
 async function reuse(link) {
 	const c = await device();
 	await c.goto(link);
 	await c.getByRole('alert').filter({ hasText: 'すでに使われた' }).waitFor();
 }
+
 function unsupportedShare() {
 	Object.defineProperty(navigator, 'canShare', {
 		configurable: true,
 		value: () => false
 	});
 }
+
 async function saveAndDiscard(b) {
 	await b.evaluate(unsupportedShare);
 	await clickButton(b, '写真を保存・共有する');
@@ -181,6 +200,7 @@ async function saveAndDiscard(b) {
 	await b.evaluate(() => window.finishShare());
 	await verifyDiscarded(b);
 }
+
 async function shareFallback(b) {
 	await b
 		.getByRole('status')
@@ -188,11 +208,13 @@ async function shareFallback(b) {
 		.waitFor();
 	assert.equal(await b.locator('.gallery a').count(), 2);
 }
+
 async function disconnect(a, b) {
 	await join(b, await createLink(a));
 	await b.close();
 	await a.getByRole('alert').filter({ hasText: '接続が切れました' }).waitFor();
 }
+
 async function selectPhotos(a) {
 	await a.addScriptTag({
 		path: new URL('./page.browser-fixture.js', import.meta.url).pathname
@@ -201,6 +223,7 @@ async function selectPhotos(a) {
 	await verifyAddingPhotos(a, photo);
 	return photo;
 }
+
 async function readPhoto(a) {
 	return Buffer.from(await a.evaluate(() => window.testJpeg()), 'base64');
 }
@@ -212,6 +235,7 @@ function photoFiles(photo) {
 		buffer: photo
 	}));
 }
+
 async function scenario() {
 	const a = await device(),
 		b = await device();
@@ -222,6 +246,7 @@ async function scenario() {
 	await verifyPhotos(b, photo);
 	await finishScenarios(a, b, photo);
 }
+
 async function finish(a, b) {
 	await saveAndDiscard(b);
 	await clickButton(a, '同じ写真をもう一度共有');
@@ -230,6 +255,7 @@ async function finish(a, b) {
 	await disconnect(a, b);
 	assert.deepEqual(errors, []);
 }
+
 try {
 	await scenario();
 	console.log(
@@ -300,6 +326,7 @@ async function verifyAddingPhotos(page, photo) {
 	await verifySelectedPhotos(page);
 	await rejectExcessPhotos(page, photo);
 }
+
 async function rejectExcessPhotos(page, photo) {
 	const files = excessPhotos(photo);
 	await page.locator('.picker input').setInputFiles(files);
@@ -338,6 +365,7 @@ async function beginPendingShare(page) {
 	await page.evaluate(mockPendingShare);
 	await clickButton(page, '写真を保存・共有する');
 }
+
 function mockPendingShare() {
 	const pending = Promise.withResolvers();
 	window.finishShare = pending.resolve;
@@ -365,6 +393,7 @@ async function groupScenario(sender, photo) {
 	await verifyGroupPhotos(guests, photo);
 	await finishGroup(sender, link);
 }
+
 async function groupGuests(link) {
 	const guests = [];
 	for (let i = 0; i < 5; i++) {
@@ -375,12 +404,14 @@ async function groupGuests(link) {
 	}
 	return guests;
 }
+
 async function verifyGroupCapacity(link) {
 	const extra = await device();
 	await extra.goto(link);
 	await extra.getByRole('alert').filter({ hasText: '5人まで' }).waitFor();
 	await extra.close();
 }
+
 async function groupTransfer(sender, guests) {
 	await noGroupPeers(guests);
 	const release = await holdIce(guests[0]);
@@ -389,6 +420,7 @@ async function groupTransfer(sender, guests) {
 	release();
 	await allGroupReceived(guests);
 }
+
 async function holdIce(page) {
 	const pending = Promise.withResolvers();
 	await page.route('**/api/ice', async (route) => {
@@ -397,6 +429,7 @@ async function holdIce(page) {
 	});
 	return pending.resolve;
 }
+
 async function approveAll(sender) {
 	for (let i = 0; i < 5; i++) {
 		await sender
@@ -405,12 +438,14 @@ async function approveAll(sender) {
 			.click();
 	}
 }
+
 async function groupReceived(guest) {
 	await guest
 		.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true })
 		.waitFor({ timeout: 60_000 });
 	assert.equal(await peerCount(guest), 1);
 }
+
 async function finishGroup(sender, link) {
 	await sender.locator('li').filter({ hasText: '受信完了' }).nth(4).waitFor();
 	await verifyLayout(sender);
@@ -426,16 +461,19 @@ async function finishScenarios(a, b, photo) {
 	await finish(a, b);
 	await groupScenario(a, photo);
 }
+
 async function verifyGroupPhotos(guests, photo) {
 	for (const guest of guests) {
 		await verifyPhotos(guest, photo);
 	}
 }
+
 async function noGroupPeers(guests) {
 	for (const guest of guests) {
 		assert.equal(await peerCount(guest), 0);
 	}
 }
+
 async function verifyGroupQueue(sender, guests) {
 	await sender.getByText('順番待ち', { exact: true }).first().waitFor();
 	await noGroupPeers(guests.slice(1));
@@ -444,11 +482,13 @@ async function verifyGroupQueue(sender, guests) {
 		fullPage: true
 	});
 }
+
 async function allGroupReceived(guests) {
 	for (const guest of guests) {
 		await groupReceived(guest);
 	}
 }
+
 async function checkGroupClosed(link) {
 	const late = await device();
 	await late.goto(link);

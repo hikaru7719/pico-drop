@@ -5,16 +5,19 @@ import { LIMITS, record, type PhotoMeta } from '../../../../shared/protocol.ts';
 const INTERRUPTED = '転送が中断されました。';
 const INVALID_DATA = '不正な転送データです。';
 const INVALID_ORDER = '受信データの順序・サイズが一致しません。';
+
 export async function digest(data: ArrayBuffer): Promise<string> {
 	return Array.from(
 		new Uint8Array(await crypto.subtle.digest('SHA-256', data)),
 		(b) => b.toString(16).padStart(2, '0')
 	).join('');
 }
+
 class DrainWaiter {
 	private timer: ReturnType<typeof setTimeout>;
 	private low = () => this.finish(null);
 	private closed = () => this.finish(new Error(INTERRUPTED));
+
 	constructor(
 		private channel: SendChannel,
 		private signal: AbortSignal,
@@ -23,6 +26,7 @@ class DrainWaiter {
 		this.timer = setTimeout(() => this.timedOut(), 30_000);
 		this.listen();
 	}
+
 	private timedOut() {
 		this.finish(new Error('送信がタイムアウトしました。'));
 	}
@@ -41,6 +45,7 @@ class DrainWaiter {
 			this.settle.resolve();
 		}
 	}
+
 	private cleanup() {
 		clearTimeout(this.timer);
 		this.channel.removeEventListener('bufferedamountlow', this.low);
@@ -48,6 +53,7 @@ class DrainWaiter {
 		this.signal.removeEventListener('abort', this.closed);
 	}
 }
+
 function checkChannel(channel: SendChannel, signal: AbortSignal) {
 	if (signal.aborted) {
 		throw new Error('中止しました。');
@@ -56,6 +62,7 @@ function checkChannel(channel: SendChannel, signal: AbortSignal) {
 		throw new Error('接続が切れました。');
 	}
 }
+
 async function drain(channel: SendChannel, signal: AbortSignal) {
 	checkChannel(channel, signal);
 	if (channel.bufferedAmount > 256 * 1024) {
@@ -74,7 +81,9 @@ export type SendOptions = {
 };
 class PhotoSender {
 	private sent = 0;
+
 	constructor(private options: SendOptions) {}
+
 	async send() {
 		const { channel, files, signal } = this.options;
 		channel.bufferedAmountLowThreshold = 128 * 1024;
@@ -84,6 +93,7 @@ class PhotoSender {
 		await drain(channel, signal);
 		channel.send(JSON.stringify({ type: 'done' }));
 	}
+
 	private async sendFile(file: File, meta: PhotoMeta) {
 		const data = await this.readFile(file);
 		await this.sendHeader(data, meta.id);
@@ -92,12 +102,14 @@ class PhotoSender {
 			JSON.stringify({ type: 'file-end', id: meta.id })
 		);
 	}
+
 	private async readFile(file: File) {
 		if (this.options.signal.aborted) {
 			throw new Error('中止しました。');
 		}
 		return file.arrayBuffer();
 	}
+
 	private async sendHeader(data: ArrayBuffer, id: string) {
 		const sha256 = await digest(data);
 		await drain(this.options.channel, this.options.signal);
@@ -114,9 +126,11 @@ class PhotoSender {
 		}
 	}
 }
+
 export async function sendPhotos(options: SendOptions) {
 	await new PhotoSender(options).send();
 }
+
 function parseMarker(data: unknown) {
 	if (typeof data !== 'string' || data.length > 1024) {
 		throw new Error(INVALID_DATA);
@@ -127,6 +141,7 @@ function parseMarker(data: unknown) {
 	}
 	return marker;
 }
+
 export class PhotoReceiver {
 	private index = 0;
 	private chunks: ArrayBuffer[] = [];
@@ -135,12 +150,14 @@ export class PhotoReceiver {
 	private hash = '';
 	private active = false;
 	private ended = false;
+
 	constructor(
 		private metadata: PhotoMeta[],
 		private progress: (bytes: number) => void,
 		private photo: (file: File) => void,
 		private complete: () => void
 	) {}
+
 	async consume(data: unknown) {
 		if (this.ended) {
 			throw new Error('転送は終了しています。');
@@ -151,6 +168,7 @@ export class PhotoReceiver {
 			await this.receiveMarker(parseMarker(data));
 		}
 	}
+
 	private validChunk(data: ArrayBuffer) {
 		const meta = this.metadata[this.index];
 		return (
@@ -161,6 +179,7 @@ export class PhotoReceiver {
 			this.bytes + data.byteLength <= meta.size
 		);
 	}
+
 	private receiveChunk(data: ArrayBuffer) {
 		if (!this.validChunk(data)) {
 			throw new Error('受信サイズが一致しません。');
@@ -170,12 +189,14 @@ export class PhotoReceiver {
 		this.total += data.byteLength;
 		this.progress(this.total);
 	}
+
 	private async receiveMarker(marker: Record<string, unknown>) {
 		if (marker.type === 'file') {
 			return this.beginFile(marker);
 		}
 		return this.receiveEndMarker(marker);
 	}
+
 	private async receiveEndMarker(marker: Record<string, unknown>) {
 		if (marker.type === 'file-end') {
 			return this.finishFile(marker);
@@ -196,6 +217,7 @@ export class PhotoReceiver {
 		this.active = true;
 		this.hash = marker.sha256 as string;
 	}
+
 	private endMetadata(marker: Record<string, unknown>) {
 		const meta = this.metadata[this.index];
 		const valid =
@@ -215,6 +237,7 @@ export class PhotoReceiver {
 		}
 		return file;
 	}
+
 	private async verifyHash(file: File) {
 		if ((await digest(await file.arrayBuffer())) !== this.hash) {
 			throw new Error('写真の検証に失敗しました。もう一度送信してください。');
@@ -227,6 +250,7 @@ export class PhotoReceiver {
 			this.acceptFile(file);
 		}
 	}
+
 	private acceptFile(file: File) {
 		this.photo(file);
 		this.chunks = [];
@@ -242,6 +266,7 @@ export class PhotoReceiver {
 		this.ended = true;
 		this.complete();
 	}
+
 	dispose() {
 		this.ended = true;
 		this.chunks = [];

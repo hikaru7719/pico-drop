@@ -19,6 +19,7 @@ const photo = {
 	type: 'image/jpeg',
 	size: 10
 };
+
 function transfer(): TransferState {
 	return {
 		id: 't',

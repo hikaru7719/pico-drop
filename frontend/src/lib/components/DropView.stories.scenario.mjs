@@ -127,6 +127,7 @@ async function verifyCompletion() {
 	await visible(control('button', '再接続する'), false);
 	await visible(page.getByText('新しいQR・共有リンク', { exact: false }));
 }
+
 async function verifyPreview() {
 	await story('photos-selected');
 	const trigger = control('button', 'weekend.pngを拡大する');
@@ -143,6 +144,7 @@ async function verifyEditable(photos, editable) {
 		editable ? 1 : 0
 	);
 }
+
 async function verifyFocus(trigger) {
 	assert.equal(
 		await trigger.evaluate((button) => button === document.activeElement),

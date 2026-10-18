@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { photos } from '../../data';
+
 export default function Home() {
 	const [ready, setReady] = useState(false);
 	const [selected, setSelected] = useState(false);

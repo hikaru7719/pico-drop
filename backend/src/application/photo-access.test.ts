@@ -17,11 +17,13 @@ const photo = {
 	type: 'image/heic',
 	size: heic.length
 };
+
 const grant = (): PhotoGrant => ({
 	expiresAt: Date.now() + 60_000,
 	files: [photo],
 	uses: {}
 });
+
 test('conversion grants reject expired, absent, wrong photo and invalid mode', () => {
 	assert.equal(reservePhoto(undefined, photo.id, 'jpeg'), null);
 	assert.equal(reservePhoto(grant(), 'other', 'jpeg'), null);
@@ -52,9 +54,11 @@ class GrantStore implements PhotoStore {
 	delete = vi.fn<PhotoStore['delete']>(async (key: string) =>
 		this.entries.delete(key)
 	);
+
 	async create() {
 		return createPhotoAccess(this, [photo], '1234567890abcdef');
 	}
+
 	consume(token: string) {
 		return consumePhoto(this, { token, id: photo.id, mode: 'jpeg' });
 	}

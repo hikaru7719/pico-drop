@@ -1,5 +1,6 @@
 import type { IceConfiguration } from '../application/room-ports.ts';
 type TurnEnvironment = { TURN_KEY_ID?: string; TURN_KEY_API_TOKEN?: string };
+
 export async function iceServers(
 	env: TurnEnvironment
 ): Promise<IceConfiguration> {
@@ -7,12 +8,14 @@ export async function iceServers(
 		? turnServers(env)
 		: { iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }], relay: false };
 }
+
 function turnHeaders(token: string) {
 	return {
 		Authorization: `Bearer ${token}`,
 		'Content-Type': 'application/json'
 	};
 }
+
 function turnRequest(token: string): RequestInit {
 	return {
 		method: 'POST',

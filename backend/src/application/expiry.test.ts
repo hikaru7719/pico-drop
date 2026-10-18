@@ -1,6 +1,7 @@
 import { test, expect, vi } from 'vitest';
 import { expireRecords, scheduleExpiry } from './expiry.ts';
 const now = Date.now();
+
 function storage(alarm: number | null = null) {
 	return {
 		getAlarm: vi.fn(async () => alarm),
@@ -9,6 +10,7 @@ function storage(alarm: number | null = null) {
 		delete: vi.fn()
 	};
 }
+
 test.each([null, now + 60000])(
 	'schedules near-term expiry when alarm is %s',
 	async (alarm) => {

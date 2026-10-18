@@ -9,6 +9,7 @@ const statuses: Record<ErrorCode, number> = {
 	'conversion-failed': 422,
 	unavailable: 503
 };
+
 export function serviceError(error: Error) {
 	if (error instanceof ServiceError) {
 		return authJson({ error: error.message }, statuses[error.code]);

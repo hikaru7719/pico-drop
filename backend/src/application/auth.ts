@@ -44,6 +44,7 @@ const REGISTRATION = {
 	}
 } as const;
 type Passkeys = PasskeyVerifier;
+
 function registrationOptions(api: Passkeys, origin: URL, account: Account) {
 	return api.generateRegistrationOptions({
 		...REGISTRATION,
@@ -73,8 +74,11 @@ function displayName(body: unknown) {
 const RATE_ERROR = '認証の試行が多すぎます。しばらく待ってください。';
 const SEND_ERROR =
 	'1日あたりの送信上限に達しました。時間をおいてお試しください。';
+
 const credentialKey = (id: string) => 'auth:credential:' + id;
+
 type Rate = { count: number; expiresAt: number };
+
 function currentRate(old: Rate | undefined, duration: number): Rate {
 	return old && old.expiresAt > Date.now()
 		? old
@@ -103,12 +107,14 @@ function cookieResult(
 ): AuthResult {
 	return { data, cookie: { kind, token } };
 }
+
 function loginResult(account: Account, token: string): AuthResult {
 	return {
 		...cookieResult({ account: { name: account.name } }, 'auth', token),
 		clearChallenge: true
 	};
 }
+
 export type AuthInput = {
 	origin: URL;
 	auth: string;
@@ -121,6 +127,7 @@ export type AuthResult = {
 	cookie?: { kind: 'auth' | 'challenge'; token: string };
 	clearChallenge?: boolean;
 };
+
 function checkAccount(
 	account: Account | undefined,
 	response: AuthenticationResponseJSON
@@ -142,6 +149,7 @@ export type AuthNetwork = {
 
 export class AuthService {
 	private verification: PasskeyVerification;
+
 	constructor(
 		protected storage: AuthStore,
 		protected network: AuthNetwork | undefined,
@@ -348,6 +356,7 @@ function validHandle(response: AuthenticationResponseJSON, id: string) {
 
 class PasskeyVerification {
 	constructor(private api: PasskeyVerifier) {}
+
 	async signup(response: Reg, rp: URL, step: Ceremony) {
 		const options = {
 			response,
@@ -358,6 +367,7 @@ class PasskeyVerification {
 		verified(result.verified && !!step.account);
 		return result.registrationInfo!.credential;
 	}
+
 	async assertion(response: Auth, origin: URL, data: AuthCheck) {
 		const options = {
 			response,

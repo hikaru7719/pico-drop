@@ -138,6 +138,7 @@ function validName(name: unknown): name is string {
 		!/[\x00-\x1f/\\]/.test(name)
 	);
 }
+
 function validPhoto(file: unknown): file is PhotoMeta {
 	return (
 		record(file) &&
@@ -146,6 +147,7 @@ function validPhoto(file: unknown): file is PhotoMeta {
 		/^[a-zA-Z0-9-]{1,40}$/.test(file.id)
 	);
 }
+
 function validPhotoFields(file: Record<string, unknown>) {
 	return (
 		validName(file.name) &&
@@ -166,6 +168,7 @@ export function validPhotos(value: unknown): value is PhotoMeta[] {
 	}
 	return Array.from(value).every(validPhoto) && validPhotoTotals(value);
 }
+
 function validPhotoTotals(files: PhotoMeta[]) {
 	return (
 		new Set(files.map((file) => file.id)).size === files.length &&
@@ -181,6 +184,7 @@ function validDescription(value: unknown) {
 		value.sdp.length < 20_000
 	);
 }
+
 function validCandidateFields(value: Record<string, unknown>) {
 	return (
 		(value.sdpMid == null || typeof value.sdpMid === 'string') &&
@@ -189,6 +193,7 @@ function validCandidateFields(value: Record<string, unknown>) {
 			typeof value.usernameFragment === 'string')
 	);
 }
+
 function validCandidate(value: unknown) {
 	return (
 		record(value) &&
@@ -197,12 +202,14 @@ function validCandidate(value: unknown) {
 		validCandidateFields(value)
 	);
 }
+
 function validSignal(value: unknown) {
 	return (
 		record(value) &&
 		(validDescription(value.description) || validCandidate(value.candidate))
 	);
 }
+
 function validTransferMessage(value: Record<string, unknown>) {
 	return (
 		typeof value.id === 'string' &&
@@ -211,6 +218,7 @@ function validTransferMessage(value: Record<string, unknown>) {
 			(value.type === 'signal' && validSignal(value.signal)))
 	);
 }
+
 const messageValidators: Record<
 	string,
 	(value: Record<string, unknown>) => boolean
@@ -224,17 +232,20 @@ const messageValidators: Record<
 		typeof value.token === 'string' && /^[a-f0-9]{64}$/.test(value.token),
 	'revoke-link': () => true
 };
+
 export function parseClient(value: unknown): ClientMessage {
 	if (!record(value) || typeof value.type !== 'string') {
 		throw new Error(INVALID_MESSAGE);
 	}
 	return parseRecord(value, value.type);
 }
+
 function messageValidator(type: string) {
 	return Object.hasOwn(messageValidators, type)
 		? messageValidators[type]
 		: validTransferMessage;
 }
+
 function parseRecord(
 	value: Record<string, unknown>,
 	type: string
@@ -303,6 +314,7 @@ const authorizationRules: [(context: Authorization) => boolean, string][] = [
 		'先に受信を承諾してください。'
 	]
 ];
+
 export function authorizeTransfer(
 	t: TransferState,
 	actor: string,
@@ -311,6 +323,7 @@ export function authorizeTransfer(
 ): void {
 	checkAuthorization({ transfer: t, actor, action, now });
 }
+
 function checkAuthorization(context: Authorization) {
 	const failure = authorizationRules.find(([invalid]) => invalid(context));
 	if (failure) {

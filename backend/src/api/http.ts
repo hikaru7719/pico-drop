@@ -1,6 +1,8 @@
 import type { AuthEnv } from '../application/auth.ts';
+
 export const authJson = (data: unknown, status = 200) =>
 	Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
+
 function cookieName(request: Request, kind: string) {
 	const secure = new URL(request.url).protocol === 'https:';
 	return `${secure ? '__Host-' : ''}pico_${kind}`;

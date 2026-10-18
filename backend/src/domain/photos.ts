@@ -5,6 +5,7 @@ export type PhotoGrant = {
 	files: PhotoMeta[];
 	uses: Record<string, number>;
 };
+
 export function reservePhoto(
 	grant: PhotoGrant | undefined,
 	id: string,

@@ -15,11 +15,13 @@ const photo = {
 	type: 'image/heic',
 	size: heic.length
 };
+
 const grant = (): PhotoGrant => ({
 	expiresAt: Date.now() + 60_000,
 	files: [photo],
 	uses: {}
 });
+
 class ConversionFixture {
 	calls = 0;
 	resizes: unknown[] = [];
@@ -34,6 +36,7 @@ class ConversionFixture {
 		}
 	};
 	images: ImageService = { input: () => this.input() };
+
 	input() {
 		this.calls++;
 		return {
@@ -78,6 +81,7 @@ test('unauthorized requests never reach Images', async () => {
 	assert.equal((await fixture.run(fixture.request(heic, 'wrong'))).status, 403);
 	assert.equal(fixture.calls, 0);
 });
+
 function assertPreview(fixture: ConversionFixture, response: Response) {
 	assert.equal(response.headers.get('cache-control'), 'no-store');
 	assert.equal(response.headers.get('content-type'), 'image/jpeg');

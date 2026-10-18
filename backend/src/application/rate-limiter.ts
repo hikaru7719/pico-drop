@@ -5,9 +5,11 @@ export class RateLimiter {
 	constructor(
 		private ctx: Pick<RoomRuntime, 'storage' | 'blockConcurrencyWhile'>
 	) {}
+
 	async limitRequest(kind: string) {
 		return this.ctx.blockConcurrencyWhile(() => this.applyRequestLimit(kind));
 	}
+
 	async applyRequestLimit(kind: string) {
 		const key = 'rate:' + kind;
 		const rate = requestWindow(await this.ctx.storage.get<Rate>(key), kind);
@@ -18,10 +20,12 @@ export class RateLimiter {
 		await this.ctx.storage.setAlarm(rate.expiresAt);
 		return true;
 	}
+
 	async alarm() {
 		await expireRecords(this.ctx.storage);
 	}
 }
+
 function requestWindow(old: Rate | undefined, kind: string): Rate {
 	const duration = kind === 'auth' ? 600_000 : 60_000;
 	return old && old.expiresAt > Date.now()

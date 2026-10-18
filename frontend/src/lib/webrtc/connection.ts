@@ -34,6 +34,7 @@ export interface TransferCallbacks {
 export interface Transfer {
 	connect(config: IceConfig): Promise<void>;
 }
+
 const browserPeer: PeerFactory = (config) => new RTCPeerConnection(config);
 
 export class TransferConnection implements Transfer {
@@ -41,6 +42,7 @@ export class TransferConnection implements Transfer {
 	readonly transfer: RequestInfo;
 	readonly signal: AbortSignal;
 	readonly isSender: boolean;
+
 	constructor(
 		transfer: RequestInfo,
 		signal: AbortSignal,
@@ -57,6 +59,7 @@ export class TransferConnection implements Transfer {
 			this.callbacks.fail(e);
 		}
 	}
+
 	attach = (channel: DataChannel) => {
 		if (this.attached || this.signal.aborted) {
 			channel.close();
@@ -64,6 +67,7 @@ export class TransferConnection implements Transfer {
 			this.attachChannel(channel);
 		}
 	};
+
 	attachChannel(channel: DataChannel) {
 		this.attached = true;
 		channel.binaryType = 'arraybuffer';
@@ -84,6 +88,7 @@ export class TransferConnection implements Transfer {
 			this.failIfActive(new Error('写真の転送に失敗しました。'));
 		channel.onclose = () => this.closed();
 	}
+
 	closed() {
 		if (!this.callbacks.completed()) {
 			this.failIfActive(new Error('写真の転送が中断されました。'));
@@ -100,6 +105,7 @@ export class TransferConnection implements Transfer {
 			void this.sendFiles(channel).catch((e) => this.failIfActive(e));
 		}
 	}
+
 	async sendFiles(channel: DataChannel) {
 		await sendPhotos({
 			channel,
@@ -109,6 +115,7 @@ export class TransferConnection implements Transfer {
 			progress: this.callbacks.progress
 		});
 	}
+
 	confirm(channel: DataChannel, data: unknown) {
 		if (this.signal.aborted) {
 			return;
@@ -119,6 +126,7 @@ export class TransferConnection implements Transfer {
 			this.acknowledge(channel);
 		}
 	}
+
 	validConfirmation(data: unknown) {
 		return (
 			data === '{"type":"verified"}' &&
@@ -137,6 +145,7 @@ export class TransferConnection implements Transfer {
 			this.callbacks.send({ type: 'signal', id: this.transfer.id, signal: s });
 		}
 	}
+
 	createPeer(config: IceConfig, factory: PeerFactory) {
 		return new PhotoPeer(
 			factory({ iceServers: config.iceServers }),
@@ -145,6 +154,7 @@ export class TransferConnection implements Transfer {
 			(e) => this.failIfActive(e)
 		);
 	}
+
 	async connect(config: IceConfig, factory: PeerFactory = browserPeer) {
 		const peer = this.createPeer(config, factory);
 		this.callbacks.peer(peer);
@@ -167,6 +177,7 @@ class IncomingChannel {
 	private current: PhotoReceiver;
 	private transfer: TransferConnection;
 	private channel: DataChannel;
+
 	constructor(transfer: TransferConnection, channel: DataChannel) {
 		this.transfer = transfer;
 		this.channel = channel;
@@ -189,6 +200,7 @@ class IncomingChannel {
 		this.channel.send('{"type":"verified"}');
 		this.transfer.callbacks.touch();
 	}
+
 	validSize(data: unknown, size: number) {
 		return (
 			size <= LIMITS.chunk &&
@@ -196,6 +208,7 @@ class IncomingChannel {
 			!(typeof data === 'string' && data.length > 1024)
 		);
 	}
+
 	enqueue(data: unknown) {
 		const size = data instanceof ArrayBuffer ? data.byteLength : 0;
 		this.queuedBytes += size;
@@ -205,6 +218,7 @@ class IncomingChannel {
 			this.queueMessage(data, size);
 		}
 	}
+
 	queueMessage(data: unknown, size: number) {
 		this.queue = this.queue
 			.then(() => this.consume(data, size))
@@ -218,6 +232,7 @@ class IncomingChannel {
 			this.queuedBytes -= size;
 		}
 	}
+
 	async receive(data: unknown) {
 		if (this.transfer.signal.aborted) {
 			return;
@@ -228,6 +243,7 @@ class IncomingChannel {
 			await this.current.consume(data);
 		}
 	}
+
 	complete() {
 		this.transfer.callbacks.complete();
 		this.transfer.callbacks.send({

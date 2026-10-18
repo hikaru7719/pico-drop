@@ -10,6 +10,7 @@ const headers = {
 	'Cache-Control': 'no-store',
 	'X-Content-Type-Options': 'nosniff'
 };
+
 export function photoRequest(
 	request: Request,
 	renderer: ImageRenderer,
@@ -17,6 +18,7 @@ export function photoRequest(
 ) {
 	return photoApp(renderer, authority).fetch(request);
 }
+
 function photoApp(renderer: ImageRenderer, authority: PhotoAuthority) {
 	const app = new Hono();
 	app.post('/api/photos/discard', (c) => discard(c.req.raw, authority));
@@ -27,6 +29,7 @@ function photoApp(renderer: ImageRenderer, authority: PhotoAuthority) {
 	app.notFound(methodError);
 	return app;
 }
+
 async function conversion(
 	request: Request,
 	renderer: ImageRenderer,
@@ -37,6 +40,7 @@ async function conversion(
 		headers: { ...headers, 'Content-Type': 'image/jpeg' }
 	});
 }
+
 function conversionInput(request: Request) {
 	const params = new URL(request.url).searchParams;
 	return {
@@ -46,6 +50,7 @@ function conversionInput(request: Request) {
 		body: request.body
 	};
 }
+
 function photoError(error: Error) {
 	const response = serviceError(error);
 	response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -56,6 +61,7 @@ async function discard(request: Request, authority: PhotoAuthority) {
 	await authority.revokePhoto(bearerToken(request));
 	return new Response(null, { status: 204, headers });
 }
+
 function methodError() {
 	return Response.json(
 		{ error: 'Method not allowed' },
