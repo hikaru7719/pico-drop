@@ -16,7 +16,11 @@ import { describePhotos, sharePhotos } from '$lib/photos';
 import { createSession, Signaling } from '$lib/webrtc/signaling';
 import type { PhotoPeer } from '$lib/webrtc/peer';
 import type { PhotoReceiver } from '$lib/webrtc/transfer';
-import { TransferConnection, type IceConfig } from '$lib/webrtc/connection';
+import {
+	createTransferConnection,
+	type TransferFactory,
+	type IceConfig
+} from '$lib/webrtc/connection';
 
 type ViewCallbacks = {
 	clearSelection?: () => void;
@@ -27,7 +31,10 @@ type ViewCallbacks = {
 // Each page owns an independent reactive controller and its resources.
 // This composition scope contains the state and operations for one sharing session.
 // oxlint-disable-next-line max-lines-per-function
-export function createDropController(view: ViewCallbacks = {}) {
+export function createDropController(
+	view: ViewCallbacks = {},
+	createTransfer: TransferFactory = createTransferConnection
+) {
 	type RequestInfo = Extract<ServerMessage, { type: 'requested' }>;
 	let groupMode = $state(false);
 	let groupReceiver = $state(false);
@@ -59,8 +66,8 @@ export function createDropController(view: ViewCallbacks = {}) {
 	let sharing = $state(false);
 	let signaling: Signaling | undefined;
 	let sessionAbort: AbortController | undefined;
-	let peer: PhotoPeer | undefined;
-	let receiver: PhotoReceiver | undefined;
+	let peer: Pick<PhotoPeer, 'close' | 'receive'> | undefined;
+	let receiver: Pick<PhotoReceiver, 'dispose'> | undefined;
 	let abort = new AbortController();
 	let watchdog: ReturnType<typeof setTimeout> | undefined;
 	let generation = 0;
@@ -737,10 +744,10 @@ export function createDropController(view: ViewCallbacks = {}) {
 			send,
 			progress: updateProgress,
 			received: receivedPhoto,
-			peer: (next: PhotoPeer) => {
+			peer: (next: Pick<PhotoPeer, 'close' | 'receive'>) => {
 				peer = next;
 			},
-			receiver: (next: PhotoReceiver) => {
+			receiver: (next: Pick<PhotoReceiver, 'dispose'>) => {
 				receiver = next;
 			}
 		};
@@ -752,7 +759,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 	) {
 		const sender = transfer.from.id === session!.id;
 		const cb = transferCallbacks();
-		const link = new TransferConnection(transfer, signal, sender, cb);
+		const link = createTransfer(transfer, signal, sender, cb);
 		await link.connect(config);
 	}
 	async function prepareTransfer(transfer: RequestInfo, signal: AbortSignal) {

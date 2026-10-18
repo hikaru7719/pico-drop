@@ -3,6 +3,8 @@ import type { PhotoMeta } from '../../shared/protocol.ts';
 import { PHOTO_LIFETIME_MS, isHeic } from '../../shared/photos.ts';
 import type { ConversionMode, PhotoAccess } from '../../shared/photos.ts';
 
+type PhotoStore = Pick<DurableObjectStorage, 'get' | 'put' | 'delete'>;
+
 export type PhotoGrant = {
 	expiresAt: number;
 	files: PhotoMeta[];
@@ -19,7 +21,7 @@ export async function grantKey(token: string) {
 }
 
 export async function createPhotoAccess(
-	storage: DurableObjectStorage,
+	storage: PhotoStore,
 	files: PhotoMeta[],
 	room?: string
 ): Promise<PhotoAccess> {
@@ -54,10 +56,7 @@ function reserveUse(grant: PhotoGrant, photo: PhotoMeta, mode: ConversionMode) {
 	return { photo, expiresAt: grant.expiresAt };
 }
 type PhotoQuery = { token: string; id: string; mode: string };
-export async function consumePhoto(
-	storage: DurableObjectStorage,
-	query: PhotoQuery
-) {
+export async function consumePhoto(storage: PhotoStore, query: PhotoQuery) {
 	if (!validToken(query.token)) {
 		return null;
 	}
@@ -65,7 +64,7 @@ export async function consumePhoto(
 }
 
 async function consumeStoredPhoto(
-	storage: DurableObjectStorage,
+	storage: PhotoStore,
 	key: string,
 	query: PhotoQuery
 ) {
@@ -75,17 +74,14 @@ async function consumeStoredPhoto(
 	return result;
 }
 
-export async function revokePhoto(
-	storage: DurableObjectStorage,
-	token: string
-) {
+export async function revokePhoto(storage: PhotoStore, token: string) {
 	if (validToken(token)) {
 		await storage.delete(await grantKey(token));
 	}
 }
 
 async function persistGrant(
-	storage: DurableObjectStorage,
+	storage: PhotoStore,
 	key: string,
 	grant?: PhotoGrant
 ) {

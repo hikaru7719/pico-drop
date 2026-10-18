@@ -1,5 +1,9 @@
 import { test, expect, vi } from 'vitest';
 import {
+	accountRoute,
+	network,
+	identity,
+	allowSend,
 	authName,
 	authRoute,
 	loginRoute,
@@ -41,6 +45,11 @@ for (const path of ['/api/ice', '/api/photos/convert', '/api/photos/discard']) {
 class Namespace {
 	names: string[] = [];
 	limitRequest = vi.fn(async () => true);
+	verifyAccountLogin = vi.fn(async () => ({ id: 'v2.ab.user', name: 'Guest' }));
+	issueAccountLogin = vi.fn(async () => 'token');
+	revokeLogin = vi.fn(async () => {});
+	accountIdentity = vi.fn(async () => ({ id: 'user', name: 'Guest' }));
+	authorizeSend = vi.fn(async () => ({ id: 'user', name: 'Guest' }));
 	consumeCeremony = vi.fn(async () => undefined);
 	env = {
 		HUB: {
@@ -75,4 +84,83 @@ test('login lookup preserves the shard but stores only the secret hash', async (
 	expect(key).toMatch(/^auth:login:v2\.cd\.[a-f0-9]{64}$/);
 	expect(key).not.toContain(secret);
 	expect(loginRoute(key)).toBe('auth:cd');
+});
+
+const account = { id: 'v2.ab.user', name: 'Guest' };
+const assertion = { response: { userHandle: btoa(account.id) } } as Parameters<
+	typeof accountRoute
+>[0];
+const localNetwork = () => ({ take: vi.fn(), register: vi.fn() });
+const ceremony = {
+	kind: 'login' as const,
+	challenge: 'challenge',
+	expiresAt: Date.now() + 1000
+};
+test('remote authentication routes verification, issuance and revocation to account shards', async () => {
+	const app = new Namespace();
+	const remote = network(app.env, 'auth:ab', localNetwork());
+	expect(remote.shard).toBe('ab');
+	await remote.login(assertion, 'https://photos.example', ceremony);
+	await remote.issue(account);
+	await remote.revoke('auth:login:v2.ab.hash');
+	expect(app.names).toEqual(['auth:ab', 'auth:ab', 'auth:ab']);
+	assertRemoteVerification(app);
+});
+test('legacy routing and empty session operations do not contact an auth shard', async () => {
+	const app = new Namespace();
+	const remote = network(app.env, 'mvp', { take: vi.fn(), register: vi.fn() });
+	expect(remote.shard).toBeUndefined();
+	await remote.revoke('');
+	expect(await identity(app.env, '')).toBeUndefined();
+	await expect(allowSend(app.env, '')).rejects.toThrow('ログイン');
+	expect(app.names).toEqual([]);
+});
+test('authenticated identity and send checks reach the session issuer', async () => {
+	const app = new Namespace();
+	const key = 'auth:login:v2.cd.hash';
+	expect(await identity(app.env, key)).toEqual({ id: 'user', name: 'Guest' });
+	await allowSend(app.env, key);
+	expect(app.names).toEqual(['auth:cd', 'auth:cd']);
+	expect(app.authorizeSend).toHaveBeenCalledWith(key);
+});
+test('missing cookies choose random auth shards and missing room tokens stay empty', () => {
+	expect(authRoute(request('/api/auth/login/options', cookie))).toMatch(
+		/^auth:[a-f0-9]{2}$/
+	);
+	expect(authRoute(request('/api/auth/status'))).toMatch(/^auth:[a-f0-9]{2}$/);
+	expect(roomRoute(request('/api/ws'))).toBe('');
+	expect(roomRoute(request('/api/ice'))).toBe('');
+	expect(roomRoute(request('/api/ice', { Authorization: 'invalid' }))).toBe('');
+	expect(routedToken(undefined)).toMatch(/^[a-f0-9]{64}$/);
+});
+test('only new options clear a previous ceremony', async () => {
+	const app = new Namespace();
+	await clearPreviousChallenge(
+		app.env,
+		request('/api/auth/login/verify', cookie)
+	);
+	await clearPreviousChallenge(app.env, request('/api/auth/login/options'));
+	expect(app.consumeCeremony).not.toHaveBeenCalled();
+});
+function assertRemoteVerification(app: Namespace) {
+	expect(app.verifyAccountLogin).toHaveBeenCalledWith(
+		assertion,
+		'https://photos.example',
+		ceremony
+	);
+}
+async function rateForIP(app: Namespace, ip: string) {
+	await requestRate(
+		app.env,
+		request('/api/session', { 'CF-Connecting-IP': ip }),
+		'session'
+	);
+}
+test('IP rate limiting uses the connecting IP and account routes accept empty handles', async () => {
+	const app = new Namespace();
+	await rateForIP(app, '192.0.2.1');
+	await rateForIP(app, '192.0.2.2');
+	expect(app.names[0]).not.toBe(app.names[1]);
+	const anonymous = { response: {} } as Parameters<typeof accountRoute>[0];
+	expect(accountRoute(anonymous)).toBe('mvp');
 });

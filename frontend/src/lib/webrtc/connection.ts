@@ -21,8 +21,8 @@ type TransferCallbacks = {
 	send: Signaling['send'];
 	progress: (bytes: number) => void;
 	received: (file: File) => void;
-	peer: (peer: PhotoPeer) => void;
-	receiver: (receiver: PhotoReceiver) => void;
+	peer: (peer: Pick<PhotoPeer, 'close' | 'receive'>) => void;
+	receiver: (receiver: Pick<PhotoReceiver, 'dispose'>) => void;
 };
 
 export class TransferConnection {
@@ -128,7 +128,7 @@ export class TransferConnection {
 	}
 	createPeer(config: IceConfig) {
 		return new PhotoPeer(
-			config.iceServers,
+			new RTCPeerConnection({ iceServers: config.iceServers }),
 			(s) => this.sendSignal(s),
 			this.attach,
 			(e) => this.failIfActive(e)
@@ -142,6 +142,13 @@ export class TransferConnection {
 		}
 	}
 }
+export type TransferFactory = (
+	...args: ConstructorParameters<typeof TransferConnection>
+) => Pick<TransferConnection, 'connect'>;
+
+export const createTransferConnection: TransferFactory = (...args) =>
+	new TransferConnection(...args);
+
 class IncomingChannel {
 	private verified = false;
 	private queue = Promise.resolve();

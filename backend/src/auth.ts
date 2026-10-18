@@ -11,6 +11,14 @@ import {
 type Reg = RegistrationResponseJSON;
 type Auth = AuthenticationResponseJSON;
 type AuthCheck = { ceremony: Ceremony; stored: Credential };
+type PasskeyVerifier = {
+	verifyRegistrationResponse: typeof verifyRegistrationResponse;
+	verifyAuthenticationResponse: typeof verifyAuthenticationResponse;
+};
+const passkeyVerifier: PasskeyVerifier = {
+	verifyRegistrationResponse,
+	verifyAuthenticationResponse
+};
 
 export type AuthEnv = { AUTH_ORIGIN?: string };
 type Store = Pick<DurableObjectStorage, 'get' | 'put' | 'delete'>;
@@ -211,11 +219,15 @@ export type AuthNetwork = {
 };
 
 export class PasskeyAuth {
+	private verification: PasskeyVerification;
 	constructor(
 		private storage: Store,
 		private env: AuthEnv,
-		private network?: AuthNetwork
-	) {}
+		private network?: AuthNetwork,
+		verifier: PasskeyVerifier = passkeyVerifier
+	) {
+		this.verification = new PasskeyVerification(verifier);
+	}
 
 	async loginKey(request: Request) {
 		const token = readCookie(request, 'auth');
@@ -353,7 +365,7 @@ export class PasskeyAuth {
 	async registerVerify(request: Request, origin: URL) {
 		const value = await this.takeCeremony(request, 'register');
 		const response = (await bodyJson(request)) as RegistrationResponseJSON;
-		const credential = await verifySignup(response, origin, value);
+		const credential = await this.verification.signup(response, origin, value);
 		await (this.network
 			? this.network.register(value.account!, credential)
 			: this.storeAccount(value.account!, credential));
@@ -398,7 +410,7 @@ export class PasskeyAuth {
 	}
 
 	async verifyLogin(response: Auth, origin: URL, data: AuthCheck) {
-		const result = await verifyAssertion(response, origin, data);
+		const result = await this.verification.assertion(response, origin, data);
 		const account = await this.checkedAccount(data.stored.account, response);
 		data.stored.credential.counter = result.authenticationInfo.newCounter;
 		await this.storage.put(
@@ -458,24 +470,28 @@ function validHandle(response: AuthenticationResponseJSON, id: string) {
 	return response.response.userHandle === encoded;
 }
 
-async function verifySignup(response: Reg, rp: URL, step: Ceremony) {
-	const options = {
-		...verification(rp, step),
-		supportedAlgorithmIDs: [-7, -257]
-	};
-	const result = await verifyRegistrationResponse({ response, ...options });
-	verified(result.verified && !!step.account);
-	return result.registrationInfo!.credential;
-}
-
-async function verifyAssertion(response: Auth, origin: URL, data: AuthCheck) {
-	const options = {
-		credential: data.stored.credential,
-		...verification(origin, data.ceremony)
-	};
-	const result = await verifyAuthenticationResponse({ response, ...options });
-	verified(result.verified);
-	return result;
+class PasskeyVerification {
+	constructor(private api: PasskeyVerifier) {}
+	async signup(response: Reg, rp: URL, step: Ceremony) {
+		const options = {
+			response,
+			...verification(rp, step),
+			supportedAlgorithmIDs: [-7, -257]
+		};
+		const result = await this.api.verifyRegistrationResponse(options);
+		verified(result.verified && !!step.account);
+		return result.registrationInfo!.credential;
+	}
+	async assertion(response: Auth, origin: URL, data: AuthCheck) {
+		const options = {
+			response,
+			credential: data.stored.credential,
+			...verification(origin, data.ceremony)
+		};
+		const result = await this.api.verifyAuthenticationResponse(options);
+		verified(result.verified);
+		return result;
+	}
 }
 
 function verified(value: boolean) {

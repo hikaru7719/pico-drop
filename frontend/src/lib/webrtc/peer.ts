@@ -5,18 +5,16 @@ const CONNECT_FAILED =
 const CONNECT_TIMEOUT =
 	'相手に接続できませんでした。インターネット接続を確認して、もう一度お試しください。';
 export class PhotoPeer {
-	private pc: RTCPeerConnection;
 	private candidates: RTCIceCandidateInit[] = [];
 	private timer: ReturnType<typeof setTimeout>;
 	private disconnected?: ReturnType<typeof setTimeout>;
 	private closed = false;
 	constructor(
-		iceServers: RTCIceServer[],
+		private pc: RTCPeerConnection,
 		private signal: (signal: Signal) => void,
 		channel: (channel: RTCDataChannel) => void,
 		private fail: (error: Error) => void
 	) {
-		this.pc = new RTCPeerConnection({ iceServers });
 		this.listen(channel);
 		this.timer = setTimeout(() => fail(new Error(CONNECT_TIMEOUT)), 45_000);
 	}
@@ -48,6 +46,7 @@ export class PhotoPeer {
 	}
 
 	private waitForReconnect() {
+		clearTimeout(this.disconnected);
 		this.disconnected = setTimeout(
 			() => this.fail(new Error('相手との接続が切れました。')),
 			10_000
