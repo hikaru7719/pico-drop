@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '@fontsource-variable/noto-sans-jp';
 	import type { Snippet } from 'svelte';
 	import type { ConversionMode } from '../../../../shared/photos.ts';
 	import type { ReceivedPhoto } from '$lib/photos/received';
@@ -640,7 +641,9 @@
 		margin: 0;
 		background-color: #f4f0e7;
 		color: #283f35;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+		font-family:
+			'Noto Sans JP Variable', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
+			'Yu Gothic', Meiryo, sans-serif;
 	}
 	:global(*) {
 		box-sizing: border-box;
