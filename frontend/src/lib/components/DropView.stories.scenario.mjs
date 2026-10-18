@@ -46,9 +46,7 @@ try {
 	);
 	await page.locator('.transfer').waitFor();
 	assert.equal(
-		await page
-			.getByRole('heading', { name: 'リンクで、写真を届ける。' })
-			.count(),
+		await page.getByRole('heading', { name: '目の前の人に、写真を。' }).count(),
 		0
 	);
 	assert.deepEqual(errors, []);

@@ -2,6 +2,7 @@
 	import { isHeic, type ConversionMode } from '../../../../shared/photos.ts';
 	import type { ReceivedPhoto } from '$lib/photos/received';
 	import TransferProgress from './TransferProgress.svelte';
+	import ShareQr from './ShareQr.svelte';
 	import { formatBytes } from '$lib/photos';
 	import type {
 		PhotoMeta,
@@ -95,7 +96,7 @@
 			flowStarted = true;
 		}
 	});
-	const headline = 'リンクで、写真を届ける。';
+	const headline = '目の前の人に、写真を。';
 	const typingInterval = 180;
 	const headlineCycle = 250 + (headline.length - 1) * typingInterval + 3000;
 	let headlineReplay = $state(0);
@@ -199,7 +200,7 @@
 							>{/each}
 					{/key}
 				</h1>
-				<p>写真を選んで、リンクで共有。<br />ログインは不要です。</p>
+				<p>写真を選んで、QRで渡す。<br />ログインは不要です。</p>
 			</section>
 		</div>
 	</div>
@@ -236,33 +237,39 @@
 				</section>
 			{:else if shareLink}
 				<section class="card">
-					<h2>相手にリンクを送る</h2>
+					<h2>相手にQRを見せる</h2>
 					<p class="description">
-						このリンクをLINEなどで1人に送ってください。写真の送信が完了するまで、この画面を開いたままにしてください。
+						相手のスマートフォンのカメラで読み取って、表示されたリンクを開いてもらってください。
 					</p>
-					<label
-						>共有リンク<input
-							class="share-link"
-							aria-label="共有リンク"
-							readonly
-							value={shareLink}
-							onclick={(event) => event.currentTarget.select()}
-						/></label
-					>
+					<ShareQr url={shareLink} />
 					<p class="hint">
-						リンクの有効期限：{linkExpiresAt
+						相手が「受け取る」を押すまで、写真は送られません。転送が終わるまで、お互いに画面を開いたままにしてください。
+					</p>
+					<details>
+						<summary>リンクで送る</summary>
+						<label
+							>共有リンク<input
+								class="share-link"
+								aria-label="共有リンク"
+								readonly
+								value={shareLink}
+								onclick={(event) => event.currentTarget.select()}
+							/></label
+						>
+
+						<div class="actions">
+							<button onclick={shareInvitation}>LINEなどで共有する</button
+							><button onclick={copyInvitation}>リンクをコピーする</button>
+						</div>
+					</details>
+					<p class="hint">
+						共有の有効期限：{linkExpiresAt
 							? new Date(linkExpiresAt).toLocaleTimeString('ja-JP')
 							: ''}（作成から10分）。相手が接続すると、このリンクは使えなくなります。
 					</p>
-					<div class="actions">
-						<button
-							class="primary"
-							onclick={shareInvitation}>LINEなどで共有する</button
-						><button onclick={copyInvitation}>リンクをコピーする</button>
-					</div>
 					<button
 						class="text-button"
-						onclick={revokeLink}>リンクを取り消す</button
+						onclick={revokeLink}>共有を取り消す</button
 					>
 				</section>
 			{:else}
@@ -361,11 +368,11 @@
 							createLink();
 						}}
 						>{creatingLink || connection === 'connecting'
-							? 'リンクを作成中…'
-							: '共有リンクを作成する'}</button
+							? 'QRを準備中…'
+							: '写真を渡す'}</button
 					>
 					<p class="hint">
-						リンクは10分間有効です。ログインや位置情報の許可は不要です。リンクを知っている人なら接続できます。
+						QRは10分間・1人だけ有効です。ログインや位置情報の許可は不要です。
 					</p>
 				</section>
 			{/if}
@@ -505,6 +512,11 @@
 </main>
 
 <style>
+	summary {
+		cursor: pointer;
+		padding: 12px 0;
+	}
+
 	.share-link {
 		width: 100%;
 		min-width: 0;

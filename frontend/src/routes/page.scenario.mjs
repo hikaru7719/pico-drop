@@ -1,5 +1,6 @@
 // Run against `mise run dev` without location permission in either browser.
 import assert from 'node:assert/strict';
+import jsQR from 'jsqr';
 import { createHash } from 'node:crypto';
 const { chromium } = await import(
 	process.env.PLAYWRIGHT_MODULE || 'playwright'
@@ -39,13 +40,41 @@ async function openPage(context) {
 	return page;
 }
 async function createLink(page) {
-	await page
-		.getByRole('button', { name: '共有リンクを作成する', exact: true })
-		.click();
-	const field = page.getByRole('textbox', { name: '共有リンク', exact: true });
-	await field.waitFor();
-	return field.inputValue();
+	await page.getByRole('button', { name: '写真を渡す', exact: true }).click();
+	const link = await readQr(page);
+	assert.equal(await verifyQrLayout(page), link);
+	await page.screenshot({ path: '/tmp/pico-drop-qr.png', fullPage: true });
+	return link;
 }
+async function readQr(page) {
+	const image = page.getByRole('img', { name: '写真を受け取るためのQRコード' });
+	await image.waitFor();
+	const { data, width, height } = await image.evaluate(qrPixels);
+	const decoded = jsQR(new Uint8ClampedArray(data), width, height);
+	assert.ok(decoded, 'QR must be readable');
+	return decoded.data;
+}
+function qrPixels(image) {
+	const canvas = document.createElement('canvas');
+	canvas.width = image.naturalWidth;
+	canvas.height = image.naturalHeight;
+	const { width, height } = canvas;
+	const context = canvas.getContext('2d');
+	context.drawImage(image, 0, 0);
+	const data = Array.from(context.getImageData(0, 0, width, height).data);
+	return { data, width, height };
+}
+
+async function verifyQrLayout(page) {
+	await page.getByText('リンクで送る', { exact: true }).click();
+	const field = page.getByRole('textbox', { name: '共有リンク', exact: true });
+	const url = await field.inputValue();
+	assert.match(url, /#share=[a-f0-9]{64}$/);
+	await page.getByText('リンクで送る', { exact: true }).click();
+	assert.equal(await field.isVisible(), false);
+	return url;
+}
+
 async function join(page, link) {
 	await page.goto(link);
 	const count = await peerCount(page);
@@ -66,9 +95,7 @@ async function clickButton(page, name) {
 
 async function revoked(a, b) {
 	const link = await createLink(a);
-	await a
-		.getByRole('button', { name: 'リンクを取り消す', exact: true })
-		.click();
+	await a.getByRole('button', { name: '共有を取り消す', exact: true }).click();
 	await b.goto(link);
 	await b.getByRole('alert').filter({ hasText: '有効期限が切れた' }).waitFor();
 }

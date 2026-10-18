@@ -52,11 +52,11 @@ export const Connecting: Story = {
 	args: { connection: 'connecting', session: undefined }
 };
 export const CreatingLink: Story = {
-	name: '03 リンクを作成中',
+	name: '03 QRを準備中',
 	args: { creatingLink: true, selected: [file], metadata: files }
 };
 export const LinkReady: Story = {
-	name: '04 リンクを共有して待機',
+	name: '04 QRを見せて待機',
 	args: {
 		shareLink: 'https://example.com/#share=' + 'a'.repeat(64),
 		linkExpiresAt: Date.now() + 600_000

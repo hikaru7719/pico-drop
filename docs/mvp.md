@@ -30,7 +30,7 @@ Hibernationは `acceptWebSocket` とattachment、短命の転送メタデータ�
 
 ## 起動と経路
 
-`mise run dev` でbackend:8787とfrontend:5173を起動する。送信側で写真を選んで共有リンクを作成し、別ブラウザでリンクを開いて共有内容を確認し、受信承諾する。開発時の `/api/*` はViteがHTTP/WebSocketともにbackendへ転送する。
+`mise run dev` でbackend:8787とfrontend:5173を起動する。送信側で写真を選んで「写真を渡す」を押し、別端末のカメラでQRを読み取ってリンクを開き、共有内容を確認して受信承諾する。QRはブラウザ内で生成し、外部のQRサービスには送らない。「リンクで送る」から共有・コピーも可能。開発時の `/api/*` はViteがHTTP/WebSocketともにbackendへ転送する。
 
 本番はbackend、frontendの順でdeployする。frontendのSvelteKit APIルートが `BACKEND` service bindingへ元のRequestを渡し、backendはOriginとRequest URLのoriginの一致を必須にする。ワイルドカードCORSを許可しない。Worker名を変更する場合はfrontendのservice bindingも変更する。
 
