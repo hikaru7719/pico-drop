@@ -14,7 +14,6 @@
 		linkExpiresAt?: number;
 		creatingLink?: boolean;
 		createLink?: () => void;
-		joinLink?: () => void;
 		revokeLink?: () => void;
 		shareInvitation?: () => void;
 		copyInvitation?: () => void;
@@ -52,7 +51,6 @@
 		linkExpiresAt,
 		creatingLink = false,
 		createLink = () => {},
-		joinLink = () => {},
 		revokeLink = () => {},
 		shareInvitation = () => {},
 		copyInvitation = () => {},
@@ -227,16 +225,11 @@
 				<section class="card">
 					<h2>共有リンクから写真を受け取る</h2>
 					<p class="description">
-						送信者がこの画面を開いている間に接続してください。相手の名前と写真の枚数を確認してから、受け取るかどうかを選べます。
+						相手の名前と写真の枚数・容量を確認してから、受け取るかどうかを選べます。「受け取る」を押すまで写真は転送されません。
 					</p>
-					<button
-						class="primary"
-						disabled={connection === 'connecting' || connection === 'online'}
-						onclick={joinLink}
-						>{connection === 'idle' || connection === 'offline'
-							? '送信者に接続する'
-							: '送信者に接続中…'}</button
-					>
+					{#if connection === 'connecting' || connection === 'online'}
+						<p role="status">共有内容を確認中…</p>
+					{/if}
 					<p class="hint">
 						接続できない場合はSafariやChromeでリンクを開いてください。
 					</p>

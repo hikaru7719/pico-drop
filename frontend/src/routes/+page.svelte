@@ -248,8 +248,17 @@
 		creatingLink = connection === 'connecting';
 	}
 
+	function canJoinLink() {
+		return (
+			connection !== 'connecting' &&
+			!request &&
+			!!incomingToken &&
+			!(completed && received.length)
+		);
+	}
+
 	async function joinLink() {
-		if (connection === 'connecting' || request || !incomingToken) {
+		if (!canJoinLink()) {
 			return;
 		}
 		flowStarted = true;
@@ -858,6 +867,7 @@
 		if (/^[a-f0-9]{64}$/.test(token)) {
 			incomingToken = token;
 			flowStarted = true;
+			void joinLink();
 		} else {
 			error =
 				'共有リンクが正しくありません。送信者に作り直してもらってください。';
@@ -900,7 +910,6 @@
 	{linkExpiresAt}
 	{creatingLink}
 	{createLink}
-	{joinLink}
 	{revokeLink}
 	{shareInvitation}
 	{copyInvitation}

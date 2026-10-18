@@ -49,9 +49,6 @@ async function createLink(page) {
 async function join(page, link) {
 	await page.goto(link);
 	const count = await peerCount(page);
-	await page
-		.getByRole('button', { name: '送信者に接続する', exact: true })
-		.click();
 	await page.getByRole('button', { name: '受け取る', exact: true }).waitFor();
 	assert.equal(await peerCount(page), count);
 }
@@ -73,7 +70,6 @@ async function revoked(a, b) {
 		.getByRole('button', { name: 'リンクを取り消す', exact: true })
 		.click();
 	await b.goto(link);
-	await clickButton(b, '送信者に接続する');
 	await b.getByRole('alert').filter({ hasText: '有効期限が切れた' }).waitFor();
 }
 async function rejected(a, b) {
@@ -128,9 +124,6 @@ async function verifyLayout(b) {
 async function reuse(link) {
 	const c = await device();
 	await c.goto(link);
-	await c
-		.getByRole('button', { name: '送信者に接続する', exact: true })
-		.click();
 	await c.getByRole('alert').filter({ hasText: 'すでに使われた' }).waitFor();
 }
 function unsupportedShare() {

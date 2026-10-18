@@ -32,7 +32,6 @@ const meta = {
 		session: me,
 		connect: fn(),
 		createLink: fn(),
-		joinLink: fn(),
 		revokeLink: fn(),
 		shareInvitation: fn(),
 		copyInvitation: fn(),
@@ -64,8 +63,8 @@ export const LinkReady: Story = {
 	}
 };
 export const JoinLink: Story = {
-	name: '05 リンクから参加',
-	args: { incomingToken: 'a'.repeat(64), connection: 'idle' }
+	name: '05 共有内容を確認中',
+	args: { incomingToken: 'a'.repeat(64), connection: 'connecting' }
 };
 export const ChoosePhotos: Story = {
 	name: '06 写真を選ぶ',

@@ -8,7 +8,7 @@
 - 受信者のみAccept / Rejectでき、Acceptするまで、SDP・ICE・TURN資格情報の取得を拒否。中止・切断・期限切れは双方に通知する。
 - 写真は順序保証付きDataChannelで16KBずつ送信。バッファ量に応じて送信を待機する。受信側で順序、枚数、容量、形式ヘッダー、各写真のSHA-256を検証し、両端末の受信確認後に完了する。原本の転送はWebRTCで行い、写真本体をWebSocket・DOストレージへ送らない。受信後に利用者がHEICプレビュー・JPEG変換を選んだ場合だけ、HTTPでWorker経由のImages bindingに送る。
 - JPEG / PNG / WebP / HEIC / HEIFのヘッダーとMIMEを確認。拡張子だけで判定せず、画像を再圧縮しない。HEIC系は原本の共有・ダウンロードに加え、操作時に縮小プレビュー・保存用JPEGを生成する。一般のHEIFコンテナはブラウザがHEIC/HEIF MIMEを提供する場合のみ受け付ける。JPEGへの任意変換を提供し、動画は対象外。
-- 共有リンクは作成から10分間、相手1人の参加にだけ有効。256bitトークンをURLのfragmentに含め、DOにはハッシュと所有者・写真メタデータ・期限を保存。合言葉・位置情報は使用しない。閲覧だけでは消費せず、「共有に参加する」で消費する。取り消し・再発行・送信者の切断でも失効する。
+- 共有リンクは作成から10分間、相手1人の参加にだけ有効。256bitトークンをURLのfragmentに含め、DOにはハッシュと所有者・写真メタデータ・期限を保存。合言葉・位置情報は使用しない。受信画面の読み込み時に自動参加してリンクを消費する。相手の名前・枚数・容量を確認し、「受け取る」を押すまで写真は転送しない。取り消し・再発行・送信者の切断でも失効する。
 - 保存はユーザー操作からWeb Share APIを呼ぶ。共有成功を写真ライブラリへの保存確認として扱わない。共有非対応・キャンセル時は写真を維持し、個別ダウンロードを提供。受信完了から10分・破棄・ページ離脱時にBlobの参照とObject URLを解放。保存済みの端末ファイルは削除しない。
 
 ## 暫定値と構成
@@ -30,7 +30,7 @@ Hibernationは `acceptWebSocket` とattachment、短命の転送メタデータ�
 
 ## 起動と経路
 
-`mise run dev` でbackend:8787とfrontend:5173を起動する。送信側で写真を選んで共有リンクを作成し、別ブラウザでリンクを開いて参加・受信承諾する。開発時の `/api/*` はViteがHTTP/WebSocketともにbackendへ転送する。
+`mise run dev` でbackend:8787とfrontend:5173を起動する。送信側で写真を選んで共有リンクを作成し、別ブラウザでリンクを開いて共有内容を確認し、受信承諾する。開発時の `/api/*` はViteがHTTP/WebSocketともにbackendへ転送する。
 
 本番はbackend、frontendの順でdeployする。frontendのSvelteKit APIルートが `BACKEND` service bindingへ元のRequestを渡し、backendはOriginとRequest URLのoriginの一致を必須にする。ワイルドカードCORSを許可しない。Worker名を変更する場合はfrontendのservice bindingも変更する。
 

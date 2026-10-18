@@ -180,18 +180,18 @@ test('stopping an in-flight session request prevents a late WebSocket connection
 	await pending;
 	assert.equal(app.sockets.length, 0);
 });
-test('opening a link does not consume it until explicit participation', async () => {
+test('opening a link automatically joins but does not accept the transfer', async () => {
 	const token = 'b'.repeat(64);
 	const app = setup({ token });
-	assertIdle(app);
-	await app.controller.joinLink();
+	await flush();
+	assert.equal(app.sessions, 1);
 	await ready(app);
 	assert.deepEqual(app.sockets[0].messages, [{ type: 'join-link', token }]);
 	app.controller.revokeLink();
 });
 test('a rejected link clears the busy state and permits retry', async () => {
 	const app = setup({ token: 'b'.repeat(64) });
-	await app.controller.joinLink();
+	await flush();
 	await ready(app);
 	await app.controller.handle({ type: 'error', message: '期限切れ' });
 	assert.equal(app.controller.state.error, '期限切れ');
@@ -217,3 +217,10 @@ for (const reason of ['complete', 'cancelled']) {
 		assert.equal(app.controller.state.completed, reason === 'complete');
 	});
 }
+
+test('invalid invitation does not create a session', async () => {
+	const app = setup({ token: 'invalid' });
+	await flush();
+	assertIdle(app);
+	assert.match(app.controller.state.error, /共有リンクが正しくありません/);
+});
