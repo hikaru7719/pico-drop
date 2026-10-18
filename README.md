@@ -35,6 +35,7 @@ mise run //frontend:dev
 mise run //backend:dev
 mise run check
 mise run test
+mise run test:coverage
 mise run lint
 mise run format:check
 mise run build
@@ -50,6 +51,8 @@ Wrangler設定変更後は `mise run gen` で型を再生成します。整形�
 整形設定は `.oxfmtrc.json`、lint設定は `.oxlintrc.json` で管理します。整形はリポジトリ全体（`shared/` を含む）が対象です。lintは `frontend/`・`backend/`・`shared/`・`docs/` が対象です。生成ファイル・ビルド出力・作業用ディレクトリは対象外にしています。設定のJSON Schemaはmiseで固定したバージョンを参照するため、ツール更新時にあわせて更新してください。
 
 関数間は空行を1行入れて記述します。oxfmtは既存の空行を保持しますが、関数間に空行を自動挿入する設定はありません。`printWidth: 80` は長い行の折り返しの目安であり、文字列などを含むすべての行の長さを強制する上限ではありません。`singleAttributePerLine: true` で複数属性を持つ要素を1属性1行にし、`objectWrap: "preserve"` で既存のオブジェクトの改行を保持します。型定義も複数行で記述し、整形後も改行を維持します。Svelteの整形にはルートの `svelte` 依存と、formatタスクの `NODE_PATH` を使用します。
+
+`mise run test:coverage` はユニットテストで読み込まれたファイルのカバレッジを計測し、全体の行・文・関数・分岐がそれぞれ90%以上であることを検査します。レポートは `coverage/` に出力します。通常の `mise run test` はカバレッジを計測しません。
 
 ## 現在の実装範囲
 

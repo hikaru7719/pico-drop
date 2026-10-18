@@ -70,6 +70,10 @@ run = "git config --local core.hooksPath .githooks"
 [tasks."test:watch"]
 run = "pnpm exec vitest"
 
+[tasks."test:coverage"]
+description = "カバレッジを計測し、行・文・関数・分岐の90%しきい値を検査する"
+run = "pnpm exec vitest run --coverage"
+
 [tasks."test:e2e"]
 description = "起動済みアプリとStorybookをPlaywrightで検証する"
 run = "pnpm exec vitest run --config vitest.e2e.config.ts"
