@@ -33,6 +33,7 @@ mise run dev
 ```sh
 mise run //frontend:dev
 mise run //backend:dev
+mise run verify
 mise run check
 mise run test
 mise run test:coverage
@@ -53,6 +54,8 @@ Wrangler設定変更後は `mise run gen` で型を再生成します。整形�
 関数間は空行を1行入れて記述します。oxfmtは既存の空行を保持しますが、関数間に空行を自動挿入する設定はありません。`printWidth: 80` は長い行の折り返しの目安であり、文字列などを含むすべての行の長さを強制する上限ではありません。`singleAttributePerLine: true` で複数属性を持つ要素を1属性1行にし、`objectWrap: "preserve"` で既存のオブジェクトの改行を保持します。型定義も複数行で記述し、整形後も改行を維持します。Svelteの整形にはルートの `svelte` 依存と、formatタスクの `NODE_PATH` を使用します。
 
 `mise run test:coverage` はユニットテストで読み込まれたファイルのカバレッジを計測し、全体の行・文・関数・分岐がそれぞれ90%以上であることを検査します。レポートは `coverage/` に出力します。通常の `mise run test` はカバレッジを計測しません。
+
+`mise run verify` はoxfmtの整形チェック、型情報付きoxlint、frontend・backend・docsのビルド、全ユニットテストとカバレッジ検査を順に実行します。途中で失敗すると停止します。整形の自動修正は行いません。E2Eテストは含まないため、必要に応じてアプリとStorybookを起動して `mise run test:e2e` を実行してください。
 
 ## 現在の実装範囲
 

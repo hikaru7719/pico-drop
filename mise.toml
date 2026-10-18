@@ -38,6 +38,15 @@ depends = ["//frontend:check", "//backend:check"]
 description = "アプリと資料をビルドする（公開しない）"
 depends = ["//frontend:build", "//backend:build", "//docs:build"]
 
+[tasks.verify]
+description = "整形・lint・全体ビルド・全ユニットテストとカバレッジを順に検証する"
+run = [
+	{ task = "//:format:check" },
+	{ task = "//:lint" },
+	{ task = "//:build" },
+	{ task = "//:test:coverage" }
+]
+
 [tasks.lint]
 description = "ソースとテストを型情報付きoxlintで検査する"
 run = "oxlint --type-aware --deny-warnings frontend backend shared docs benchmarks vitest.config.ts vitest.e2e.config.ts"
