@@ -13,9 +13,12 @@ import {
 	type Session
 } from '../../../../shared/protocol.ts';
 import { describePhotos, sharePhotos } from '$lib/photos';
-import { createSession, Signaling } from '$lib/webrtc/signaling';
-import type { PhotoPeer } from '$lib/webrtc/peer';
-import type { PhotoReceiver } from '$lib/webrtc/transfer';
+import {
+	createSession,
+	Signaling,
+	type SignalingConnection
+} from '$lib/webrtc/signaling';
+import type { TransferPeer, TransferReceiver } from '$lib/webrtc/ports';
 import {
 	createTransferConnection,
 	type TransferFactory,
@@ -28,12 +31,33 @@ type ViewCallbacks = {
 	showReceived?: () => void;
 };
 
+export interface DropDependencies {
+	createSession(signal: AbortSignal, token: string): Promise<Session>;
+	createSignaling(
+		session: Session,
+		message: (message: ServerMessage) => void,
+		closed: () => void
+	): SignalingConnection;
+	createTransfer: TransferFactory;
+	describePhotos: typeof describePhotos;
+	sharePhotos: typeof sharePhotos;
+	fetch: typeof fetch;
+}
+const browserDependencies: DropDependencies = {
+	createSession,
+	createSignaling: (...args) => new Signaling(...args),
+	createTransfer: createTransferConnection,
+	describePhotos,
+	sharePhotos,
+	fetch: (...args) => fetch(...args)
+};
+
 // Each page owns an independent reactive controller and its resources.
 // This composition scope contains the state and operations for one sharing session.
 // oxlint-disable-next-line max-lines-per-function
 export function createDropController(
 	view: ViewCallbacks = {},
-	createTransfer: TransferFactory = createTransferConnection
+	dependencies: DropDependencies = browserDependencies
 ) {
 	type RequestInfo = Extract<ServerMessage, { type: 'requested' }>;
 	let groupMode = $state(false);
@@ -64,10 +88,10 @@ export function createDropController(
 	let error = $state('');
 	let relay = $state<boolean>();
 	let sharing = $state(false);
-	let signaling: Signaling | undefined;
+	let signaling: SignalingConnection | undefined;
 	let sessionAbort: AbortController | undefined;
-	let peer: Pick<PhotoPeer, 'close' | 'receive'> | undefined;
-	let receiver: Pick<PhotoReceiver, 'dispose'> | undefined;
+	let peer: TransferPeer | undefined;
+	let receiver: TransferReceiver | undefined;
 	let abort = new AbortController();
 	let watchdog: ReturnType<typeof setTimeout> | undefined;
 	let generation = 0;
@@ -164,7 +188,7 @@ export function createDropController(
 			stopGroupView();
 		}
 	}
-	function send(message: Parameters<Signaling['send']>[0]) {
+	function send(message: Parameters<SignalingConnection['send']>[0]) {
 		if (!signaling) {
 			throw new Error('再接続してください。');
 		}
@@ -261,7 +285,7 @@ export function createDropController(
 	}
 	function openSignaling(next: Session, current: number) {
 		session = next;
-		signaling = new Signaling(
+		signaling = dependencies.createSignaling(
 			next,
 			(message) => queueSignal(message, current),
 			() => connectionClosed(current)
@@ -269,7 +293,10 @@ export function createDropController(
 	}
 	async function openSession(current: number) {
 		checkBrowser();
-		const next = await createSession(sessionAbort!.signal, incomingToken);
+		const next = await dependencies.createSession(
+			sessionAbort!.signal,
+			incomingToken
+		);
 		if (activeGeneration(current)) {
 			openSignaling(next, current);
 		}
@@ -420,7 +447,7 @@ export function createDropController(
 	}
 
 	async function describeSelection(files: File[]) {
-		const result = await describePhotos(files);
+		const result = await dependencies.describePhotos(files);
 		selected = files;
 		metadata = result;
 	}
@@ -698,7 +725,7 @@ export function createDropController(
 	}
 
 	async function fetchIce(signal: AbortSignal) {
-		const response = await fetch('/api/ice', {
+		const response = await dependencies.fetch('/api/ice', {
 			method: 'POST',
 			headers: { Authorization: `Bearer ${session!.token}` },
 			signal
@@ -744,10 +771,10 @@ export function createDropController(
 			send,
 			progress: updateProgress,
 			received: receivedPhoto,
-			peer: (next: Pick<PhotoPeer, 'close' | 'receive'>) => {
+			peer: (next: TransferPeer) => {
 				peer = next;
 			},
-			receiver: (next: Pick<PhotoReceiver, 'dispose'>) => {
+			receiver: (next: TransferReceiver) => {
 				receiver = next;
 			}
 		};
@@ -759,7 +786,7 @@ export function createDropController(
 	) {
 		const sender = transfer.from.id === session!.id;
 		const cb = transferCallbacks();
-		const link = createTransfer(transfer, signal, sender, cb);
+		const link = dependencies.createTransfer(transfer, signal, sender, cb);
 		await link.connect(config);
 	}
 	async function prepareTransfer(transfer: RequestInfo, signal: AbortSignal) {
@@ -781,7 +808,7 @@ export function createDropController(
 	}
 	async function shareFiles(files: File[]) {
 		const collection = photoCollection;
-		const result = await sharePhotos(files);
+		const result = await dependencies.sharePhotos(files);
 		if (collection === photoCollection && received.length) {
 			notice = shareMessages[result];
 		}

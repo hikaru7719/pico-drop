@@ -3,16 +3,31 @@ import type {
 	ServerMessage,
 	Session
 } from '../../../../shared/protocol.ts';
-export class Signaling {
-	private ws: WebSocket;
+export interface SignalingConnection {
+	send(message: ClientMessage): void;
+	close(): void;
+}
+export interface SignalingSocket extends Pick<
+	WebSocket,
+	'onopen' | 'onmessage' | 'onerror' | 'onclose' | 'readyState' | 'close'
+> {
+	send(message: string): void;
+}
+export interface SocketFactory {
+	(url: URL): SignalingSocket;
+}
+const browserSocket: SocketFactory = (url) => new WebSocket(url);
+export class Signaling implements SignalingConnection {
+	private ws: SignalingSocket;
 	private timer: ReturnType<typeof setTimeout>;
 	private closed = false;
 	constructor(
 		session: Session,
 		onMessage: (message: ServerMessage) => void,
-		onClose: () => void
+		onClose: () => void,
+		openSocket: SocketFactory = browserSocket
 	) {
-		this.ws = new WebSocket(socketUrl(session.room));
+		this.ws = openSocket(socketUrl(session.room));
 		this.timer = setTimeout(() => this.ws.close(), 10_000);
 		this.listen(session, onMessage, onClose);
 	}
@@ -64,13 +79,14 @@ export class Signaling {
 		this.ws.close();
 	}
 }
-export async function createSession(signal?: AbortSignal, token = '') {
+export async function createSession(
+	signal?: AbortSignal,
+	token = '',
+	request: typeof fetch = fetch
+) {
 	const suffix = token ? '?room=' + token.slice(0, 16) : '';
-	const response = await fetch('/api/session' + suffix, {
-		method: 'POST',
-		signal
-	});
-	return readSession(response);
+	const init = { method: 'POST', signal };
+	return readSession(await request('/api/session' + suffix, init));
 }
 async function readSession(response: Response): Promise<Session> {
 	const data = (await response.json()) as Session & { error?: string };

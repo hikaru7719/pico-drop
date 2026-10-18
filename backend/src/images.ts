@@ -10,6 +10,17 @@ export type PhotoAuthority = {
 	): Promise<Reservation | null>;
 	revokePhoto(token: string): Promise<void>;
 };
+export interface ImageOutput {
+	output(
+		options: ImageOutputOptions
+	): Promise<Pick<ImageTransformationResult, 'response'>>;
+}
+export interface ImageSource extends ImageOutput {
+	transform(options: ImageTransform): ImageOutput;
+}
+export interface ImageService {
+	input(stream: ReadableStream<Uint8Array>): ImageSource;
+}
 const headers = {
 	'Cache-Control': 'no-store',
 	'X-Content-Type-Options': 'nosniff'
@@ -26,13 +37,13 @@ const DENIED =
 	'この写真は変換できません。変換の有効期限が切れたか、許可されていない操作か、試行回数の上限に達した可能性があります。元の写真を保存してください。';
 type Conversion = {
 	request: Request;
-	images: ImagesBinding;
+	images: ImageService;
 	grant: Reservation;
 	mode: string;
 };
 export async function photoRequest(
 	request: Request,
-	images: ImagesBinding,
+	images: ImageService,
 	authority: PhotoAuthority
 ) {
 	return request.method !== 'POST'
@@ -42,7 +53,7 @@ export async function photoRequest(
 
 function routePhoto(
 	request: Request,
-	images: ImagesBinding,
+	images: ImageService,
 	authority: PhotoAuthority
 ) {
 	return new URL(request.url).pathname === '/api/photos/discard'
@@ -68,7 +79,7 @@ async function authorize(request: Request, authority: PhotoAuthority) {
 
 async function convertRequest(
 	request: Request,
-	images: ImagesBinding,
+	images: ImageService,
 	authority: PhotoAuthority
 ) {
 	const { grant, mode } = await authorize(request, authority);
@@ -154,13 +165,16 @@ function appendChunk(bytes: Uint8Array, chunk: Uint8Array, offset: number) {
 	return offset + chunk.length;
 }
 
+function imageStream(bytes: Uint8Array) {
+	return new Blob([bytes as Uint8Array<ArrayBuffer>]).stream();
+}
+
 async function renderImage(job: Conversion, bytes: Uint8Array) {
-	let image = job.images.input(
-		new Blob([bytes as Uint8Array<ArrayBuffer>]).stream()
-	);
-	if (job.mode === 'preview') {
-		image = image.transform({ width: 640, height: 640, fit: 'scale-down' });
-	}
+	const source = job.images.input(imageStream(bytes));
+	const image =
+		job.mode === 'preview'
+			? source.transform({ width: 640, height: 640, fit: 'scale-down' })
+			: source;
 	const quality = job.mode === 'preview' ? 75 : 90;
 	return (await image.output({ format: 'image/jpeg', quality })).response();
 }

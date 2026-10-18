@@ -1,18 +1,43 @@
 import { randomSecret, readCookie, secretHash } from './auth.ts';
-import type { AuthEnv, AuthNetwork, Ceremony } from './auth.ts';
+import type { AuthNetwork, Ceremony, Account } from './auth.ts';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 
-type Environment = Env & AuthEnv;
+export interface AuthHub {
+	verifyAccountLogin(
+		response: AuthenticationResponseJSON,
+		origin: string,
+		ceremony: Ceremony
+	): Promise<Account>;
+	issueAccountLogin(account: Account): Promise<string>;
+	revokeLogin(key: string): Promise<void>;
+	accountIdentity(key: string): Promise<Account | undefined>;
+	authorizeSend(key: string): Promise<Account>;
+	limitRequest(kind: string): Promise<boolean>;
+	consumeCeremony(key: string): Promise<Ceremony | undefined>;
+}
+export interface HubNamespace<Id, Hub> {
+	idFromName(name: string): Id;
+	get(id: Id): Hub;
+}
+interface Environment<Id> {
+	HUB: HubNamespace<Id, AuthHub>;
+}
+interface AccountAssertion {
+	response: { userHandle?: string };
+}
 export const authShard = (value: string) =>
 	/^v2\.([a-f0-9]{2})\./.exec(value)?.[1];
 export const authName = (value: string) => {
 	const shard = authShard(value);
 	return shard ? 'auth:' + shard : 'mvp';
 };
-export function hubFor(env: Environment, name: string) {
+export function hubFor<Id, Hub>(
+	env: { HUB: HubNamespace<Id, Hub> },
+	name: string
+) {
 	return env.HUB.get(env.HUB.idFromName(name));
 }
-export function accountRoute(response: AuthenticationResponseJSON) {
+export function accountRoute(response: AccountAssertion) {
 	const handle = response.response.userHandle ?? '';
 	return authName(atob(handle.replaceAll('-', '+').replaceAll('_', '/')));
 }
@@ -28,8 +53,8 @@ export function authRoute(request: Request) {
 export function loginRoute(key: string) {
 	return authName(key.slice('auth:login:'.length));
 }
-export function network(
-	env: Environment,
+export function network<Id>(
+	env: Environment<Id>,
 	name: string,
 	local: Pick<AuthNetwork, 'take' | 'register'>
 ): AuthNetwork {
@@ -37,7 +62,7 @@ export function network(
 	return { ...local, ...remoteNetwork(env), shard };
 }
 type RemoteNetwork = Omit<AuthNetwork, 'take' | 'register'>;
-function remoteNetwork(env: Environment): RemoteNetwork {
+function remoteNetwork<Id>(env: Environment<Id>): RemoteNetwork {
 	return {
 		login: (response, origin, ceremony) =>
 			remoteLogin(env, response, origin, ceremony),
@@ -46,14 +71,14 @@ function remoteNetwork(env: Environment): RemoteNetwork {
 			hubFor(env, authName(account.id)).issueAccountLogin(account)
 	};
 }
-async function revokeLogin(env: Environment, key: string) {
+async function revokeLogin<Id>(env: Environment<Id>, key: string) {
 	if (key) {
 		await hubFor(env, loginRoute(key)).revokeLogin(key);
 	}
 }
 
-async function remoteLogin(
-	env: Environment,
+async function remoteLogin<Id>(
+	env: Environment<Id>,
 	response: AuthenticationResponseJSON,
 	origin: string,
 	ceremony: Ceremony
@@ -61,17 +86,17 @@ async function remoteLogin(
 	const target = hubFor(env, accountRoute(response));
 	return target.verifyAccountLogin(response, origin, ceremony);
 }
-export async function identity(env: Environment, key: string) {
+export async function identity<Id>(env: Environment<Id>, key: string) {
 	return key ? hubFor(env, loginRoute(key)).accountIdentity(key) : undefined;
 }
-export async function allowSend(env: Environment, key: string) {
+export async function allowSend<Id>(env: Environment<Id>, key: string) {
 	if (!key) {
 		throw new Error('写真を送るにはパスキーでログインしてください。');
 	}
 	return hubFor(env, loginRoute(key)).authorizeSend(key);
 }
-export async function requestRate(
-	env: Environment,
+export async function requestRate<Id>(
+	env: Environment<Id>,
 	request: Request,
 	kind: string
 ) {
@@ -97,8 +122,8 @@ export function routedToken(room: string | undefined) {
 	return room ? room + randomSecret().slice(16) : randomSecret();
 }
 
-export async function clearPreviousChallenge(
-	env: Environment,
+export async function clearPreviousChallenge<Id>(
+	env: Environment<Id>,
 	request: Request
 ) {
 	const token = readCookie(request, 'challenge');

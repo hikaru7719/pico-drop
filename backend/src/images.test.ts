@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test, vi, afterEach } from 'vitest';
 import { reservePhoto, type PhotoGrant } from './photo-access.ts';
-import { photoRequest, type PhotoAuthority } from './images.ts';
+import {
+	photoRequest,
+	type PhotoAuthority,
+	type ImageService
+} from './images.ts';
 import { MAX_CONVERSION_BYTES } from '../../shared/photos.ts';
 
 const heic = new Uint8Array([
@@ -31,7 +35,7 @@ class ConversionFixture {
 			this.revoked = true;
 		}
 	};
-	images = { input: () => this.input() } as unknown as ImagesBinding;
+	images: ImageService = { input: () => this.input() };
 	input() {
 		this.calls++;
 		return {

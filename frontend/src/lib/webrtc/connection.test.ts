@@ -1,3 +1,5 @@
+import type { DataChannel, PeerConnection } from './ports';
+import type { TransferCallbacks } from './connection';
 import { afterEach, expect, onTestFinished, test, vi } from 'vitest';
 import { LIMITS } from '../../../../shared/protocol.ts';
 import { createTransferConnection, TransferConnection } from './connection';
@@ -12,19 +14,17 @@ const transfer = {
 	from: { id: 'sender', name: 'Sender' },
 	to: { id: 'receiver', name: 'Receiver' }
 };
-class Channel extends EventTarget {
-	readyState = 'connecting';
+class Channel extends EventTarget implements DataChannel {
+	readyState: RTCDataChannelState = 'connecting';
 	bufferedAmount = 0;
-	binaryType = '';
-	onopen?: () => void;
-	onclose?: () => void;
-	onerror?: () => void;
-	onmessage?: (event: { data: unknown }) => void;
+	binaryType: BinaryType = 'blob';
+	bufferedAmountLowThreshold = 0;
+	onopen: (() => void) | null = null;
+	onclose: (() => void) | null = null;
+	onerror: (() => void) | null = null;
+	onmessage: ((event: { data: unknown }) => void) | null = null;
 	send = vi.fn();
 	close = vi.fn();
-	rtc() {
-		return this as unknown as RTCDataChannel;
-	}
 	message(value: unknown) {
 		this.onmessage!({ data: value });
 	}
@@ -46,7 +46,7 @@ class ConnectionFixture {
 		received: vi.fn(),
 		peer: vi.fn(),
 		receiver: vi.fn()
-	};
+	} satisfies TransferCallbacks;
 	connection: TransferConnection;
 	constructor(sender = false) {
 		this.connection = new TransferConnection(
@@ -58,7 +58,7 @@ class ConnectionFixture {
 		onTestFinished(() => this.abort.abort());
 	}
 	attach() {
-		this.connection.attach(this.channel.rtc());
+		this.connection.attach(this.channel);
 	}
 	async receiveFile() {
 		const header = { type: 'file', id: photo.id, sha256: await digest(data) };
@@ -121,10 +121,10 @@ test('duplicate and aborted channels are closed without installing handlers', ()
 	const f = new ConnectionFixture();
 	f.attach();
 	const duplicate = new Channel();
-	f.connection.attach(duplicate.rtc());
+	f.connection.attach(duplicate);
 	expect(duplicate.close).toHaveBeenCalledOnce();
 	f.abort.abort();
-	f.connection.attach(duplicate.rtc());
+	f.connection.attach(duplicate);
 	expect(duplicate.close).toHaveBeenCalledTimes(2);
 });
 test('channel errors and premature closes fail an active transfer', () => {
@@ -143,7 +143,7 @@ test('abort ignores open, confirmation, queued data and transport errors', async
 	f.channel.message(data);
 	f.abort.abort();
 	f.channel.onopen!();
-	f.connection.confirm(f.channel.rtc(), '{"type":"verified"}');
+	f.connection.confirm(f.channel, '{"type":"verified"}');
 	await assertAborted(f);
 });
 async function assertAborted(f: ConnectionFixture) {
@@ -180,16 +180,20 @@ test('send failure is reported when an opened channel is no longer usable', asyn
 		'接続が切れました'
 	);
 });
-class BrowserPeer {
+class BrowserPeer implements PeerConnection {
 	static latest: BrowserPeer;
-	localDescription = { type: 'offer', sdp: 'sdp' };
-	onicecandidate?: (event: { candidate: unknown }) => void;
-	ondatachannel?: (event: { channel: RTCDataChannel }) => void;
-	onconnectionstatechange?: () => void;
-	connectionState = 'failed';
+	localDescription = { type: 'offer' as const, sdp: 'sdp' };
+	remoteDescription = null;
+	onicecandidate: ((event: { candidate: unknown }) => void) | null = null;
+	ondatachannel: ((event: { channel: DataChannel }) => void) | null = null;
+	onconnectionstatechange: (() => void) | null = null;
+	connectionState: RTCPeerConnectionState = 'failed';
 	createOffer = vi.fn(async () => this.localDescription);
 	setLocalDescription = vi.fn(async () => {});
-	createDataChannel = vi.fn(() => new Channel().rtc());
+	createDataChannel = vi.fn(() => new Channel());
+	createAnswer = vi.fn<PeerConnection['createAnswer']>();
+	setRemoteDescription = vi.fn<PeerConnection['setRemoteDescription']>();
+	addIceCandidate = vi.fn<PeerConnection['addIceCandidate']>();
 	close = vi.fn();
 	constructor(readonly config: RTCConfiguration) {
 		BrowserPeer.latest = this;
@@ -198,7 +202,6 @@ class BrowserPeer {
 test.each([true, false])(
 	'connect wires the browser peer for sender=%s',
 	async (sender) => {
-		vi.stubGlobal('RTCPeerConnection', BrowserPeer);
 		const f = new ConnectionFixture(sender);
 		await connectBrowser(f, sender);
 		assertPeerWiring(f, sender);
@@ -208,7 +211,7 @@ function assertPeerWiring(f: ConnectionFixture, sender: boolean) {
 	const pc = BrowserPeer.latest;
 	expect(pc.config.iceServers).toEqual([{ urls: 'stun:example.com' }]);
 	expect(pc.createOffer).toHaveBeenCalledTimes(Number(sender));
-	pc.ondatachannel!({ channel: new Channel().rtc() });
+	pc.ondatachannel!({ channel: new Channel() });
 	pc.onconnectionstatechange!();
 	expect(f.callbacks.fail).toHaveBeenCalledOnce();
 	assertSignalLifecycle(f, pc);
@@ -244,9 +247,7 @@ function assertSenderComplete(f: ConnectionFixture) {
 type ConnectionArgs = Parameters<typeof createTransferConnection>;
 async function connectBrowser(f: ConnectionFixture, sender: boolean) {
 	const args: ConnectionArgs = [transfer, f.abort.signal, sender, f.callbacks];
-	const connection = createTransferConnection(...args);
-	await connection.connect({
-		iceServers: [{ urls: 'stun:example.com' }],
-		relay: false
-	});
+	const connection = new TransferConnection(...args);
+	const config = { iceServers: [{ urls: 'stun:example.com' }], relay: false };
+	await connection.connect(config, (options) => new BrowserPeer(options));
 }

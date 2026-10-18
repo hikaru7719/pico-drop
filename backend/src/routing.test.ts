@@ -4,6 +4,7 @@ import {
 	network,
 	identity,
 	allowSend,
+	type AuthHub,
 	authName,
 	authRoute,
 	loginRoute,
@@ -12,7 +13,7 @@ import {
 	requestRate,
 	clearPreviousChallenge
 } from './routing.ts';
-import { PasskeyAuth } from './auth.ts';
+import { PasskeyAuth, type AuthStore } from './auth.ts';
 const secret = 'a'.repeat(64);
 const request = (path: string, headers = {}) =>
 	new Request('https://photos.example' + path, { headers });
@@ -42,7 +43,7 @@ for (const path of ['/api/ice', '/api/photos/convert', '/api/photos/discard']) {
 		);
 	});
 }
-class Namespace {
+class Namespace implements AuthHub {
 	names: string[] = [];
 	limitRequest = vi.fn(async () => true);
 	verifyAccountLogin = vi.fn(async () => ({ id: 'v2.ab.user', name: 'Guest' }));
@@ -59,7 +60,7 @@ class Namespace {
 				return this;
 			}
 		}
-	} as unknown as Env;
+	};
 }
 test('changing rooms cannot reset the IP rate limit', async () => {
 	const app = new Namespace();
@@ -79,7 +80,8 @@ test('new options invalidate the old challenge on its original shard', async () 
 	expect(app.consumeCeremony).toHaveBeenCalledOnce();
 });
 test('login lookup preserves the shard but stores only the secret hash', async () => {
-	const auth = new PasskeyAuth({} as DurableObjectStorage, {});
+	const store: AuthStore = { get: vi.fn(), put: vi.fn(), delete: vi.fn() };
+	const auth = new PasskeyAuth(store, {});
 	const key = await auth.loginKey(request('/', cookie));
 	expect(key).toMatch(/^auth:login:v2\.cd\.[a-f0-9]{64}$/);
 	expect(key).not.toContain(secret);
@@ -87,9 +89,18 @@ test('login lookup preserves the shard but stores only the secret hash', async (
 });
 
 const account = { id: 'v2.ab.user', name: 'Guest' };
-const assertion = { response: { userHandle: btoa(account.id) } } as Parameters<
-	typeof accountRoute
->[0];
+const assertion = {
+	id: 'credential',
+	rawId: 'credential',
+	type: 'public-key' as const,
+	response: {
+		userHandle: btoa(account.id),
+		clientDataJSON: '',
+		authenticatorData: '',
+		signature: ''
+	},
+	clientExtensionResults: {}
+};
 const localNetwork = () => ({ take: vi.fn(), register: vi.fn() });
 const ceremony = {
 	kind: 'login' as const,
@@ -161,6 +172,6 @@ test('IP rate limiting uses the connecting IP and account routes accept empty ha
 	await rateForIP(app, '192.0.2.1');
 	await rateForIP(app, '192.0.2.2');
 	expect(app.names[0]).not.toBe(app.names[1]);
-	const anonymous = { response: {} } as Parameters<typeof accountRoute>[0];
+	const anonymous = { response: {} };
 	expect(accountRoute(anonymous)).toBe('mvp');
 });

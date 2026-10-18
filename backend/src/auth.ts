@@ -11,17 +11,21 @@ import {
 type Reg = RegistrationResponseJSON;
 type Auth = AuthenticationResponseJSON;
 type AuthCheck = { ceremony: Ceremony; stored: Credential };
-type PasskeyVerifier = {
+export interface PasskeyVerifier {
 	verifyRegistrationResponse: typeof verifyRegistrationResponse;
 	verifyAuthenticationResponse: typeof verifyAuthenticationResponse;
-};
+}
 const passkeyVerifier: PasskeyVerifier = {
 	verifyRegistrationResponse,
 	verifyAuthenticationResponse
 };
 
 export type AuthEnv = { AUTH_ORIGIN?: string };
-type Store = Pick<DurableObjectStorage, 'get' | 'put' | 'delete'>;
+export interface AuthStore {
+	get<T>(key: string): Promise<T | undefined>;
+	put<T>(key: string, value: T): Promise<void>;
+	delete(key: string): Promise<boolean>;
+}
 export type Account = { id: string; name: string; disabled?: boolean };
 type Credential = { account: string; credential: WebAuthnCredential };
 type Login = { account: string; expiresAt: number };
@@ -221,7 +225,7 @@ export type AuthNetwork = {
 export class PasskeyAuth {
 	private verification: PasskeyVerification;
 	constructor(
-		private storage: Store,
+		private storage: AuthStore,
 		private env: AuthEnv,
 		private network?: AuthNetwork,
 		verifier: PasskeyVerifier = passkeyVerifier

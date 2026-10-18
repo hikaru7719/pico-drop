@@ -1,3 +1,4 @@
+import type { SendChannel } from './ports';
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { PhotoReceiver, digest, sendPhotos } from './transfer.ts';
@@ -79,8 +80,8 @@ test('receiver rejects truncated data', async () => {
 	await f.receiver.consume(data.slice(0, 4));
 	await assert.rejects(f.receiver.consume('{"type":"file-end","id":"p"}'));
 });
-class SenderFixture extends EventTarget {
-	readyState = 'open';
+class SenderFixture extends EventTarget implements SendChannel {
+	readyState: RTCDataChannelState = 'open';
 	bufferedAmount = 0;
 	bufferedAmountLowThreshold = 0;
 	sends = 0;
@@ -90,7 +91,7 @@ class SenderFixture extends EventTarget {
 	}
 	start() {
 		return sendPhotos({
-			channel: this as unknown as RTCDataChannel,
+			channel: this,
 			files: [new File([data], 'photo.jpg')],
 			metadata: [meta],
 			signal: this.controller.signal,

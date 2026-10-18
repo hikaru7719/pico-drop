@@ -1,16 +1,36 @@
+import type { DataChannel, PeerConnection } from './ports';
 import { afterEach, expect, onTestFinished, test, vi } from 'vitest';
 import { PhotoPeer } from './peer';
 
-class PeerFixture {
+class PeerChannel extends EventTarget implements DataChannel {
+	readyState: RTCDataChannelState = 'connecting';
+	bufferedAmount = 0;
+	bufferedAmountLowThreshold = 0;
+	binaryType: BinaryType = 'blob';
+	onopen = null;
+	onclose = null;
+	onerror = null;
+	onmessage = null;
+	send = vi.fn();
+	close = vi.fn();
+}
+class PeerFixture implements PeerConnection {
 	connectionState: RTCPeerConnectionState = 'new';
-	localDescription: RTCSessionDescriptionInit | null = null;
+	localDescription: (RTCSessionDescriptionInit & { sdp: string }) | null = null;
 	remoteDescription: RTCSessionDescriptionInit | null = null;
-	onicecandidate?: (event: { candidate: unknown }) => void;
-	ondatachannel?: (event: { channel: unknown }) => void;
-	onconnectionstatechange?: () => void;
-	createDataChannel = vi.fn(() => ({ label: 'photos' }));
-	createOffer = vi.fn(async () => ({ type: 'offer', sdp: 'offer-sdp' }));
-	createAnswer = vi.fn(async () => ({ type: 'answer', sdp: 'answer-sdp' }));
+	onicecandidate: ((event: { candidate: unknown }) => void) | null = null;
+	ondatachannel: ((event: { channel: DataChannel }) => void) | null = null;
+	onconnectionstatechange: (() => void) | null = null;
+	dataChannel = new PeerChannel();
+	createDataChannel = vi.fn(() => this.dataChannel);
+	createOffer = vi.fn(async () => ({
+		type: 'offer' as const,
+		sdp: 'offer-sdp'
+	}));
+	createAnswer = vi.fn(async () => ({
+		type: 'answer' as const,
+		sdp: 'answer-sdp'
+	}));
 	addIceCandidate = vi.fn(async (_candidate: RTCIceCandidateInit) => {});
 	close = vi.fn();
 	signal = vi.fn();
@@ -19,19 +39,11 @@ class PeerFixture {
 	peer: PhotoPeer;
 	constructor() {
 		vi.useFakeTimers();
-		this.peer = new PhotoPeer(
-			this.connection(),
-			this.signal,
-			this.channel,
-			this.fail
-		);
+		this.peer = new PhotoPeer(this, this.signal, this.channel, this.fail);
 		onTestFinished(() => this.peer.close());
 	}
-	connection() {
-		return this as unknown as RTCPeerConnection;
-	}
 	async setLocalDescription(value: RTCSessionDescriptionInit) {
-		this.localDescription = value;
+		this.localDescription = { ...value, sdp: value.sdp ?? '' };
 	}
 	async setRemoteDescription(value: RTCSessionDescriptionInit) {
 		this.remoteDescription = value;
@@ -48,7 +60,7 @@ test('offer creates an ordered channel and publishes the local SDP', async () =>
 	const f = new PeerFixture();
 	await f.peer.offer(f.channel);
 	expect(f.createDataChannel).toHaveBeenCalledWith('photos', { ordered: true });
-	expect(f.channel).toHaveBeenCalledWith({ label: 'photos' });
+	expect(f.channel).toHaveBeenCalledWith(f.dataChannel);
 	expect(f.signal).toHaveBeenCalledWith({ description: f.localDescription });
 });
 test('ICE candidates wait for the remote offer then flush before answering', async () => {
@@ -63,7 +75,9 @@ test('ICE candidates wait for the remote offer then flush before answering', asy
 });
 test('remote answers do not generate another answer and candidates apply immediately', async () => {
 	const f = new PeerFixture();
-	await f.peer.receive({ description: { type: 'answer', sdp: 'remote' } });
+	await f.peer.receive({
+		description: { type: 'answer', sdp: 'remote' }
+	});
 	await f.peer.receive({ candidate });
 	expect(f.addIceCandidate).toHaveBeenCalledExactlyOnceWith(candidate);
 	expect(f.createAnswer).not.toHaveBeenCalled();
@@ -72,9 +86,9 @@ test('candidate and data-channel events are forwarded, ignoring end-of-candidate
 	const f = new PeerFixture();
 	f.onicecandidate!({ candidate: null });
 	f.onicecandidate!({ candidate: { toJSON: () => candidate } });
-	f.ondatachannel!({ channel: 'incoming' });
+	f.ondatachannel!({ channel: f.dataChannel });
 	expect(f.signal).toHaveBeenCalledExactlyOnceWith({ candidate });
-	expect(f.channel).toHaveBeenCalledWith('incoming');
+	expect(f.channel).toHaveBeenCalledWith(f.dataChannel);
 });
 test('a connection that never opens times out after 45 seconds', () => {
 	const f = new PeerFixture();

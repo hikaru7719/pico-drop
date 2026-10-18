@@ -6,6 +6,7 @@ import {
 	consumePhoto,
 	revokePhoto,
 	grantKey,
+	type PhotoStore,
 	type PhotoGrant
 } from './photo-access.ts';
 const heic = new Uint8Array([
@@ -41,21 +42,22 @@ test('conversion quotas are per photo and mode and permit only HEIC', () => {
 	assert.equal(reservePhoto(access, photo.id, 'jpeg'), null);
 });
 
-class GrantStore {
+class GrantStore implements PhotoStore {
 	entries = new Map<string, PhotoGrant>();
-	get = vi.fn(async (key: string) => structuredClone(this.entries.get(key)));
-	put = vi.fn(async (key: string, value: PhotoGrant) => {
+	get = vi.fn<PhotoStore['get']>(async (key: string) =>
+		structuredClone(this.entries.get(key))
+	);
+	put = vi.fn<PhotoStore['put']>(async (key: string, value: PhotoGrant) => {
 		this.entries.set(key, structuredClone(value));
 	});
-	delete = vi.fn(async (key: string) => this.entries.delete(key));
-	storage() {
-		return this as unknown as Parameters<typeof createPhotoAccess>[0];
-	}
+	delete = vi.fn<PhotoStore['delete']>(async (key: string) =>
+		this.entries.delete(key)
+	);
 	async create() {
-		return createPhotoAccess(this.storage(), [photo], '1234567890abcdef');
+		return createPhotoAccess(this, [photo], '1234567890abcdef');
 	}
 	consume(token: string) {
-		return consumePhoto(this.storage(), { token, id: photo.id, mode: 'jpeg' });
+		return consumePhoto(this, { token, id: photo.id, mode: 'jpeg' });
 	}
 }
 test('grants store only the token hash and persist use counts across reads', async () => {
@@ -80,7 +82,7 @@ test('quota exhaustion does not persist a failed reservation', async () => {
 test('revoked and unknown grants are unusable', async () => {
 	const store = new GrantStore();
 	const { token } = await store.create();
-	await revokePhoto(store.storage(), token);
+	await revokePhoto(store, token);
 	expect(store.delete).toHaveBeenCalledWith(await grantKey(token));
 	expect(await store.consume(token)).toBeNull();
 	expect(await store.consume('b'.repeat(64))).toBeNull();
@@ -88,7 +90,7 @@ test('revoked and unknown grants are unusable', async () => {
 test('malformed tokens cannot access storage', async () => {
 	const store = new GrantStore();
 	expect(await store.consume('invalid')).toBeNull();
-	await revokePhoto(store.storage(), 'invalid');
+	await revokePhoto(store, 'invalid');
 	expect(store.get).not.toHaveBeenCalled();
 	expect(store.delete).not.toHaveBeenCalled();
 });

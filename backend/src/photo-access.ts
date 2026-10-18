@@ -3,7 +3,11 @@ import type { PhotoMeta } from '../../shared/protocol.ts';
 import { PHOTO_LIFETIME_MS, isHeic } from '../../shared/photos.ts';
 import type { ConversionMode, PhotoAccess } from '../../shared/photos.ts';
 
-type PhotoStore = Pick<DurableObjectStorage, 'get' | 'put' | 'delete'>;
+export interface PhotoStore {
+	get(key: string): Promise<PhotoGrant | undefined>;
+	put(key: string, grant: PhotoGrant): Promise<void>;
+	delete(key: string): Promise<boolean>;
+}
 
 export type PhotoGrant = {
 	expiresAt: number;
@@ -68,7 +72,7 @@ async function consumeStoredPhoto(
 	key: string,
 	query: PhotoQuery
 ) {
-	const grant = await storage.get<PhotoGrant>(key);
+	const grant = await storage.get(key);
 	const result = reservePhoto(grant, query.id, query.mode);
 	await persistGrant(storage, key, result ? grant : undefined);
 	return result;

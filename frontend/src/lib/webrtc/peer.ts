@@ -1,24 +1,25 @@
+import type { DataChannel, PeerConnection, TransferPeer } from './ports';
 import type { Signal } from '../../../../shared/protocol.ts';
 type Candidate = Extract<Signal, { candidate: unknown }>['candidate'];
 const CONNECT_FAILED =
 	'接続できませんでした。回線を確認して再試行してください。';
 const CONNECT_TIMEOUT =
 	'相手に接続できませんでした。インターネット接続を確認して、もう一度お試しください。';
-export class PhotoPeer {
+export class PhotoPeer implements TransferPeer {
 	private candidates: RTCIceCandidateInit[] = [];
 	private timer: ReturnType<typeof setTimeout>;
 	private disconnected?: ReturnType<typeof setTimeout>;
 	private closed = false;
 	constructor(
-		private pc: RTCPeerConnection,
+		private pc: PeerConnection,
 		private signal: (signal: Signal) => void,
-		channel: (channel: RTCDataChannel) => void,
+		channel: (channel: DataChannel) => void,
 		private fail: (error: Error) => void
 	) {
 		this.listen(channel);
 		this.timer = setTimeout(() => fail(new Error(CONNECT_TIMEOUT)), 45_000);
 	}
-	private listen(channel: (channel: RTCDataChannel) => void) {
+	private listen(channel: (channel: DataChannel) => void) {
 		this.pc.onicecandidate = (e) => this.sendCandidate(e.candidate);
 		this.pc.ondatachannel = (e) => channel(e.channel);
 		this.pc.onconnectionstatechange = () => this.connectionChanged();
@@ -63,7 +64,7 @@ export class PhotoPeer {
 			});
 		}
 	}
-	async offer(channel: (channel: RTCDataChannel) => void) {
+	async offer(channel: (channel: DataChannel) => void) {
 		channel(this.pc.createDataChannel('photos', { ordered: true }));
 		await this.pc.setLocalDescription(await this.pc.createOffer());
 		this.sendDescription('offer');

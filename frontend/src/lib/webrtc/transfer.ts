@@ -1,3 +1,4 @@
+import type { SendChannel } from './ports';
 import { describePhotos } from '../photos/index.ts';
 import { LIMITS, record, type PhotoMeta } from '../../../../shared/protocol.ts';
 
@@ -15,7 +16,7 @@ class DrainWaiter {
 	private low = () => this.finish(null);
 	private closed = () => this.finish(new Error(INTERRUPTED));
 	constructor(
-		private channel: RTCDataChannel,
+		private channel: SendChannel,
 		private signal: AbortSignal,
 		private settle: { resolve: () => void; reject: (error: Error) => void }
 	) {
@@ -47,7 +48,7 @@ class DrainWaiter {
 		this.signal.removeEventListener('abort', this.closed);
 	}
 }
-function checkChannel(channel: RTCDataChannel, signal: AbortSignal) {
+function checkChannel(channel: SendChannel, signal: AbortSignal) {
 	if (signal.aborted) {
 		throw new Error('中止しました。');
 	}
@@ -55,7 +56,7 @@ function checkChannel(channel: RTCDataChannel, signal: AbortSignal) {
 		throw new Error('接続が切れました。');
 	}
 }
-async function drain(channel: RTCDataChannel, signal: AbortSignal) {
+async function drain(channel: SendChannel, signal: AbortSignal) {
 	checkChannel(channel, signal);
 	if (channel.bufferedAmount > 256 * 1024) {
 		await new Promise<void>(
@@ -65,7 +66,7 @@ async function drain(channel: RTCDataChannel, signal: AbortSignal) {
 }
 
 export type SendOptions = {
-	channel: RTCDataChannel;
+	channel: SendChannel;
 	files: File[];
 	metadata: PhotoMeta[];
 	signal: AbortSignal;

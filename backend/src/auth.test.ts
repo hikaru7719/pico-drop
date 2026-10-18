@@ -1,13 +1,17 @@
 import { test, expect, vi, afterEach } from 'vitest';
-import type { AuthNetwork, Account } from './auth.ts';
+import type {
+	AuthNetwork,
+	Account,
+	AuthStore,
+	PasskeyVerifier
+} from './auth.ts';
 import type {
 	verifyRegistrationResponse,
 	verifyAuthenticationResponse
 } from '@simplewebauthn/server';
 import { PasskeyAuth, authOrigin, secretHash } from './auth.ts';
 
-type Storage = ConstructorParameters<typeof PasskeyAuth>[0];
-type Verifier = ConstructorParameters<typeof PasskeyAuth>[3];
+type Verifier = PasskeyVerifier;
 const authEnv = { AUTH_ORIGIN: 'https://photos.example' };
 class Fixture {
 	entries = new Map<string, any>();
@@ -16,14 +20,14 @@ class Fixture {
 	constructor(network?: AuthNetwork, verifier?: Verifier) {
 		this.auth = new PasskeyAuth(this.store(), authEnv, network, verifier);
 	}
-	store(): Storage {
+	store(): AuthStore {
 		return {
 			get: async (key: string) => structuredClone(this.entries.get(key)),
 			put: async (key: string, value: unknown) => {
 				this.entries.set(key, structuredClone(value));
 			},
 			delete: async (key: string) => this.entries.delete(key)
-		} as Storage;
+		};
 	}
 	request(path: string, body?: unknown, cookie = '') {
 		return new Request('https://photos.example/api/auth/' + path, {
@@ -179,7 +183,7 @@ function verifier() {
 		verifyAuthenticationResponse: vi
 			.fn<typeof verifyAuthenticationResponse>()
 			.mockResolvedValue({ verified: true, authenticationInfo })
-	};
+	} satisfies PasskeyVerifier;
 }
 const registrationResult = {
 	verified: true as const,
