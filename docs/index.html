@@ -106,7 +106,7 @@
 								送信者のパスキー認証 · 短命の共有リンク · Accept / Reject<br />WebSocket
 								signaling · 転送状態 · TURN資格情報の発行
 							</p>
-							<span>MVPは単一Hub（idFromName('mvp')）</span>
+							<span>送信セッションごとにHubを分割</span>
 						</div>
 					</div>
 				</div>
@@ -301,7 +301,7 @@
 					<h3>実装と検証の境界</h3>
 					<p>
 						このページは2026-09-24時点のワークスペース内のコードと設計メモを整理したものです。コードの存在は本番稼働や実機検証の完了を意味しません。iPhone
-						Safariでの保存・HEICプレビュー・異なる回線でのTURN接続は実機検証が必要です。現在の単一HubはMVP向けで、Hub分割は今後の設計項目です。
+						Safariでの保存・HEICプレビュー・異なる回線でのTURN接続は実機検証が必要です。接続Hubは送信セッションごと、新規認証は256シャードに分割しています。
 					</p>
 				</aside>
 			</section>
@@ -362,7 +362,7 @@
 				<div
 					class="diagram"
 					role="img"
-					aria-label="送信者のcreate-linkと受信者のjoin-link・acceptを、同じNearbyHub mvpが受け取る。受信者が承諾すると、両端末にstartを通知する。"
+					aria-label="送信者のcreate-linkと受信者のjoin-link・acceptを、同じルームのNearbyHubが受け取る。受信者が承諾すると、両端末にstartを通知する。"
 				>
 					<div class="endpoints">
 						<div class="node">
@@ -378,7 +378,7 @@
 					</div>
 					<div class="connector">↓ 同じHubに両者の操作を集約 ↓</div>
 					<div class="node hub">
-						<small>NEARBY HUB / mvp</small>
+						<small>NEARBY HUB / room ID</small>
 						<h3>受信者が承諾済み</h3>
 						<p>
 							転送状態を更新し、両端末にstartを通知。<br />その後のSDP・ICE候補も、相手のWebSocketに届けます。
@@ -387,8 +387,8 @@
 				</div>
 				<p class="note">
 					実装では
-					<code>env.HUB.get(env.HUB.idFromName('mvp'))</code>
-					で同じHubを選びます。DOのJavaScriptは単一スレッドで動きますが、非同期処理の待機中には別イベントが進み得ます。このコードは主要な状態更新を
+					<code>env.HUB.get(env.HUB.idFromName('room:' + room))</code>
+					で共有リンクのルームに対応するHubを選びます。DOのJavaScriptは単一スレッドで動きますが、非同期処理の待機中には別イベントが進み得ます。このコードは主要な状態更新を
 					<code>blockConcurrencyWhile()</code>
 					で囲み、処理途中への別イベントの割り込みを抑えています。
 				</p>
@@ -429,7 +429,7 @@
 				<aside class="status">
 					<h3>規模が増えたときの設計</h3>
 					<p>
-						現在は全端末を1つのHubに集め、アプリ側でWebSocketを最大200接続に制限しています。DO全体の製品上限を示す数字ではありません。利用が増えたら共有ルームごとに別IDのHubへ分ける設計が必要です。その際は、リンクから対応するHubへ接続する経路も設計します。写真本体は引き続きDataChannelで転送します。
+						送信セッションごとにHubを分け、各ルームのWebSocketを最大200接続に制限しています。共有リンクの先頭16桁から受信者も同じHubに接続します。新規認証は256シャード、IP制限はIPごとのDOへ分散し、既存認証のみ旧mvpに残します。写真本体は引き続きDataChannelで転送します。
 					</p>
 				</aside>
 			</section>

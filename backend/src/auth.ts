@@ -17,7 +17,7 @@ type Store = Pick<DurableObjectStorage, 'get' | 'put' | 'delete'>;
 export type Account = { id: string; name: string; disabled?: boolean };
 type Credential = { account: string; credential: WebAuthnCredential };
 type Login = { account: string; expiresAt: number };
-type Ceremony = {
+export type Ceremony = {
 	kind: 'register' | 'login';
 	challenge: string;
 	account?: Account;
@@ -43,7 +43,7 @@ function cookieName(request: Request, kind: string) {
 	return `${secure ? '__Host-' : ''}pico_${kind}`;
 }
 
-function readCookie(request: Request, kind: string) {
+export function readCookie(request: Request, kind: string) {
 	const prefix = cookieName(request, kind) + '=';
 	return (
 		(request.headers.get('Cookie') ?? '')
@@ -140,7 +140,9 @@ const credentialKey = (id: string) => 'auth:credential:' + id;
 const challengeKey = async (token: string) =>
 	'auth:challenge:' + (await secretHash(token));
 const loginKey = async (token: string) =>
-	'auth:login:' + (await secretHash(token));
+	'auth:login:' +
+	(/^v2\.[a-f0-9]{2}\./.exec(token)?.[0] ?? '') +
+	(await secretHash(token));
 type Rate = { count: number; expiresAt: number };
 function currentRate(old: Rate | undefined, duration: number): Rate {
 	return old && old.expiresAt > Date.now()
@@ -199,16 +201,26 @@ function checkAccount(
 	return account;
 }
 
+export type AuthNetwork = {
+	shard?: string;
+	take(key: string): Promise<Ceremony | undefined>;
+	register(account: Account, credential: WebAuthnCredential): Promise<void>;
+	login(response: Auth, origin: string, ceremony: Ceremony): Promise<Account>;
+	revoke(key: string): Promise<void>;
+	issue(account: Account): Promise<string>;
+};
+
 export class PasskeyAuth {
 	constructor(
 		private storage: Store,
-		private env: AuthEnv
+		private env: AuthEnv,
+		private network?: AuthNetwork
 	) {}
 
 	async loginKey(request: Request) {
 		const token = readCookie(request, 'auth');
-		return /^[a-f0-9]{64}$/.test(token)
-			? 'auth:login:' + (await secretHash(token))
+		return /^(?:v2\.[a-f0-9]{2}\.)?[a-f0-9]{64}$/.test(token)
+			? await loginKey(token)
 			: '';
 	}
 
@@ -252,7 +264,7 @@ export class PasskeyAuth {
 
 	async authAction(request: Request, action: string) {
 		const origin = authOrigin(request, this.env);
-		return (await this.rate(request))
+		return this.network || (await this.rate(request))
 			? this.ceremonyRoute(request, origin, action)
 			: rateError();
 	}
@@ -298,6 +310,9 @@ export class PasskeyAuth {
 
 	async registerOptions(request: Request, origin: URL) {
 		const account = await newAccount(request);
+		if (this.network?.shard) {
+			account.id = `v2.${this.network.shard}.${account.id}`;
+		}
 		const options = await registrationOptions(origin, account);
 		const value = ceremony('register', options.challenge, account);
 		return this.saveCeremony(request, options, value);
@@ -316,23 +331,32 @@ export class PasskeyAuth {
 		await this.storage.delete(
 			await challengeKey(readCookie(request, 'challenge'))
 		);
-		const token = randomSecret();
+		const token = this.newToken();
 		await this.storage.put(await challengeKey(token), value);
 		return cookieResponse(request, options, 'challenge', token);
 	}
 
 	async takeCeremony(request: Request, kind: Ceremony['kind']) {
 		const key = await challengeKey(readCookie(request, 'challenge'));
+		const value = this.network
+			? await this.network.take(key)
+			: await this.takeStoredCeremony(key);
+		return checkCeremony(value, kind);
+	}
+
+	async takeStoredCeremony(key: string) {
 		const value = await this.storage.get<Ceremony>(key);
 		await this.storage.delete(key);
-		return checkCeremony(value, kind);
+		return value;
 	}
 
 	async registerVerify(request: Request, origin: URL) {
 		const value = await this.takeCeremony(request, 'register');
 		const response = (await bodyJson(request)) as RegistrationResponseJSON;
 		const credential = await verifySignup(response, origin, value);
-		await this.storeAccount(value.account!, credential);
+		await (this.network
+			? this.network.register(value.account!, credential)
+			: this.storeAccount(value.account!, credential));
 		return this.issueLogin(request, value.account!);
 	}
 
@@ -349,12 +373,20 @@ export class PasskeyAuth {
 	async loginVerify(request: Request, origin: URL) {
 		const ceremony = await this.takeCeremony(request, 'login');
 		const response = (await bodyJson(request)) as Auth;
-		const stored = await this.loadCredential(response.id);
-		const account = await this.verifyLogin(response, origin, {
-			ceremony,
-			stored
-		});
+		const account = this.network
+			? await this.network.login(response, origin.origin, ceremony)
+			: await this.completeLogin(response, origin, ceremony);
 		return this.issueLogin(request, account);
+	}
+
+	async completeLogin(response: Auth, origin: URL, ceremony: Ceremony) {
+		const stored = await this.loadCredential(response.id);
+		return this.verifyLogin(response, origin, { ceremony, stored });
+	}
+
+	newToken() {
+		const prefix = this.network?.shard ? `v2.${this.network.shard}.` : '';
+		return prefix + randomSecret();
 	}
 
 	async loadCredential(id: string) {
@@ -384,8 +416,17 @@ export class PasskeyAuth {
 	}
 
 	async issueLogin(request: Request, account: Account) {
-		await this.storage.delete(await this.loginKey(request));
-		const token = randomSecret();
+		const key = await this.loginKey(request);
+		if (this.network) {
+			await this.network.revoke(key);
+			return loginResponse(request, account, await this.network.issue(account));
+		}
+		return this.issueLocalLogin(request, account, key);
+	}
+
+	async issueLocalLogin(request: Request, account: Account, key: string) {
+		await this.storage.delete(key);
+		const token = this.newToken();
 		await this.storeLogin(token, account.id);
 		return loginResponse(request, account, token);
 	}

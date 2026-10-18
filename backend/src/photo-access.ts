@@ -1,3 +1,4 @@
+import { routedToken } from './routing.ts';
 import type { PhotoMeta } from '../../shared/protocol.ts';
 import { PHOTO_LIFETIME_MS, isHeic } from '../../shared/photos.ts';
 import type { ConversionMode, PhotoAccess } from '../../shared/photos.ts';
@@ -19,9 +20,10 @@ export async function grantKey(token: string) {
 
 export async function createPhotoAccess(
 	storage: DurableObjectStorage,
-	files: PhotoMeta[]
+	files: PhotoMeta[],
+	room?: string
 ): Promise<PhotoAccess> {
-	const token = hex(crypto.getRandomValues(new Uint8Array(32)));
+	const token = routedToken(room);
 	const expiresAt = Date.now() + PHOTO_LIFETIME_MS;
 	await storage.put(await grantKey(token), { expiresAt, files, uses: {} });
 	return { token, expiresAt };

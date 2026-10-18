@@ -24,6 +24,7 @@ export type Device = {
 };
 
 export type Session = Device & {
+	room?: string;
 	token: string;
 	expiresAt: number;
 };

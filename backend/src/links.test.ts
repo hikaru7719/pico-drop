@@ -2,6 +2,7 @@ import { test, expect, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { URL } from 'node:url';
 import { stripTypeScriptTypes } from 'node:module';
+import { routedToken } from './routing.ts';
 import { PasskeyAuth } from './auth.ts';
 import * as protocol from '../../shared/protocol.ts';
 
@@ -11,7 +12,7 @@ const source = (await readFile(new URL('./index.ts', import.meta.url), 'utf8'))
 const factory = stripTypeScriptTypes(
 	`
 export function createHub(deps) {
-const { DurableObject, LIMITS, parseClient, authorizeTransfer, WebSocket, PasskeyAuth } = deps;
+const { DurableObject, LIMITS, parseClient, authorizeTransfer, WebSocket, PasskeyAuth, routedToken } = deps;
 ${source.replace('export class NearbyHub', 'class NearbyHub')}
 return NearbyHub;
 }`,
@@ -57,10 +58,10 @@ class Fixture {
 		const Hub = createHub({
 			...protocol,
 			PasskeyAuth,
+			routedToken,
 			WebSocket: { OPEN: 1 },
 			DurableObject: this.base()
 		});
-		this.seedIdentity();
 		this.hub = new Hub(this.context());
 	}
 
@@ -72,6 +73,7 @@ class Fixture {
 		this.entries.set('auth:account:sender', { id: 'sender', name: 'Sender' });
 	}
 	context() {
+		this.seedIdentity();
 		return {
 			storage: this.storage(),
 			getWebSockets: () => this.sockets,

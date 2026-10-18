@@ -30,6 +30,9 @@ try {
 	});
 	const result = await page.evaluate(() => window.runApiTests());
 	assert.equal(result.sameRequest, true);
+	assert.equal(result.distinctRooms, true);
+	assert.equal(result.wrongRoomCode, 1008);
+	assert.equal(result.photoRoom, true);
 	assert.match(result.preAccept, /承諾/);
 	assert.match(result.senderAccept, /受信者/);
 	assert.match(result.senderComplete, /受信者/);

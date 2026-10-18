@@ -1,4 +1,25 @@
-import { PasskeyAuth, type AuthEnv } from './auth.ts';
+import {
+	clearPreviousChallenge,
+	hubFor,
+	authRoute,
+	network,
+	identity,
+	allowSend,
+	requestRate,
+	roomRoute,
+	routedToken,
+	authShard
+} from './routing.ts';
+import type {
+	WebAuthnCredential,
+	AuthenticationResponseJSON
+} from '@simplewebauthn/server';
+import {
+	PasskeyAuth,
+	type Account,
+	type Ceremony,
+	type AuthEnv
+} from './auth.ts';
 import {
 	createPhotoAccess,
 	consumePhoto,
@@ -75,6 +96,7 @@ type Rate = { count: number; expiresAt: number };
 type Expiring = { expiresAt?: number };
 type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
 type TransferMessage = Extract<ClientMessage, { id: string }>;
+const RATE_LIMIT = '認証の試行が多すぎます。しばらく待ってください。';
 const SESSION_LIMIT = '接続回数が多すぎます。1分後に再試行してください。';
 const REQUEST_LIMIT = '送信要求が多すぎます。1分後に再試行してください。';
 const LINK_UNAVAILABLE =
@@ -113,11 +135,58 @@ export default {
 	}
 } satisfies ExportedHandler<Bindings>;
 
-function routeRequest(request: Request, env: Bindings) {
-	const hub = env.HUB.get(env.HUB.idFromName('mvp'));
-	return new URL(request.url).pathname.startsWith('/api/photos/')
-		? photoRequest(request, env.IMAGES, hub)
-		: hub.fetch(request);
+async function routeRequest(request: Request, env: Bindings) {
+	const path = new URL(request.url).pathname;
+	if (request.method !== 'POST' && path !== '/api/ws') {
+		return json({ error: 'Method not allowed' }, 405);
+	}
+	return path.startsWith('/api/auth/')
+		? routeAuth(request, env)
+		: routeSession(request, env);
+}
+async function routeSession(request: Request, env: Bindings) {
+	if (
+		new URL(request.url).pathname === '/api/session' &&
+		!(await requestRate(env, request, 'session'))
+	) {
+		return json({ error: SESSION_LIMIT }, 429);
+	}
+	return routeRoom(request, env);
+}
+
+async function routeAuth(request: Request, env: Bindings) {
+	if (!(await allowedAuth(request, env))) {
+		return json({ error: RATE_LIMIT }, 429);
+	}
+	await clearPreviousChallenge(env, request);
+	const name = authRoute(request);
+	const forwarded = new Request(request);
+	forwarded.headers.set('X-Auth-Route', name);
+	return hubFor(env, name).fetch(forwarded);
+}
+async function allowedAuth(request: Request, env: Bindings) {
+	const path = new URL(request.url).pathname;
+	return (
+		path.endsWith('/status') ||
+		path.endsWith('/logout') ||
+		requestRate(env, request, 'auth')
+	);
+}
+function routeRoom(request: Request, env: Bindings) {
+	const room = roomRoute(request);
+	if (!/^[a-f0-9]{16}$/.test(room)) {
+		return json({ error: 'Invalid room' }, 400);
+	}
+	const hub = hubFor(env, 'room:' + room);
+	return forwardRoom(request, env, { room, hub });
+}
+type RoomDestination = { room: string; hub: ReturnType<typeof hubFor> };
+function forwardRoom(request: Request, env: Bindings, route: RoomDestination) {
+	const url = new URL(request.url);
+	url.searchParams.set('room', route.room);
+	return url.pathname.startsWith('/api/photos/')
+		? photoRequest(request, env.IMAGES, route.hub)
+		: route.hub.fetch(new Request(url, request));
 }
 
 function randomToken() {
@@ -166,6 +235,48 @@ function sessionExpired(a: Attachment, now: number) {
 	);
 }
 export class NearbyHub extends DurableObject<Bindings> {
+	async accountIdentity(key: string) {
+		return this.auth().identity(key);
+	}
+	async authorizeSend(key: string) {
+		return this.ctx.blockConcurrencyWhile(() => this.auth().allowSend(key));
+	}
+	async revokeLogin(key: string) {
+		if (key) {
+			await this.ctx.storage.delete(key);
+		}
+	}
+	async issueAccountLogin(account: Account) {
+		const shard = authShard(account.id);
+		const auth = this.auth(shard ? 'auth:' + shard : 'mvp');
+		const token = auth.newToken();
+		await auth.storeLogin(token, account.id);
+		await this.schedule();
+		return token;
+	}
+	async verifyAccountLogin(
+		response: AuthenticationResponseJSON,
+		origin: string,
+		ceremony: Ceremony
+	) {
+		return this.ctx.blockConcurrencyWhile(() =>
+			this.auth().completeLogin(response, new URL(origin), ceremony)
+		);
+	}
+	async limitRequest(kind: string) {
+		return this.ctx.blockConcurrencyWhile(() => this.applyRequestLimit(kind));
+	}
+	async applyRequestLimit(kind: string) {
+		const key = 'rate:' + kind;
+		const rate = requestWindow(await this.ctx.storage.get<Rate>(key), kind);
+		if (++rate.count > (kind === 'auth' ? 30 : 20)) {
+			return false;
+		}
+		await this.ctx.storage.put(key, rate);
+		await this.ctx.storage.setAlarm(rate.expiresAt);
+		return true;
+	}
+
 	async consumePhoto(token: string, id: string, mode: string) {
 		return this.ctx.blockConcurrencyWhile(() =>
 			consumePhoto(this.ctx.storage, { token, id, mode })
@@ -192,12 +303,14 @@ export class NearbyHub extends DurableObject<Bindings> {
 			return json({ error: 'Method not allowed' }, 405);
 		}
 		if (path.startsWith('/api/auth/')) {
-			return this.ctx.blockConcurrencyWhile(() => this.authRequest(request));
+			return this.authRequest(request);
 		}
 		return this.postRoute(request, path);
 	}
 	async authRequest(request: Request) {
-		const response = await this.auth().route(request);
+		const response = await this.auth(
+			request.headers.get('X-Auth-Route') ?? 'mvp'
+		).route(request);
 		await this.schedule();
 		return response;
 	}
@@ -245,10 +358,13 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 
 	async createSession(request: Request) {
-		if (!(await this.checkSessionRate(request))) {
+		if (!this.env?.HUB && !(await this.checkSessionRate(request))) {
 			return json({ error: SESSION_LIMIT }, 429);
 		}
-		return this.storeSession(request, newSession());
+		const room = new URL(request.url).searchParams.get('room') ?? undefined;
+		await this.ctx.storage.put('routing:room', room ?? '');
+		const session = { ...newSession(), token: routedToken(room), room };
+		return this.storeSession(request, session);
 	}
 
 	async storeSession(request: Request, session: Session) {
@@ -261,13 +377,35 @@ export class NearbyHub extends DurableObject<Bindings> {
 		return json(session, 201);
 	}
 
-	auth() {
-		return new PasskeyAuth(this.ctx.storage, this.env);
+	auth(name = 'mvp'): PasskeyAuth {
+		const local = {
+			take: (key: string) => this.consumeCeremony(key),
+			register: (account: Account, credential: WebAuthnCredential) =>
+				this.registerAccount(account, credential)
+		};
+		const remote = this.env?.HUB ? network(this.env, name, local) : undefined;
+		return new PasskeyAuth(this.ctx.storage, this.env, remote);
+	}
+	async consumeCeremony(key: string): Promise<Ceremony | undefined> {
+		return this.ctx.blockConcurrencyWhile(() =>
+			this.auth().takeStoredCeremony(key)
+		);
+	}
+	async registerAccount(
+		account: Account,
+		credential: WebAuthnCredential
+	): Promise<void> {
+		return this.ctx.blockConcurrencyWhile(() =>
+			this.auth().storeAccount(account, credential)
+		);
+	}
+	async sessionAccount(key: string) {
+		return this.env?.HUB ? identity(this.env, key) : this.auth().identity(key);
 	}
 
 	async sessionIdentity(request: Request, session: Session) {
 		const authKey = await this.auth().loginKey(request);
-		const account = await this.auth().identity(authKey);
+		const account = await this.sessionAccount(authKey);
 		if (account) {
 			session.name = account.name;
 		}
@@ -384,12 +522,15 @@ export class NearbyHub extends DurableObject<Bindings> {
 
 	async finishTransfer(t: TransferState, reason: EndReason) {
 		const photoAccess =
-			reason === 'complete'
-				? await createPhotoAccess(this.ctx.storage, t.files)
-				: undefined;
+			reason === 'complete' ? await this.photoAccess(t.files) : undefined;
 		await this.ctx.storage.delete('transfer:' + t.id);
 		this.notifyEnd(t.from, { type: 'ended', id: t.id, reason });
 		this.notifyEnd(t.to, { type: 'ended', id: t.id, reason, photoAccess });
+	}
+
+	async photoAccess(files: PhotoMeta[]) {
+		const room = await this.ctx.storage.get<string>('routing:room');
+		return createPhotoAccess(this.ctx.storage, files, room);
 	}
 
 	async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
@@ -515,7 +656,9 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 
 	async createLink(ws: WebSocket, a: Attachment, files: PhotoMeta[]) {
-		await this.auth().allowSend(a.authKey ?? '');
+		await (this.env?.HUB
+			? allowSend(this.env, a.authKey ?? '')
+			: this.auth().allowSend(a.authKey ?? ''));
 		this.checkRequestRate(ws, a);
 		this.checkLinkParticipant(a);
 		await this.revokeLink(ws, a);
@@ -523,7 +666,9 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 
 	async issueLink(ws: WebSocket, a: Attachment, files: PhotoMeta[]) {
-		const token = randomToken();
+		const token = routedToken(
+			await this.ctx.storage.get<string>('routing:room')
+		);
 		const link = newLink(a.session!.id, files);
 		a.linkKey = 'link:' + (await hash(token));
 		await this.storeLink(ws, a, link);
@@ -755,4 +900,11 @@ function firstExpiry(entries: Iterable<Expiring>) {
 		}
 	}
 	return next;
+}
+
+function requestWindow(old: Rate | undefined, kind: string): Rate {
+	const duration = kind === 'auth' ? 600_000 : 60_000;
+	return old && old.expiresAt > Date.now()
+		? old
+		: { count: 0, expiresAt: Date.now() + duration };
 }

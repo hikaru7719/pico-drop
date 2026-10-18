@@ -221,7 +221,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 	}
 	async function openSession(current: number) {
 		checkBrowser();
-		const next = await createSession(sessionAbort!.signal);
+		const next = await createSession(sessionAbort!.signal, incomingToken);
 		if (activeGeneration(current)) {
 			openSignaling(next, current);
 		}

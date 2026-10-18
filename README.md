@@ -79,7 +79,7 @@ mise run //frontend:deploy
 
 公開する段階で実行してください。`mise run build` はフロントエンド・資料のビルドとバックエンドのdry-runを行い、リモートに公開しません。
 
-frontendは `BACKEND` service bindingでbackendへ同一オリジンの `/api/*` を転送します。backendを先にデプロイしてください。開発時はViteのHTTP/WebSocket proxyを利用します。
+frontendは `BACKEND` service bindingでbackendへ同一オリジンの `/api/*` を転送します。backendを先にデプロイしてください。接続は送信セッションごとのDO、新規認証は256シャード、IP制限はIPごとのDOへ分散します。旧認証データは保持しますが、更新前の共有リンク・接続は再作成が必要です。詳細は [認証とDO分割](docs/auth.md#DO分割と既存データ) を参照してください。開発時はViteのHTTP/WebSocket proxyを利用します。
 
 TURNを有効にする場合は、backendディレクトリで `mise exec -- wrangler secret put TURN_KEY_ID` と `mise exec -- wrangler secret put TURN_KEY_API_TOKEN` を実行します。管理鍵はブラウザに渡しません。ローカルでは `backend/.dev.vars` に同名の値を設定できます。このファイルはGit管理しません。
 

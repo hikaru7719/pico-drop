@@ -2,8 +2,10 @@ const sockets = [];
 class TestSocket {
 	queue = [];
 	waiter = undefined;
-	constructor() {
-		this.ws = new WebSocket(location.origin.replace('http', 'ws') + '/api/ws');
+	constructor(room) {
+		this.ws = new WebSocket(
+			location.origin.replace('http', 'ws') + '/api/ws?room=' + room
+		);
 		sockets.push(this.ws);
 		this.ws.onmessage = (e) => this.receive(JSON.parse(e.data));
 	}
@@ -57,11 +59,15 @@ class TestSocket {
 		});
 	}
 }
-const session = async () =>
-	(await fetch('/api/session', { method: 'POST' })).json();
-async function participant() {
-	const identity = await session();
-	const socket = await new TestSocket().open(identity.token);
+const session = async (room = '') =>
+	(
+		await fetch('/api/session' + (room ? '?room=' + room : ''), {
+			method: 'POST'
+		})
+	).json();
+async function participant(room) {
+	const identity = await session(room);
+	const socket = await new TestSocket(identity.room).open(identity.token);
 	await socket.next('ready');
 	return { identity, socket };
 }
@@ -120,11 +126,11 @@ async function cancelled(a, b, signal) {
 	return errorFor(a.socket, signal);
 }
 async function tokenChecks(a) {
-	const invalid = await new TestSocket().open('0'.repeat(64));
+	const invalid = await new TestSocket(a.identity.room).open('0'.repeat(64));
 	const invalidCode = await invalid.closed();
 	a.socket.ws.close();
 	await a.socket.closed();
-	const replay = await new TestSocket().open(a.identity.token);
+	const replay = await new TestSocket(a.identity.room).open(a.identity.token);
 	return { invalidCode, replayCode: await replay.closed() };
 }
 function offer(id) {
@@ -145,11 +151,12 @@ async function transferChecks(a, b, c) {
 
 async function scenario() {
 	const a = await participant(),
-		b = await participant(),
-		c = await participant();
+		b = await participant(a.identity.room),
+		c = await participant(a.identity.room);
 
 	const transfer = await transferChecks(a, b, c);
-	return { ...transfer, ...(await tokenChecks(a)) };
+	const isolation = await isolatedRoom(a);
+	return { ...transfer, ...isolation, ...(await tokenChecks(a)) };
 }
 window.runApiTests = async () => {
 	try {
@@ -163,4 +170,22 @@ window.runApiTests = async () => {
 
 function decision(type, id) {
 	return { type, id };
+}
+
+async function isolatedRoom(a) {
+	const d = await participant();
+	const e = await participant(d.identity.room);
+	const wrong = await new TestSocket(d.identity.room).open(a.identity.token);
+	const wrongRoomCode = await wrong.closed();
+	const photoRoom = await completeRoomTransfer(d, e);
+	const distinctRooms = a.identity.room !== d.identity.room;
+	return { distinctRooms, wrongRoomCode, photoRoom };
+}
+
+async function completeRoomTransfer(d, e) {
+	const { transfer } = await request(d, e);
+	await accept(d, e, transfer.id);
+	e.socket.send({ type: 'complete', id: transfer.id });
+	const ended = await e.socket.next('ended');
+	return ended.photoAccess.token.slice(0, 16) === d.identity.room;
 }

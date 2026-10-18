@@ -12,7 +12,7 @@ export class Signaling {
 		onMessage: (message: ServerMessage) => void,
 		onClose: () => void
 	) {
-		this.ws = new WebSocket(socketUrl());
+		this.ws = new WebSocket(socketUrl(session.room));
 		this.timer = setTimeout(() => this.ws.close(), 10_000);
 		this.listen(session, onMessage, onClose);
 	}
@@ -64,8 +64,15 @@ export class Signaling {
 		this.ws.close();
 	}
 }
-export async function createSession(signal?: AbortSignal): Promise<Session> {
-	const response = await fetch('/api/session', { method: 'POST', signal });
+export async function createSession(signal?: AbortSignal, token = '') {
+	const suffix = token ? '?room=' + token.slice(0, 16) : '';
+	const response = await fetch('/api/session' + suffix, {
+		method: 'POST',
+		signal
+	});
+	return readSession(response);
+}
+async function readSession(response: Response): Promise<Session> {
 	const data = (await response.json()) as Session & { error?: string };
 	if (!response.ok) {
 		throw new Error(data.error ?? '接続に失敗しました。');
@@ -73,8 +80,11 @@ export async function createSession(signal?: AbortSignal): Promise<Session> {
 	return data;
 }
 
-function socketUrl() {
+function socketUrl(room?: string) {
 	const url = new URL('/api/ws', location.href);
+	if (room) {
+		url.searchParams.set('room', room);
+	}
 	url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
 	return url;
 }
