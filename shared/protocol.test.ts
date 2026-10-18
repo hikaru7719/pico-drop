@@ -86,6 +86,7 @@ test('signaling validation rejects malformed and obsolete messages', () => {
 const invalidLinks = [
 	{ type: 'join-link', token: '1234' },
 	{ type: 'create-link', files: [] },
+	{ type: 'create-link', files: [photo], mode: 'unlimited' },
 	{ type: 'presence', location: null },
 	{ type: 'request', to: 'b', files: [photo] }
 ];
@@ -98,4 +99,14 @@ test('links require valid metadata and unguessable tokens; legacy discovery is r
 	for (const input of invalidLinks) {
 		assert.throws(() => parseClient(input));
 	}
+});
+
+test('group approval is restricted to the sender before transfer starts', () => {
+	const t = { ...transfer(), groupKey: 'link:group' };
+	authorizeTransfer(t, 'a', 'approve');
+	assert.throws(() => authorizeTransfer(t, 'b', 'approve'));
+	assert.throws(() => authorizeTransfer(transfer(), 'a', 'approve'));
+	assert.throws(() =>
+		authorizeTransfer({ ...t, started: true }, 'a', 'approve')
+	);
 });

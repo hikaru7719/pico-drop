@@ -31,6 +31,7 @@ import {
 	LIMITS,
 	parseClient,
 	authorizeTransfer,
+	type GroupParticipant,
 	type ClientMessage,
 	type Device,
 	type PhotoMeta,
@@ -96,12 +97,24 @@ type Rate = { count: number; expiresAt: number };
 type Expiring = { expiresAt?: number };
 type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
 type TransferMessage = Extract<ClientMessage, { id: string }>;
+type CreateLinkMessage = Extract<ClientMessage, { type: 'create-link' }>;
+type GroupStart = {
+	key: string;
+	link: ShareLink;
+	owner: WebSocket;
+	member: GroupParticipant;
+};
 const RATE_LIMIT = '認証の試行が多すぎます。しばらく待ってください。';
 const SESSION_LIMIT = '接続回数が多すぎます。1分後に再試行してください。';
 const REQUEST_LIMIT = '送信要求が多すぎます。1分後に再試行してください。';
 const LINK_UNAVAILABLE =
 	'この共有リンクは使えません。有効期限が切れたか、すでに使われたか、送信者が画面を閉じた可能性があります。送信者に新しいリンクを作ってもらってください。';
-type ShareLink = { owner: string; files: PhotoMeta[]; expiresAt: number };
+type ShareLink = {
+	owner: string;
+	files: PhotoMeta[];
+	expiresAt: number;
+	participants?: GroupParticipant[];
+};
 const TURN_LIMIT = '接続設定の取得上限です。再接続してください。';
 const TURN_FAILED = '中継サーバーの準備に失敗しました。再試行してください。';
 const device = (session: Device): Device => ({
@@ -449,12 +462,15 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 	async issueIce(ws: WebSocket) {
 		const latest = this.attachment(ws);
-		if ((latest.turnCount ?? 0) >= 10) {
+		if ((latest.turnCount ?? 0) >= this.turnLimit(latest)) {
 			return json({ error: TURN_LIMIT }, 429);
 		}
 		latest.turnCount = (latest.turnCount ?? 0) + 1;
 		ws.serializeAttachment(latest);
 		return this.iceServers();
+	}
+	turnLimit(a: Attachment) {
+		return a.linkKey ? LIMITS.participants * LIMITS.groupAttempts : 10;
 	}
 	async iceServers() {
 		if (!this.env.TURN_KEY_ID || !this.env.TURN_KEY_API_TOKEN) {
@@ -526,6 +542,7 @@ export class NearbyHub extends DurableObject<Bindings> {
 		await this.ctx.storage.delete('transfer:' + t.id);
 		this.notifyEnd(t.from, { type: 'ended', id: t.id, reason });
 		this.notifyEnd(t.to, { type: 'ended', id: t.id, reason, photoAccess });
+		await this.finishGroupMember(t, reason);
 	}
 
 	async photoAccess(files: PhotoMeta[]) {
@@ -583,7 +600,7 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 	async authenticatedMessage(ws: WebSocket, a: Attachment, m: ClientMessage) {
 		if (m.type === 'create-link') {
-			return this.createLink(ws, a, m.files);
+			return this.createLink(ws, a, m);
 		}
 		if (m.type === 'join-link') {
 			return this.joinLink(ws, a, m.token);
@@ -597,10 +614,20 @@ export class NearbyHub extends DurableObject<Bindings> {
 		await this.checkedTransferAction(a, m);
 	}
 	async checkedTransferAction(a: Attachment, m: ClientMessage) {
-		if (!('id' in m) || a.transfer !== m.id) {
+		if (!('id' in m) || !(await this.controlsTransfer(a, m.id))) {
 			throw new Error('転送が見つかりません。');
 		}
 		await this.transferAction(a, m);
+	}
+
+	async controlsTransfer(a: Attachment, id: string) {
+		if (a.transfer === id) {
+			return true;
+		}
+		const t = await this.ctx.storage.get<TransferState>('transfer:' + id);
+		return (
+			!!t?.groupKey && t.groupKey === a.linkKey && t.from.id === a.session?.id
+		);
 	}
 
 	invalidSession(session: StoredSession | undefined) {
@@ -648,33 +675,41 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 	async revokeLink(ws: WebSocket, a: Attachment) {
 		if (a.linkKey) {
-			await this.ctx.storage.delete(a.linkKey);
+			const key = a.linkKey;
 			delete a.linkKey;
 			ws.serializeAttachment(a);
+			await this.stopGroup(key);
 			send(ws, { type: 'link-ended' });
 		}
 	}
 
-	async createLink(ws: WebSocket, a: Attachment, files: PhotoMeta[]) {
+	async createLink(ws: WebSocket, a: Attachment, message: CreateLinkMessage) {
 		await (this.env?.HUB
 			? allowSend(this.env, a.authKey ?? '')
 			: this.auth().allowSend(a.authKey ?? ''));
 		this.checkRequestRate(ws, a);
 		this.checkLinkParticipant(a);
 		await this.revokeLink(ws, a);
-		return this.issueLink(ws, a, files);
+		return this.issueLink(ws, a, message);
 	}
 
-	async issueLink(ws: WebSocket, a: Attachment, files: PhotoMeta[]) {
+	async issueLink(ws: WebSocket, a: Attachment, message: CreateLinkMessage) {
 		const token = routedToken(
 			await this.ctx.storage.get<string>('routing:room')
 		);
-		const link = newLink(a.session!.id, files);
+		const link = this.linkDetails(a, message);
 		a.linkKey = 'link:' + (await hash(token));
 		await this.storeLink(ws, a, link);
 		send(ws, { type: 'link-created', token, expiresAt: link.expiresAt });
 	}
 
+	linkDetails(a: Attachment, message: CreateLinkMessage) {
+		const link = newLink(a.session!.id, message.files);
+		if (message.mode === 'group') {
+			link.participants = [];
+		}
+		return link;
+	}
 	async storeLink(ws: WebSocket, a: Attachment, link: ShareLink) {
 		await this.ctx.storage.put(a.linkKey!, link);
 		ws.serializeAttachment(a);
@@ -693,9 +728,14 @@ export class NearbyHub extends DurableObject<Bindings> {
 		const key = 'link:' + (await hash(token));
 		const link = await this.ctx.storage.get<ShareLink>(key);
 		const owner = this.linkOwner(ws, link);
-		await this.consumeLink({ ws, a, key, link: link!, owner });
+		await this.joinSharedLink({ ws, a, key, link: link!, owner });
 	}
 
+	async joinSharedLink(context: LinkJoin) {
+		return context.link.participants
+			? this.joinGroup(context)
+			: this.consumeLink(context);
+	}
 	linkOwner(ws: WebSocket, link: ShareLink | undefined) {
 		const owner = link && this.socket(link.owner);
 		if (!link || link.expiresAt <= Date.now() || !owner || owner === ws) {
@@ -728,6 +768,171 @@ export class NearbyHub extends DurableObject<Bindings> {
 		send(ws, requestedMessage(t));
 	}
 
+	async joinGroup(context: LinkJoin) {
+		const { ws, a, key, link, owner } = context;
+		this.checkGroupSlot(link, a.session!.id);
+		await this.revokeLink(ws, a);
+		const t = this.newTransfer(this.attachment(owner), a, link.files);
+		t.groupKey = key;
+		t.expiresAt = link.expiresAt;
+		await this.storeGroupMember(context, t);
+	}
+
+	checkGroupSlot(link: ShareLink, deviceId: string) {
+		const previous = link.participants!.find((p) => p.device.id === deviceId);
+		if (!previous && link.participants!.length >= LIMITS.participants) {
+			throw new Error(
+				'この配布は5人までです。送信者に新しい配布をお願いしてください。'
+			);
+		}
+		this.checkGroupRetry(previous);
+	}
+	checkGroupRetry(previous?: GroupParticipant) {
+		if (
+			previous &&
+			(previous.status !== 'failed' ||
+				previous.attempts >= LIMITS.groupAttempts)
+		) {
+			throw new Error('再参加できません。再送は失敗した場合に2回までです。');
+		}
+	}
+
+	async storeGroupMember(context: LinkJoin, t: TransferState) {
+		const { ws, a, key, link } = context;
+		this.replaceGroupMember(link, t);
+		await this.ctx.storage.put('transfer:' + t.id, t);
+		await this.publishGroup(key, link);
+		this.attachTransfer(ws, a, t);
+	}
+
+	replaceGroupMember(link: ShareLink, t: TransferState) {
+		const previous = link.participants!.find((p) => p.device.id === t.to.id);
+		const member = this.groupMember(t, (previous?.attempts ?? 0) + 1);
+		link.participants = [
+			...link.participants!.filter((p) => p !== previous),
+			member
+		];
+	}
+	groupMember(t: TransferState, attempts: number): GroupParticipant {
+		return {
+			id: t.id,
+			device: t.to,
+			status: 'waiting',
+			approved: false,
+			accepted: false,
+			attempts
+		};
+	}
+
+	async publishGroup(key: string, link: ShareLink) {
+		await this.ctx.storage.put(key, link);
+		const owner = this.socket(link.owner);
+		if (owner) {
+			send(owner, { type: 'group-state', participants: link.participants! });
+		}
+	}
+
+	async groupDecision(t: TransferState, action: string) {
+		const link = await this.ctx.storage.get<ShareLink>(t.groupKey!);
+		if (!link || link.expiresAt <= Date.now()) {
+			throw new Error(LINK_UNAVAILABLE);
+		}
+		this.updateGroupDecision(link, t.id, action);
+		await this.publishGroup(t.groupKey!, link);
+		await this.advanceGroup(t.groupKey!);
+	}
+
+	updateGroupDecision(link: ShareLink, id: string, action: string) {
+		const member = link.participants!.find((p) => p.id === id)!;
+		if (action === 'approve') {
+			member.approved = true;
+		} else {
+			member.accepted = true;
+		}
+		member.status = member.approved && member.accepted ? 'queued' : 'waiting';
+	}
+	async advanceGroup(key: string) {
+		const link = await this.ctx.storage.get<ShareLink>(key);
+		const owner = link && this.socket(link.owner);
+		if (!link || !owner || !this.groupCanStart(link, owner)) {
+			return;
+		}
+		const member = link.participants!.find((p) => p.status === 'queued');
+		await this.startNextGroupMember(key, link, owner, member);
+	}
+
+	async startNextGroupMember(
+		key: string,
+		link: ShareLink,
+		owner: WebSocket,
+		member?: GroupParticipant
+	) {
+		if (member) {
+			await this.startGroupMember({ key, link, owner, member });
+		}
+	}
+	groupCanStart(link: ShareLink, owner: WebSocket) {
+		return link.expiresAt > Date.now() && !this.attachment(owner).transfer;
+	}
+	async startGroupMember(context: GroupStart) {
+		const { member } = context;
+		const t = await this.ctx.storage.get<TransferState>(
+			'transfer:' + member.id
+		);
+		if (!t || !this.socket(t.to.id)) {
+			return this.end(member.id, 'disconnected');
+		}
+		await this.activateGroupTransfer(context, t);
+	}
+
+	async activateGroupTransfer(context: GroupStart, t: TransferState) {
+		const { key, link, owner, member } = context;
+		member.status = 'transferring';
+		await this.publishGroup(key, link);
+		this.attachTransfer(owner, this.attachment(owner), t);
+		await this.acceptTransfer(t);
+	}
+	async finishGroupMember(t: TransferState, reason: EndReason) {
+		if (!t.groupKey) {
+			return;
+		}
+		const link = await this.ctx.storage.get<ShareLink>(t.groupKey);
+		if (!link?.participants) {
+			return;
+		}
+		await this.updateGroupOutcome(link, t, reason);
+	}
+
+	async updateGroupOutcome(
+		link: ShareLink,
+		t: TransferState,
+		reason: EndReason
+	) {
+		this.setGroupOutcome(link, t.id, reason);
+		await this.publishGroup(t.groupKey!, link);
+		await this.advanceGroup(t.groupKey!);
+	}
+	setGroupOutcome(link: ShareLink, id: string, reason: EndReason) {
+		const member = link.participants!.find((p) => p.id === id);
+		if (member) {
+			member.status = this.groupOutcome(reason);
+		}
+	}
+	groupOutcome(reason: EndReason): GroupParticipant['status'] {
+		if (reason === 'complete') {
+			return 'complete';
+		}
+		return ['rejected', 'cancelled'].includes(reason) ? 'declined' : 'failed';
+	}
+
+	async stopGroup(key: string) {
+		const link = await this.ctx.storage.get<ShareLink>(key);
+		await this.ctx.storage.delete(key);
+		for (const member of link?.participants ?? []) {
+			await this.end(member.id, 'cancelled');
+		}
+	}
+
 	async transferAction(a: Attachment, m: TransferMessage) {
 		const t = await this.ctx.storage.get<TransferState>('transfer:' + m.id);
 		if (!t) {
@@ -748,6 +953,9 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 
 	async applyTransferDecision(t: TransferState, type: string) {
+		if (t.groupKey && ['accept', 'approve'].includes(type)) {
+			return this.groupDecision(t, type);
+		}
 		if (type === 'accept') {
 			await this.acceptTransfer(t);
 		} else {
@@ -767,7 +975,7 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 	async acceptTransfer(t: TransferState) {
 		t.started = true;
-		t.expiresAt = Date.now() + LIMITS.transferMs;
+		t.expiresAt = t.groupKey ? t.expiresAt : Date.now() + LIMITS.transferMs;
 		await this.ctx.storage.put('transfer:' + t.id, t);
 		for (const participant of [t.from, t.to]) {
 			this.notifyStart(participant.id, t.id);
@@ -784,10 +992,10 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 	async closeSocket(ws: WebSocket) {
 		const a = this.attachment(ws);
+		await this.revokeLink(ws, a);
 		if (a.transfer) {
 			await this.end(a.transfer, 'disconnected');
 		}
-		await this.revokeLink(ws, a);
 		ws.close();
 	}
 	async webSocketError(ws: WebSocket) {
@@ -803,10 +1011,10 @@ export class NearbyHub extends DurableObject<Bindings> {
 		}
 	}
 	async closeExpired(ws: WebSocket, a: Attachment) {
+		await this.revokeLink(ws, a);
 		if (a.transfer) {
 			await this.end(a.transfer, 'timeout');
 		}
-		await this.revokeLink(ws, a);
 		ws.close(1008, 'Session expired');
 	}
 	async expireEntry(key: string, expiresAt: number, now: number) {
@@ -871,6 +1079,7 @@ function controlMessage(raw: string | ArrayBuffer) {
 function requestedMessage(t: TransferState): ServerMessage {
 	return {
 		type: 'requested',
+		...(t.groupKey ? { group: true, expiresAt: t.expiresAt } : {}),
 		id: t.id,
 		from: t.from,
 		to: t.to,
@@ -878,6 +1087,9 @@ function requestedMessage(t: TransferState): ServerMessage {
 	};
 }
 function endReason(type: string): EndReason {
+	if (type === 'fail') {
+		return 'failed';
+	}
 	return type === 'reject'
 		? 'rejected'
 		: type === 'complete'

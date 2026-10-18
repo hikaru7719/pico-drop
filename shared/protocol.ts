@@ -2,6 +2,8 @@ import type { PhotoAccess } from './photos.ts';
 /* eslint-disable no-control-regex -- Reject or sanitize control characters in photo names. */
 
 export const LIMITS = {
+	participants: 5,
+	groupAttempts: 3,
 	files: 10,
 	bytes: 50 * 1024 * 1024,
 	chunk: 16 * 1024,
@@ -50,11 +52,12 @@ export type ClientMessage =
 			type: 'auth';
 			token: string;
 	  }
-	| { type: 'create-link'; files: PhotoMeta[] }
+	| { type: 'create-link'; files: PhotoMeta[]; mode?: 'group' }
+	| { type: 'approve'; id: string }
 	| { type: 'join-link'; token: string }
 	| { type: 'revoke-link' }
 	| {
-			type: 'accept' | 'reject' | 'cancel' | 'complete';
+			type: 'accept' | 'reject' | 'cancel' | 'complete' | 'fail';
 			id: string;
 	  }
 	| {
@@ -70,8 +73,11 @@ export type ServerMessage =
 	  }
 	| { type: 'link-created'; token: string; expiresAt: number }
 	| { type: 'link-ended' }
+	| { type: 'group-state'; participants: GroupParticipant[] }
 	| {
 			type: 'requested';
+			group?: boolean;
+			expiresAt?: number;
 			id: string;
 			from: Device;
 			to: Device;
@@ -87,6 +93,7 @@ export type ServerMessage =
 			id: string;
 			reason:
 				| 'rejected'
+				| 'failed'
 				| 'cancelled'
 				| 'disconnected'
 				| 'timeout'
@@ -113,7 +120,14 @@ const PHOTO_TYPES = [
 	'image/heic',
 	'image/heif'
 ];
-const TRANSFER_ACTIONS = ['accept', 'reject', 'cancel', 'complete'];
+const TRANSFER_ACTIONS = [
+	'accept',
+	'reject',
+	'cancel',
+	'complete',
+	'approve',
+	'fail'
+];
 const INVALID_MESSAGE = '不正なメッセージです。';
 
 function validName(name: unknown): name is string {
@@ -203,7 +217,9 @@ const messageValidators: Record<
 > = {
 	auth: (value) =>
 		typeof value.token === 'string' && /^[a-f0-9]{64}$/.test(value.token),
-	'create-link': (value) => validPhotos(value.files),
+	'create-link': (value) =>
+		validPhotos(value.files) &&
+		(value.mode === undefined || value.mode === 'group'),
 	'join-link': (value) =>
 		typeof value.token === 'string' && /^[a-f0-9]{64}$/.test(value.token),
 	'revoke-link': () => true
@@ -229,7 +245,23 @@ function parseRecord(
 	return value as ClientMessage;
 }
 
+export type GroupParticipant = {
+	id: string;
+	device: Device;
+	status:
+		| 'waiting'
+		| 'queued'
+		| 'transferring'
+		| 'complete'
+		| 'failed'
+		| 'declined';
+	approved: boolean;
+	accepted: boolean;
+	attempts: number;
+};
+
 export type TransferState = {
+	groupKey?: string;
 	id: string;
 	from: Device;
 	to: Device;
@@ -249,6 +281,11 @@ const authorizationRules: [(context: Authorization) => boolean, string][] = [
 		({ transfer: t, actor, now }) =>
 			t.expiresAt <= now || ![t.from.id, t.to.id].includes(actor),
 		'転送が期限切れ、または操作できません。'
+	],
+	[
+		({ transfer: t, actor, action }) =>
+			action === 'approve' && (!t.groupKey || actor !== t.from.id || t.started),
+		'配布の送信者のみ確認できます。'
 	],
 	[
 		({ transfer: t, actor, action }) =>

@@ -5,11 +5,13 @@
 	import type { ReceivedPhoto } from '$lib/photos/received';
 	import TransferProgress from './TransferProgress.svelte';
 	import ShareQr from './ShareQr.svelte';
+	import GroupDistribution from './GroupDistribution.svelte';
 	import PhotoPost from './PhotoPost.svelte';
 	import PhotoSelection from './PhotoSelection.svelte';
 	import ReceivedPhotoCard from './ReceivedPhotoCard.svelte';
 	import { formatBytes } from '$lib/photos';
 	import type {
+		GroupParticipant,
 		PhotoMeta,
 		ServerMessage,
 		Session
@@ -24,7 +26,12 @@
 		shareLink?: string;
 		linkExpiresAt?: number;
 		creatingLink?: boolean;
-		createLink?: () => void;
+		createLink?: (mode?: 'single' | 'group') => void;
+		groupMode?: boolean;
+		groupReceiver?: boolean;
+		participants?: GroupParticipant[];
+		groupAction?: (type: 'approve' | 'cancel', id: string) => void;
+		retryGroup?: () => void;
 		revokeLink?: () => void;
 		shareInvitation?: () => void;
 		copyInvitation?: () => void;
@@ -35,7 +42,7 @@
 		metadata?: PhotoMeta[];
 		selecting?: boolean;
 		request?: Extract<ServerMessage, { type: 'requested' }> | undefined;
-		phase?: 'waiting' | 'connecting' | 'transferring';
+		phase?: 'waiting' | 'queued' | 'connecting' | 'transferring';
 		bytes?: number;
 		received?: ReceivedPhoto[];
 		photosExpireAt?: number;
@@ -69,6 +76,11 @@
 		linkExpiresAt,
 		creatingLink = false,
 		createLink = () => {},
+		groupMode = false,
+		groupReceiver = false,
+		participants = [],
+		groupAction = () => {},
+		retryGroup = () => {},
 		revokeLink = () => {},
 		shareInvitation = () => {},
 		copyInvitation = () => {},
@@ -306,7 +318,18 @@
 			</div>
 		</section>
 	{/if}
-	{#if !request && !completed}
+	{#if groupMode && (shareLink || participants.length)}
+		<GroupDistribution
+			{participants}
+			{shareLink}
+			{linkExpiresAt}
+			{groupAction}
+			{revokeLink}
+			{copyInvitation}
+			{shareInvitation}
+		/>
+	{/if}
+	{#if !request && !completed && !(groupMode && shareLink)}
 		<div class="workspace">
 			{#if receiverStopped}
 				<section
@@ -328,7 +351,9 @@
 					<p class="description">
 						相手の名前と写真の枚数・容量を確認してから、受け取るかどうかを選べます。「受け取る」を押すまで写真は転送されません。
 					</p>
-					{#if connection === 'connecting' || connection === 'online'}
+					{#if groupReceiver && connection === 'online'}
+						<button onclick={retryGroup}>もう一度参加して受け取る</button>
+					{:else if connection === 'connecting' || connection === 'online'}
 						<p role="status">共有内容を確認中…</p>
 					{/if}
 					<p class="hint">
@@ -479,8 +504,18 @@
 								? 'QRを準備中…'
 								: '写真を渡す'}</button
 						>
+						<button
+							class="send-button"
+							disabled={!metadata.length ||
+								selecting ||
+								creatingLink ||
+								connection === 'connecting'}
+							onclick={() => createLink('group')}
+							>みんなに渡す（最大5人）</button
+						>
+
 						<p class="hint sharing-note">
-							QRは10分間・1人だけ有効です。受け取る人のログインや位置情報の許可は不要です。
+							QRは10分間有効です。「写真を渡す」は1人、「みんなに渡す」は最大5人に送れます。受け取る人のログインや位置情報の許可は不要です。
 						</p>
 					{/if}
 				</section>
@@ -503,11 +538,19 @@
 			{:else}
 				<p>{request.files.length}枚 · {formatBytes(total)}</p>
 			{/if}
+			{#if request.group && !sending}
+				<p class="hint">
+					確認コード：<strong>{request.id.slice(0, 8).toUpperCase()}</strong
+					>。このコードを送る人に見せてください。
+				</p>
+			{/if}
 			{#if phase === 'waiting'}
 				<p>
 					{sending
 						? '相手が「受け取る」を押すのを待っています。写真はまだ送信していません。'
-						: 'この相手から写真を受け取りますか？受け取ると転送が始まります。'}
+						: request.group
+							? 'この相手から写真を受け取りますか？送る人が確認すると、順番に転送します。'
+							: 'この相手から写真を受け取りますか？受け取ると転送が始まります。'}
 				</p>
 				{#if !sending}<div class="actions">
 						<button
@@ -515,6 +558,10 @@
 							onclick={() => action('accept')}>受け取る</button
 						><button onclick={() => action('reject')}>受け取らない</button>
 					</div>{/if}
+			{:else if phase === 'queued'}
+				<p role="status">
+					受け取りを承諾しました。送る人の確認と順番を待っています。画面を開いたままお待ちください。
+				</p>
 			{:else}
 				<TransferProgress
 					{bytes}

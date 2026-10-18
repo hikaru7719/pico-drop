@@ -4,6 +4,7 @@ import { URL } from 'node:url';
 import { stripTypeScriptTypes } from 'node:module';
 import { routedToken } from './routing.ts';
 import { PasskeyAuth } from './auth.ts';
+import { createPhotoAccess } from './photo-access.ts';
 import * as protocol from '../../shared/protocol.ts';
 
 const source = (await readFile(new URL('./index.ts', import.meta.url), 'utf8'))
@@ -12,7 +13,7 @@ const source = (await readFile(new URL('./index.ts', import.meta.url), 'utf8'))
 const factory = stripTypeScriptTypes(
 	`
 export function createHub(deps) {
-const { DurableObject, LIMITS, parseClient, authorizeTransfer, WebSocket, PasskeyAuth, routedToken } = deps;
+const { DurableObject, LIMITS, parseClient, authorizeTransfer, WebSocket, PasskeyAuth, routedToken, createPhotoAccess } = deps;
 ${source.replace('export class NearbyHub', 'class NearbyHub')}
 return NearbyHub;
 }`,
@@ -55,14 +56,18 @@ class Fixture {
 	hub: any;
 	queue = Promise.resolve();
 	constructor() {
-		const Hub = createHub({
+		const Hub = createHub(this.dependencies());
+		this.hub = new Hub(this.context());
+	}
+	dependencies() {
+		return {
 			...protocol,
 			PasskeyAuth,
+			createPhotoAccess,
 			routedToken,
 			WebSocket: { OPEN: 1 },
 			DurableObject: this.base()
-		});
-		this.hub = new Hub(this.context());
+		};
 	}
 
 	seedIdentity() {
@@ -266,4 +271,188 @@ test('persistent accounts survive cleanup without keeping an idle alarm active',
 	await app.hub.expireEntries(Date.now() + 60_001);
 	expect(app.entries.has('auth:account:sender')).toBe(true);
 	expect(await app.hub.nextAlarm(Date.now())).toBe(Infinity);
+});
+
+async function groupLink(app: Fixture) {
+	await app.message(0, { type: 'create-link', files, mode: 'group' });
+	return app.sockets[0].last('link-created');
+}
+async function joinGroup(app: Fixture, token: string, index: number) {
+	await app.message(index, { type: 'join-link', token });
+	return app.sockets[index].last('requested').id as string;
+}
+async function approveGroup(app: Fixture, id: string, index: number) {
+	await app.message(0, { type: 'approve', id });
+	await app.message(index, { type: 'accept', id });
+}
+function members(app: Fixture) {
+	return app.sockets[0].last('group-state').participants;
+}
+test('group requires sender confirmation and receiver consent before signaling', async () => {
+	const app = new Fixture();
+	const link = await groupLink(app);
+	const id = await joinGroup(app, link.token, 1);
+	await app.message(1, { type: 'accept', id });
+	expect(app.sockets[0].last('start')).toBeUndefined();
+	await assertGroupPermissions(app, id);
+	await app.message(0, { type: 'approve', id });
+	expect(app.sockets[0].last('start').id).toBe(id);
+});
+async function assertGroupPermissions(app: Fixture, id: string) {
+	await app.message(2, { type: 'approve', id });
+	await app.message(1, { type: 'approve', id });
+	expect(app.sockets[1].last('error').message).toMatch(/送信者/);
+	await app.message(1, testSignal(id));
+	expect(app.sockets[0].last('signal')).toBeUndefined();
+	expect(app.sockets[2].last('group-state')).toBeUndefined();
+}
+test('same QR admits several recipients and transfers sequentially after completion', async () => {
+	const app = new Fixture();
+	const link = await groupLink(app);
+	const first = await joinGroup(app, link.token, 1);
+	const second = await joinGroup(app, link.token, 2);
+	await approveGroup(app, first, 1);
+	await approveGroup(app, second, 2);
+	await assertSequentialCompletion(app, first, second);
+});
+async function assertSequentialCompletion(
+	app: Fixture,
+	first: string,
+	second: string
+) {
+	assertQueued(app);
+	await app.message(1, { type: 'complete', id: first });
+	assertNextStarted(app, second);
+}
+test('group admission is bounded even when six people join concurrently', async () => {
+	const app = new Fixture();
+	app.sockets.push(...[3, 4, 5, 6].map((i) => new Socket('guest-' + i)));
+	const link = await groupLink(app);
+	await joinMany(app, link.token);
+	expect(members(app)).toHaveLength(5);
+	expect(app.sockets.filter((ws) => ws.last('requested'))).toHaveLength(5);
+	expect(app.sockets.filter((ws) => ws.last('error'))).toHaveLength(1);
+});
+for (const kind of ['revoke', 'disconnect', 'expire']) {
+	test(`group ${kind} stops current and queued transfers and closes admission`, async () => {
+		const app = new Fixture();
+		const link = await groupLink(app);
+		const first = await joinGroup(app, link.token, 1);
+		const second = await joinGroup(app, link.token, 2);
+		await approveGroup(app, first, 1);
+		await approveGroup(app, second, 2);
+		await stopAndCheckGroup(app, link, kind);
+	});
+}
+async function stopAndCheckGroup(app: Fixture, link: any, kind: string) {
+	await stopDistribution(app, link, kind);
+	expect(app.sockets[2].last('start')).toBeUndefined();
+	expect(
+		[...app.entries.keys()].filter((key) => key.startsWith('transfer:'))
+	).toHaveLength(0);
+	await app.message(2, { type: 'join-link', token: link.token });
+	expect(app.sockets[2].last('error').message).toMatch(/有効期限/);
+}
+for (const action of ['reject', 'fail', 'disconnect']) {
+	test(`individual ${action} does not stop the next recipient`, async () => {
+		const app = new Fixture();
+		const link = await groupLink(app);
+		const first = await joinGroup(app, link.token, 1);
+		const second = await joinGroup(app, link.token, 2);
+		await approveGroup(app, second, 2);
+		await endMember(app, first, action);
+		expect(app.sockets[2].last('start').id).toBe(second);
+	});
+}
+async function endMember(app: Fixture, id: string, action: string) {
+	if (action === 'disconnect') {
+		await app.hub.webSocketClose(app.sockets[1]);
+	} else {
+		await app.message(1, { type: action, id });
+	}
+}
+test('failed recipient can retry twice in the same slot with fresh confirmation', async () => {
+	const app = new Fixture();
+	const link = await groupLink(app);
+	for (let attempt = 1; attempt <= 3; attempt++) {
+		await failedAttempt(app, link.token, attempt);
+	}
+	await app.message(1, { type: 'join-link', token: link.token });
+	expect(app.sockets[1].last('error').message).toMatch(/2回まで/);
+	expect(members(app)).toHaveLength(1);
+});
+async function failedAttempt(app: Fixture, token: string, attempt: number) {
+	const id = await joinGroup(app, token, 1);
+	expectFreshConfirmation(app, attempt);
+	await approveGroup(app, id, 1);
+	await app.message(1, { type: 'fail', id });
+	expect(members(app)[0].status).toBe('failed');
+}
+test('anonymous sessions cannot create group distributions', async () => {
+	const app = new Fixture();
+	await app.message(1, { type: 'create-link', files, mode: 'group' });
+	expect(app.sockets[1].last('error').message).toContain('ログイン');
+});
+
+function testSignal(id: string) {
+	return {
+		type: 'signal',
+		id,
+		signal: { description: { type: 'offer', sdp: '' } }
+	};
+}
+function memberStatuses(app: Fixture) {
+	return members(app).map((p: protocol.GroupParticipant) => p.status);
+}
+async function joinMany(app: Fixture, token: string) {
+	await Promise.all(
+		[1, 2, 3, 4, 5, 6].map((i) => app.message(i, { type: 'join-link', token }))
+	);
+}
+async function stopDistribution(app: Fixture, link: any, kind: string) {
+	if (kind === 'expire') {
+		await expireDistribution(app, link.expiresAt);
+	} else {
+		await invalidate(app, kind);
+	}
+}
+function expectFreshConfirmation(app: Fixture, attempts: number) {
+	expect(members(app)[0]).toMatchObject({
+		attempts,
+		approved: false,
+		accepted: false
+	});
+}
+
+test('failure during transfer advances the already approved queue', async () => {
+	const app = new Fixture();
+	const link = await groupLink(app);
+	const first = await joinGroup(app, link.token, 1);
+	const second = await joinGroup(app, link.token, 2);
+	await approveGroup(app, first, 1);
+	await approveGroup(app, second, 2);
+	await app.message(1, { type: 'fail', id: first });
+	expect(app.sockets[2].last('start').id).toBe(second);
+});
+
+function assertQueued(app: Fixture) {
+	expect(app.sockets[2].last('start')).toBeUndefined();
+	expect(memberStatuses(app)).toEqual(['transferring', 'queued']);
+}
+async function expireDistribution(app: Fixture, expiresAt: number) {
+	await app.hub.expireEntry(app.sockets[0].data.linkKey, expiresAt, expiresAt);
+}
+
+function assertNextStarted(app: Fixture, second: string) {
+	expect(app.sockets[1].last('ended').photoAccess).toBeDefined();
+	expect(app.sockets[2].last('start').id).toBe(second);
+	expect(memberStatuses(app)).toEqual(['complete', 'transferring']);
+}
+
+test('group transfers never extend the distribution deadline', async () => {
+	const app = new Fixture();
+	const link = await groupLink(app);
+	const id = await joinGroup(app, link.token, 1);
+	await approveGroup(app, id, 1);
+	expect(app.entries.get('transfer:' + id).expiresAt).toBe(link.expiresAt);
 });

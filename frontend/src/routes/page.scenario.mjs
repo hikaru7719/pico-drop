@@ -220,7 +220,7 @@ async function scenario() {
 	await rejected(a, b);
 	await reuse(await receive(a, b));
 	await verifyPhotos(b, photo);
-	await finish(a, b);
+	await finishScenarios(a, b, photo);
 }
 async function finish(a, b) {
 	await saveAndDiscard(b);
@@ -233,7 +233,7 @@ async function finish(a, b) {
 try {
 	await scenario();
 	console.log(
-		'PASS: passkey registration/logout/login, authentication-first sender flow, short-lived links, revoke, reject, single use, no RTC before approval, multi-photo RTC, SHA-256 match, mobile layout, save fallback, discard, disconnect without location permission'
+		'PASS: group QR with 5 recipients, dual approval, sequential RTC, capacity, closure, hashes; passkey registration/logout/login, authentication-first sender flow, short-lived links, revoke, reject, single use, no RTC before approval, multi-photo RTC, SHA-256 match, mobile layout, save fallback, discard, disconnect without location permission'
 	);
 } finally {
 	for (const context of contexts) {
@@ -354,4 +354,107 @@ async function verifyOldNoticeCleared(b) {
 			.count(),
 		0
 	);
+}
+
+async function groupScenario(sender, photo) {
+	await clickButton(sender, 'みんなに渡す（最大5人）');
+	const link = await readQr(sender);
+	const guests = await groupGuests(link);
+	await verifyGroupCapacity(link);
+	await groupTransfer(sender, guests);
+	await verifyGroupPhotos(guests, photo);
+	await finishGroup(sender, link);
+}
+async function groupGuests(link) {
+	const guests = [];
+	for (let i = 0; i < 5; i++) {
+		const guest = await device();
+		await join(guest, link);
+		await clickButton(guest, '受け取る');
+		guests.push(guest);
+	}
+	return guests;
+}
+async function verifyGroupCapacity(link) {
+	const extra = await device();
+	await extra.goto(link);
+	await extra.getByRole('alert').filter({ hasText: '5人まで' }).waitFor();
+	await extra.close();
+}
+async function groupTransfer(sender, guests) {
+	await noGroupPeers(guests);
+	const release = await holdIce(guests[0]);
+	await approveAll(sender);
+	await verifyGroupQueue(sender, guests);
+	release();
+	await allGroupReceived(guests);
+}
+async function holdIce(page) {
+	const pending = Promise.withResolvers();
+	await page.route('**/api/ice', async (route) => {
+		await pending.promise;
+		await route.continue();
+	});
+	return pending.resolve;
+}
+async function approveAll(sender) {
+	for (let i = 0; i < 5; i++) {
+		await sender
+			.getByRole('button', { name: 'この相手に渡す', exact: true })
+			.first()
+			.click();
+	}
+}
+async function groupReceived(guest) {
+	await guest
+		.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true })
+		.waitFor({ timeout: 60_000 });
+	assert.equal(await peerCount(guest), 1);
+}
+async function finishGroup(sender, link) {
+	await sender.locator('li').filter({ hasText: '受信完了' }).nth(4).waitFor();
+	await verifyLayout(sender);
+	await sender.screenshot({
+		path: '/tmp/pico-drop-group-complete.png',
+		fullPage: true
+	});
+	await clickButton(sender, '配布を終了する');
+	await checkGroupClosed(link);
+}
+
+async function finishScenarios(a, b, photo) {
+	await finish(a, b);
+	await groupScenario(a, photo);
+}
+async function verifyGroupPhotos(guests, photo) {
+	for (const guest of guests) {
+		await verifyPhotos(guest, photo);
+	}
+}
+async function noGroupPeers(guests) {
+	for (const guest of guests) {
+		assert.equal(await peerCount(guest), 0);
+	}
+}
+async function verifyGroupQueue(sender, guests) {
+	await sender.getByText('順番待ち', { exact: true }).first().waitFor();
+	await noGroupPeers(guests.slice(1));
+	await sender.screenshot({
+		path: '/tmp/pico-drop-group-queue.png',
+		fullPage: true
+	});
+}
+async function allGroupReceived(guests) {
+	for (const guest of guests) {
+		await groupReceived(guest);
+	}
+}
+async function checkGroupClosed(link) {
+	const late = await device();
+	await late.goto(link);
+	await late
+		.getByRole('alert')
+		.filter({ hasText: '有効期限が切れた' })
+		.waitFor();
+	assert.deepEqual(errors, []);
 }

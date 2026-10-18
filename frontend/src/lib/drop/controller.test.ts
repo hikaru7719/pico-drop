@@ -323,3 +323,104 @@ function rejectSelection() {
 		new Error('写真は10枚・合計50MBまで選べます。')
 	);
 }
+
+async function startGroup(app: PageFixture) {
+	await app.controller.select([firstPhoto]);
+	await app.controller.createLink('group');
+	await ready(app);
+	await assertLinkCreated(app);
+}
+async function groupRequest(app: PageFixture) {
+	await emit(app, {
+		type: 'requested',
+		id: 'group-transfer',
+		...groupRequestFields(),
+		from: app.session,
+		to: { id: 'other', name: 'Other' },
+		files
+	});
+}
+for (const reason of [
+	'complete',
+	'failed',
+	'disconnected',
+	'cancelled'
+] as const) {
+	test(`group sender remains connected after an individual ${reason}`, async () => {
+		const app = setup();
+		await startGroup(app);
+		await groupRequest(app);
+		await emit(app, { type: 'ended', id: 'group-transfer', reason });
+		assertGroupStillOpen(app);
+	});
+}
+function assertGroupStillOpen(app: PageFixture) {
+	assert.equal(app.controller.connection, 'online');
+	assert.equal(app.sockets[0].closed, false);
+	assert.notEqual(app.controller.shareLink, '');
+	assert.equal(app.controller.request, undefined);
+	assert.equal(app.controller.completed, false);
+}
+test('group request includes its mode and selected photos stay locked', async () => {
+	const app = setup();
+	await startGroup(app);
+	assertGroupCreation(app);
+	app.controller.removePhoto(0);
+	assert.equal(app.controller.selected.length, 1);
+});
+test('group receiver consent waits without opening a peer and failure permits retry', async () => {
+	const app = setup({ token: 'b'.repeat(64) });
+	await flush();
+	await ready(app);
+	await incomingGroupRequest(app);
+	app.controller.action('accept');
+	assert.equal(app.controller.phase, 'queued');
+	await emit(app, { type: 'ended', id: 'group-transfer', reason: 'failed' });
+	assertGroupRetry(app);
+});
+async function incomingGroupRequest(app: PageFixture) {
+	await emit(app, {
+		type: 'requested',
+		id: 'group-transfer',
+		...groupRequestFields(),
+		from: { id: 'sender', name: 'Sender' },
+		to: app.session,
+		files
+	});
+}
+function assertGroupRetry(app: PageFixture) {
+	assert.equal(app.controller.connection, 'online');
+	app.controller.retryGroup();
+	assert.deepEqual(app.sockets[0].messages.at(-1), {
+		type: 'join-link',
+		token: 'b'.repeat(64)
+	});
+}
+
+function groupRequestFields() {
+	return { group: true, expiresAt: Date.now() + LIMITS.linkMs };
+}
+function assertGroupCreation(app: PageFixture) {
+	assert.deepEqual(app.sockets[0].messages[0], {
+		type: 'create-link',
+		mode: 'group',
+		files
+	});
+}
+
+test('group ICE failure reports only that transfer and preserves the sender session', async () => {
+	const app = setup();
+	await startGroup(app);
+	await groupRequest(app);
+	vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ICE failure')));
+	await emit(app, { type: 'start', id: 'group-transfer' });
+	await vi.waitFor(() => assertGroupStillOpen(app));
+	assertGroupFailure(app);
+});
+
+function assertGroupFailure(app: PageFixture) {
+	assert.deepEqual(app.sockets[0].messages.at(-1), {
+		type: 'fail',
+		id: 'group-transfer'
+	});
+}

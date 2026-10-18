@@ -7,6 +7,7 @@ import type { PhotoAccess, ConversionMode } from '../../../../shared/photos.ts';
 import { tick } from 'svelte';
 import {
 	LIMITS,
+	type GroupParticipant,
 	type PhotoMeta,
 	type ServerMessage,
 	type Session
@@ -28,6 +29,9 @@ type ViewCallbacks = {
 // oxlint-disable-next-line max-lines-per-function
 export function createDropController(view: ViewCallbacks = {}) {
 	type RequestInfo = Extract<ServerMessage, { type: 'requested' }>;
+	let groupMode = $state(false);
+	let groupReceiver = $state(false);
+	let participants = $state<GroupParticipant[]>([]);
 	let flowStarted = $state(false);
 	let session = $state<Session>();
 	let connection = $state<'idle' | 'connecting' | 'online' | 'offline'>('idle');
@@ -41,7 +45,9 @@ export function createDropController(view: ViewCallbacks = {}) {
 	let metadata = $state<PhotoMeta[]>([]);
 	let selecting = $state(false);
 	let request = $state<RequestInfo>();
-	let phase = $state<'waiting' | 'connecting' | 'transferring'>('waiting');
+	let phase = $state<'waiting' | 'queued' | 'connecting' | 'transferring'>(
+		'waiting'
+	);
 	let bytes = $state(0);
 	let received = $state<ReceivedPhoto[]>([]);
 	let photoCollection: ReceivedPhotos | undefined;
@@ -72,6 +78,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 		'前に受け取った写真がこの画面に残っているため、新しい写真は受け取りませんでした。保存できたことを確認して、画面内の写真を削除してください。';
 	const REJECTED_NOTICE = '写真の受け取りを断りました。';
 	const endMessages = {
+		failed: '写真の転送に失敗しました。再試行してください。',
 		rejected: '相手が写真を受け取りませんでした。',
 		cancelled: '転送を中止しました。',
 		disconnected: '相手との接続が切れました。再試行してください。',
@@ -146,6 +153,9 @@ export function createDropController(view: ViewCallbacks = {}) {
 		resetLink();
 		session = undefined;
 		connection = state;
+		if (state === 'offline') {
+			stopGroupView();
+		}
 	}
 	function send(message: Parameters<Signaling['send']>[0]) {
 		if (!signaling) {
@@ -164,10 +174,23 @@ export function createDropController(view: ViewCallbacks = {}) {
 		}
 	}
 	function fail(cause: unknown) {
+		if (request?.group && connection === 'online') {
+			return failGroupTransfer(cause);
+		}
 		error = errorMessage(cause);
 		cancelRequest();
 		disconnect('offline');
 		retainOrDiscard();
+	}
+	function failGroupTransfer(cause: unknown) {
+		error = errorMessage(cause);
+		try {
+			send({ type: 'fail', id: request!.id });
+		} catch {
+			disconnect('offline');
+		}
+		cleanupTransfer();
+		clearReceived();
 	}
 	function retainOrDiscard() {
 		if (!completed) {
@@ -216,6 +239,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 	}
 	function connectionClosed(current: number) {
 		if (activeGeneration(current)) {
+			disconnect('offline');
 			fail(
 				new Error('接続が切れました。新しい共有リンクで再試行してください。')
 			);
@@ -261,16 +285,21 @@ export function createDropController(view: ViewCallbacks = {}) {
 		await attemptConnection(generation);
 	}
 
-	async function createLink() {
+	async function createLink(mode: 'single' | 'group' = 'single') {
 		if (creatingLink || selecting || !metadata.length || request || shareLink) {
 			return;
 		}
-		flowStarted = true;
-		creatingLink = true;
+		prepareGroup(mode);
 		await connect();
 		creatingLink = connection === 'connecting';
 	}
 
+	function prepareGroup(mode: 'single' | 'group') {
+		groupMode = mode === 'group';
+		participants = [];
+		flowStarted = true;
+		creatingLink = true;
+	}
 	function canJoinLink() {
 		return (
 			connection !== 'connecting' &&
@@ -290,15 +319,48 @@ export function createDropController(view: ViewCallbacks = {}) {
 	}
 
 	function revokeLink() {
+		stopGroupView();
 		disconnect();
 		notice = '共有リンクを取り消しました。';
 	}
 
 	function linkExpired() {
+		stopGroupView();
 		disconnect();
 		error = '共有リンクの有効期限が切れました。新しく作成してください。';
 	}
 
+	function stopGroupView() {
+		if (!groupMode) {
+			return;
+		}
+		participants = participants.map(stoppedParticipant);
+		completed = false;
+	}
+	function stoppedParticipant(p: GroupParticipant): GroupParticipant {
+		return ['waiting', 'queued', 'transferring'].includes(p.status)
+			? { ...p, status: 'declined' }
+			: p;
+	}
+	function groupAction(type: 'approve' | 'cancel', id: string) {
+		try {
+			send({ type, id });
+		} catch (e) {
+			fail(e);
+		}
+	}
+	function canRetryGroup() {
+		return (
+			groupReceiver && !request && !received.length && connection === 'online'
+		);
+	}
+	function retryGroup() {
+		if (!canRetryGroup()) {
+			return;
+		}
+		error = '';
+		send({ type: 'join-link', token: incomingToken });
+	}
 	function linkCreated(
 		message: Extract<ServerMessage, { type: 'link-created' }>
 	) {
@@ -386,7 +448,13 @@ export function createDropController(view: ViewCallbacks = {}) {
 
 	function finishAction(type: 'accept' | 'reject' | 'cancel') {
 		if (type === 'accept') {
-			phase = 'connecting';
+			phase = request?.group ? 'queued' : 'connecting';
+			return;
+		}
+		finishCancellation(type);
+	}
+	function finishCancellation(type: 'reject' | 'cancel') {
+		if (groupMode && shareLink) {
 			return;
 		}
 		disconnect();
@@ -413,8 +481,15 @@ export function createDropController(view: ViewCallbacks = {}) {
 		if (incomingToken) {
 			send({ type: 'join-link', token: incomingToken });
 		} else {
-			send({ type: 'create-link', files: metadata });
+			sendCreateLink();
 		}
+	}
+	function sendCreateLink() {
+		send({
+			type: 'create-link',
+			files: metadata,
+			...(groupMode ? { mode: 'group' as const } : {})
+		});
 	}
 	function startControlTimer() {
 		watchdog = setTimeout(controlTimedOut, 10_000);
@@ -428,6 +503,13 @@ export function createDropController(view: ViewCallbacks = {}) {
 	}
 
 	function serverError(message: string) {
+		if (groupMode && shareLink) {
+			error = message;
+			return;
+		}
+		failServerRequest(message);
+	}
+	function failServerRequest(message: string) {
 		resetLink();
 		if (request) {
 			fail(new Error(message));
@@ -446,20 +528,33 @@ export function createDropController(view: ViewCallbacks = {}) {
 	}
 	function resetRequest(message: RequestInfo) {
 		clearTimeout(watchdog);
-		resetLink();
+		if (!groupMode) {
+			resetLink();
+		}
+		initializeRequest(message);
+	}
+	function initializeRequest(message: RequestInfo) {
+		groupReceiver = !!message.group && message.to.id === session?.id;
 		clearReceived();
 		invitationUsed = !!incomingToken;
 		request = message;
 		bytes = 0;
 		phase = 'waiting';
 	}
-	function waitForApproval() {
+	function waitForApproval(message: RequestInfo) {
 		error = '';
 		notice = '';
 		relay = undefined;
 		watchdog = setTimeout(
 			() => fail(new Error(CONFIRM_EXPIRED)),
-			LIMITS.requestMs + 1000
+			approvalTimeout(message)
+		);
+	}
+	function approvalTimeout(message: RequestInfo) {
+		return (
+			(message.group
+				? Math.max(0, (message.expiresAt ?? Date.now()) - Date.now())
+				: LIMITS.requestMs) + 1000
 		);
 	}
 	async function requested(message: RequestInfo) {
@@ -467,9 +562,14 @@ export function createDropController(view: ViewCallbacks = {}) {
 			return;
 		}
 		resetRequest(message);
-		waitForApproval();
+		waitForApproval(message);
+		await showRequested();
+	}
+	async function showRequested() {
 		await tick();
-		view.showTransfer?.();
+		if (!groupMode) {
+			view.showTransfer?.();
+		}
 	}
 
 	function transferOutcome(
@@ -489,12 +589,25 @@ export function createDropController(view: ViewCallbacks = {}) {
 
 	type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
 	async function ended(reason: EndReason, access?: PhotoAccess) {
+		if ((groupMode && shareLink) || (groupReceiver && reason === 'failed')) {
+			return groupEnded(reason);
+		}
+		return finishSingleTransfer(reason, access);
+	}
+	async function finishSingleTransfer(reason: EndReason, access?: PhotoAccess) {
 		transferOutcome(reason);
 		if (reason === 'complete' && received.length) {
 			retainPhotos(access);
 		}
 		disconnect();
 		return showReceived();
+	}
+	function groupEnded(reason: EndReason) {
+		cleanupTransfer();
+		clearReceived();
+		if (reason !== 'complete') {
+			error = endMessages[reason];
+		}
 	}
 	async function showReceived() {
 		if (completed && received.length) {
@@ -547,6 +660,17 @@ export function createDropController(view: ViewCallbacks = {}) {
 	async function handleLinkMessage(
 		message: Exclude<ServerMessage, { type: 'ready' | 'link-created' }>
 	) {
+		if (message.type === 'group-state') {
+			participants = message.participants;
+			return;
+		}
+		return handleLinkEnd(message);
+	}
+	type LinkEndMessage = Exclude<
+		ServerMessage,
+		{ type: 'ready' | 'link-created' | 'group-state' }
+	>;
+	async function handleLinkEnd(message: LinkEndMessage) {
 		if (message.type === 'link-ended') {
 			return shareLink ? linkExpired() : resetLink();
 		}
@@ -554,7 +678,7 @@ export function createDropController(view: ViewCallbacks = {}) {
 	}
 	type RequestMessage = Exclude<
 		ServerMessage,
-		{ type: 'ready' | 'link-created' | 'link-ended' }
+		{ type: 'ready' | 'link-created' | 'link-ended' | 'group-state' }
 	>;
 	async function handleRequestMessage(message: RequestMessage) {
 		if (message.type === 'error') {
@@ -792,6 +916,17 @@ export function createDropController(view: ViewCallbacks = {}) {
 	}
 
 	return {
+		get groupMode() {
+			return groupMode;
+		},
+		get participants() {
+			return participants;
+		},
+		get groupReceiver() {
+			return groupReceiver;
+		},
+		groupAction,
+		retryGroup,
 		get flowStarted() {
 			return flowStarted;
 		},
