@@ -1,39 +1,28 @@
-import { test } from 'vitest';
+import { test, vi, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { stripTypeScriptTypes } from 'node:module';
-import { compileModule } from 'svelte/compiler';
-import { LIMITS } from '../../../shared/protocol.ts';
+import { LIMITS, type ServerMessage } from '../../../../shared/protocol.ts';
+import { createDropController } from './controller.svelte';
+import { createSession, Signaling } from '../webrtc/signaling';
+import { describePhotos } from '../photos';
 
-// Exercise the actual page controller with Svelte's reactive state and mocked I/O.
-const page = await readFile(new URL('./+page.svelte', import.meta.url), 'utf8');
-const script = page
-	.match(/<script lang="ts">([\s\S]*?)<\/script>/)![1]
-	.replace(/\bimport\s[\s\S]*?\sfrom\s+['"][^'"]+['"];?/g, '');
-const source = `export function createPage(deps) {
-const { LIMITS, onMount, tick, createSession, Signaling, window } = deps;
-${stripTypeScriptTypes(script, { mode: 'transform' })}
-return { createLink, joinLink, revokeLink, handle, action,
-setPhotos(files) { metadata = files; },
-get state() { return { connection, session, completed, received, error, shareLink, creatingLink, incomingToken }; } };
-}`;
-const compiled = compileModule(source, {
-	filename: 'connection-controller.svelte.js',
-	generate: 'client'
-}).js.code.replace(
-	/from ['"](svelte\/[^'"]+)['"]/g,
-	(_, specifier) => `from ${JSON.stringify(import.meta.resolve(specifier))}`
-);
-const { createPage } = await import(
-	`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`
-);
+vi.mock('../webrtc/signaling', () => ({
+	createSession: vi.fn(),
+	Signaling: vi.fn()
+}));
+vi.mock('../photos', () => ({ describePhotos: vi.fn(), sharePhotos: vi.fn() }));
+const cleanups: (() => void)[] = [];
+afterEach(() => {
+	cleanups.splice(0).forEach((cleanup) => cleanup());
+	vi.unstubAllGlobals();
+	vi.clearAllMocks();
+});
 
 type SetupOptions = { pendingSession?: boolean; token?: string };
 class FakeSocket {
 	closed = false;
 	messages: unknown[] = [];
-	constructor(public emit: (message: unknown) => void) {}
-	send(message: unknown) {
+	constructor(public emit: (message: ServerMessage) => void) {}
+	send(message: ServerMessage) {
 		this.messages.push(message);
 	}
 	close() {
@@ -46,18 +35,30 @@ class PageFixture {
 	sessions = 0;
 	sessionSignal: AbortSignal | undefined;
 	resolvePending: (value: unknown) => void = () => {};
-	mount: () => void = () => {};
 	session = {
 		id: 'self',
 		name: 'Self',
 		token: 'token',
 		expiresAt: 9999999999999
 	};
-	controller: ReturnType<typeof createPage>;
+	controller: ReturnType<typeof createDropController>;
 	constructor(private options: SetupOptions) {
-		this.controller = createPage(this.dependencies());
-		this.mount();
+		vi.stubGlobal('window', this.window());
+		vi.mocked(createSession).mockImplementation(
+			(signal) => this.createSession(signal!) as Promise<typeof this.session>
+		);
+		this.mockSignaling();
+		vi.mocked(describePhotos).mockResolvedValue(files);
+		this.controller = createDropController();
+		cleanups.push(this.controller.mount());
 	}
+	mockSignaling() {
+		const Socket = this.signaling();
+		vi.mocked(Signaling).mockImplementation(function (...args) {
+			return new Socket(args[0], args[1]) as unknown as Signaling;
+		});
+	}
+
 	window() {
 		return {
 			isSecureContext: true,
@@ -78,7 +79,7 @@ class PageFixture {
 	signaling() {
 		const sockets = this.sockets;
 		return class extends FakeSocket {
-			constructor(_session: unknown, emit: (message: unknown) => void) {
+			constructor(_session: unknown, emit: (message: ServerMessage) => void) {
 				super(emit);
 				sockets.push(this);
 			}
@@ -96,23 +97,10 @@ class PageFixture {
 	resolveSession() {
 		this.resolvePending(this.session);
 	}
-	io() {
-		return {
-			window: this.window(),
-			Signaling: this.signaling(),
-			createSession: (signal: AbortSignal) => this.createSession(signal)
-		};
-	}
-	dependencies() {
-		return { ...this.io(), ...this.lifecycle(), LIMITS, tick: async () => {} };
-	}
-	lifecycle() {
-		return {
-			onMount: (callback: () => void) => {
-				this.mount = callback;
-			}
-		};
-	}
+}
+async function emit(app: PageFixture, message: ServerMessage) {
+	app.sockets[0].emit(message);
+	await flush();
 }
 const setup = (options: SetupOptions = {}) => new PageFixture(options);
 const flush = async () => {
@@ -122,7 +110,7 @@ const flush = async () => {
 };
 
 function assertIdle(app: PageFixture) {
-	assert.equal(app.controller.state.connection, 'idle');
+	assert.equal(app.controller.connection, 'idle');
 	assert.equal(app.sessions, 0);
 	assert.equal(app.sockets.length, 0);
 }
@@ -137,19 +125,19 @@ test('opening and restoring the page do not contact signaling', async () => {
 });
 const files = [{ id: 'photo', name: 'photo.jpg', type: 'image/jpeg', size: 8 }];
 async function connectOnce(app: PageFixture) {
-	app.controller.setPhotos(files);
+	await app.controller.select([]);
 	await Promise.all([app.controller.createLink(), app.controller.createLink()]);
 	assert.equal(app.sessions, 1);
-	assert.equal(app.controller.state.connection, 'connecting');
+	assert.equal(app.controller.connection, 'connecting');
 	assert.equal(app.sockets[0].messages.length, 0);
 }
 async function ready(app: PageFixture) {
-	app.sockets[0].emit({ type: 'ready' });
+	app.sockets[0].emit({ type: 'ready', device: app.session });
 	await flush();
 }
 function assertStopped(app: PageFixture) {
 	assert.equal(app.sockets[0].closed, true);
-	assert.equal(app.controller.state.connection, 'idle');
+	assert.equal(app.controller.connection, 'idle');
 }
 test('authentication creates a link without requesting location; revocation closes signaling', async () => {
 	const app = setup();
@@ -159,20 +147,20 @@ test('authentication creates a link without requesting location; revocation clos
 	await assertLinkCreated(app);
 	app.controller.revokeLink();
 	assertStopped(app);
-	assert.equal(app.controller.state.shareLink, '');
+	assert.equal(app.controller.shareLink, '');
 });
 async function assertLinkCreated(app: PageFixture) {
-	await app.controller.handle({
+	await emit(app, {
 		type: 'link-created',
 		token: 'a'.repeat(64),
 		expiresAt: Date.now() + LIMITS.linkMs
 	});
 	const expected = 'https://example.com/#share=' + 'a'.repeat(64);
-	assert.equal(app.controller.state.shareLink, expected);
+	assert.equal(app.controller.shareLink, expected);
 }
 test('stopping an in-flight session request prevents a late WebSocket connection', async () => {
 	const app = setup({ pendingSession: true });
-	app.controller.setPhotos(files);
+	await app.controller.select([]);
 	const pending = app.controller.createLink();
 	app.controller.revokeLink();
 	assert.equal(app.sessionSignal?.aborted, true);
@@ -193,12 +181,12 @@ test('a rejected link clears the busy state and permits retry', async () => {
 	const app = setup({ token: 'b'.repeat(64) });
 	await flush();
 	await ready(app);
-	await app.controller.handle({ type: 'error', message: '期限切れ' });
-	assert.equal(app.controller.state.error, '期限切れ');
+	await emit(app, { type: 'error', message: '期限切れ' });
+	assert.equal(app.controller.error, '期限切れ');
 	app.controller.revokeLink();
 });
 async function requestTransfer(app: PageFixture) {
-	await app.controller.handle({
+	await emit(app, {
 		type: 'requested',
 		id: 'transfer',
 		from: app.session,
@@ -206,15 +194,15 @@ async function requestTransfer(app: PageFixture) {
 		files
 	});
 }
-for (const reason of ['complete', 'cancelled']) {
+for (const reason of ['complete', 'cancelled'] as const) {
 	test(`transfer ${reason} closes signaling and clears link`, async () => {
 		const app = setup();
 		await connectOnce(app);
 		await ready(app);
 		await requestTransfer(app);
-		await app.controller.handle({ type: 'ended', id: 'transfer', reason });
+		await emit(app, { type: 'ended', id: 'transfer', reason });
 		assertStopped(app);
-		assert.equal(app.controller.state.completed, reason === 'complete');
+		assert.equal(app.controller.completed, reason === 'complete');
 	});
 }
 
@@ -222,5 +210,38 @@ test('invalid invitation does not create a session', async () => {
 	const app = setup({ token: 'invalid' });
 	await flush();
 	assertIdle(app);
-	assert.match(app.controller.state.error, /共有リンクが正しくありません/);
+	assert.match(app.controller.error, /共有リンクが正しくありません/);
+});
+
+test('photo removal keeps files and metadata aligned without affecting another controller', async () => {
+	const app = setup();
+	const other = createDropController();
+	await app.controller.select([new File(['photo'], 'photo.jpg')]);
+	app.controller.removePhoto(0);
+	assert.equal(app.controller.selected.length, 0);
+	assert.equal(app.controller.metadata.length, 0);
+	assert.equal(other.connection, 'idle');
+	assert.equal(other.metadata.length, 0);
+});
+
+test('photos cannot be removed while a link is being created', async () => {
+	const app = setup({ pendingSession: true });
+	await app.controller.select([new File(['photo'], 'photo.jpg')]);
+	const pending = app.controller.createLink();
+	app.controller.removePhoto(0);
+	assert.equal(app.controller.selected.length, 1);
+	assert.equal(app.controller.metadata.length, 1);
+	app.resolveSession();
+	await pending;
+});
+
+test('unmount removes listeners and ignores queued socket messages', async () => {
+	const app = setup();
+	await connectOnce(app);
+	app.sockets[0].emit({ type: 'ready', device: app.session });
+	cleanups.pop()!();
+	await flush();
+	assert.equal(app.events.size, 0);
+	assert.equal(app.sockets[0].messages.length, 0);
+	assertStopped(app);
 });

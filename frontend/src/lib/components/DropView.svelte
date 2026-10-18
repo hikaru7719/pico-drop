@@ -44,7 +44,9 @@
 		transferSection?: HTMLElement | undefined;
 		receivedSection?: HTMLElement | undefined;
 		connect?: () => void;
-		select?: (event: Event) => void;
+		select?: (files: File[]) => void;
+		removePhoto?: (index: number) => void;
+		previewFailed?: (index: number) => void;
 		action?: (type: 'accept' | 'reject' | 'cancel') => void;
 		save?: () => void;
 		discard?: () => void;
@@ -60,26 +62,28 @@
 		revokeLink = () => {},
 		shareInvitation = () => {},
 		copyInvitation = () => {},
-		flowStarted = $bindable(false),
-		session = $bindable(undefined),
-		connection = $bindable('idle'),
-		selected = $bindable([]),
-		metadata = $bindable([]),
-		selecting = $bindable(false),
-		request = $bindable(undefined),
-		phase = $bindable('waiting'),
-		bytes = $bindable(0),
-		received = $bindable([]),
-		completed = $bindable(false),
-		notice = $bindable(''),
-		error = $bindable(''),
-		relay = $bindable(undefined),
-		sharing = $bindable(false),
+		flowStarted = false,
+		session = undefined,
+		connection = 'idle',
+		selected = [],
+		metadata = [],
+		selecting = false,
+		request = undefined,
+		phase = 'waiting',
+		bytes = 0,
+		received = [],
+		completed = false,
+		notice = '',
+		error = '',
+		relay = undefined,
+		sharing = false,
 		input = $bindable(undefined),
 		transferSection = $bindable(undefined),
 		receivedSection = $bindable(undefined),
 		connect = () => {},
 		select = () => {},
+		removePhoto = () => {},
+		previewFailed = () => {},
 		action = () => {},
 		save = () => {},
 		photosExpireAt,
@@ -88,8 +92,10 @@
 		checkPhotoExpiry = () => true,
 		discard = () => {}
 	}: Props = $props();
+	let started = $state(false);
 	const inFlow = $derived(
-		flowStarted ||
+		started ||
+			flowStarted ||
 			!!shareLink ||
 			!!incomingToken ||
 			!!request ||
@@ -98,7 +104,7 @@
 	);
 	$effect(() => {
 		if (inFlow) {
-			flowStarted = true;
+			started = true;
 		}
 	});
 	const headline = '目の前の人に、写真を。';
@@ -360,7 +366,8 @@
 								accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
 								multiple
 								disabled={!!request || selecting || creatingLink}
-								onchange={select}
+								onchange={(event) =>
+									select(Array.from(event.currentTarget.files ?? []))}
 							/></label
 						>
 						{#if selected.length}
@@ -377,15 +384,7 @@
 											aria-label={`${file.name}を選択から外す`}
 											title="この写真を選択から外す"
 											disabled={!!request || selecting || creatingLink}
-											onclick={() => {
-												selected = selected.filter(
-													(_, fileIndex) => fileIndex !== index
-												);
-												metadata = metadata.filter(
-													(_, fileIndex) => fileIndex !== index
-												);
-												if (input) input.value = '';
-											}}
+											onclick={() => removePhoto(index)}
 											><svg
 												viewBox="0 0 20 20"
 												fill="none"
@@ -409,7 +408,7 @@
 								creatingLink ||
 								connection === 'connecting'}
 							onclick={() => {
-								flowStarted = true;
+								started = true;
 								createLink();
 							}}
 							>{creatingLink || connection === 'connecting'
@@ -493,9 +492,7 @@
 						{#if item.preview}<img
 								src={item.previewUrl ?? item.url}
 								alt={item.file.name}
-								onerror={() => {
-									item.preview = false;
-								}}
+								onerror={() => previewFailed(index)}
 							/>{:else}<div class="no-preview">
 								プレビューは表示されていません<br /><small
 									>元の写真は保存できます</small
