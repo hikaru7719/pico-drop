@@ -5,10 +5,10 @@ config_roots = ["frontend", "backend", "docs"]
 
 [tools]
 node = "24.20.0"
-pnpm = "10.34.5"
-"npm:wrangler" = "4.138.0"
-"npm:oxfmt" = "0.70.0"
-"npm:oxlint" = "1.85.0"
+pnpm = "10.34.7"
+"npm:wrangler" = "4.151.1"
+"npm:oxfmt" = "0.73.0"
+"npm:oxlint" = "1.88.0"
 
 [settings]
 npm.package_manager = "npm"
@@ -48,6 +48,7 @@ run = [
 ]
 
 [tasks.lint]
+depends = ["//frontend:sync", "//:bench:sync"]
 description = "ソースとテストを型情報付きoxlintで検査する"
 run = "oxlint --type-aware --deny-warnings frontend backend shared docs benchmarks vitest.config.ts vitest.e2e.config.ts"
 
@@ -89,6 +90,10 @@ run = "pnpm exec vitest run --config vitest.e2e.config.ts"
 
 [tasks."test:shared"]
 run = "pnpm exec vitest run --project shared"
+
+[tasks."bench:sync"]
+description = "比較用SvelteKitアプリの設定と型を同期する"
+run = "pnpm --filter @pico-drop/bench-sveltekit exec svelte-kit sync"
 
 [tasks."bench:build"]
 description = "React Router / SvelteKitの比較用SSRアプリをビルドする"

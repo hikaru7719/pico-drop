@@ -1,6 +1,6 @@
 # React Router / SvelteKit 性能比較
 
-React Router 8.4.0（Framework Mode / SSR）を比較用ワークスペースに導入し、既存frontendと同じSvelteKit 2.70.3 / Svelte 5.57.1と比較します。既存アプリの移行ではありません。
+React Router 8.4.0（Framework Mode / SSR）を比較用ワークスペースに導入し、既存frontendと同じSvelteKit 3.1.0 / Svelte 5.57.2と比較します。既存アプリの移行ではありません。
 
 両方に同一のCSS、10枚の写真メタデータ一覧、選択ボタン、進捗更新、説明ページへのクライアント遷移を実装しています。SSRを揃えるためNode.jsの本番サーバーを使用します。SvelteKitはadapter-node、React Routerはreact-router-serveです。
 

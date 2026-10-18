@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { locating = false } = $props<{ locating?: boolean }>();
+	let { locating = false }: { locating?: boolean } = $props();
 </script>
 
 <div class="discovery">

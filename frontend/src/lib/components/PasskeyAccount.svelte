@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { authApi as api } from '$lib/auth';
+	import { authApi as api } from '#lib/auth.ts';
 	import { onMount } from 'svelte';
 	import {
 		startRegistration,

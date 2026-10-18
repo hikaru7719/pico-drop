@@ -2,14 +2,14 @@
 	import '@fontsource-variable/noto-sans-jp';
 	import type { Snippet } from 'svelte';
 	import type { ConversionMode } from '../../../../shared/photos.ts';
-	import type { ReceivedPhoto } from '$lib/photos/received';
+	import type { ReceivedPhoto } from '#lib/photos/received.ts';
 	import TransferProgress from './TransferProgress.svelte';
 	import ShareQr from './ShareQr.svelte';
 	import GroupDistribution from './GroupDistribution.svelte';
 	import PhotoPost from './PhotoPost.svelte';
 	import PhotoSelection from './PhotoSelection.svelte';
 	import ReceivedPhotoCard from './ReceivedPhotoCard.svelte';
-	import { formatBytes } from '$lib/photos';
+	import { formatBytes } from '#lib/photos/index.ts';
 	import type {
 		GroupParticipant,
 		PhotoMeta,

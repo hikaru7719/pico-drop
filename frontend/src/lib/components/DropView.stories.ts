@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/sveltekit';
 import { fn } from 'storybook/test';
 import DropView from './DropView.svelte';
-import brandIcon from '$lib/assets/pico-drop-icon.png?inline';
+import brandIcon from '#lib/assets/pico-drop-icon.png?inline';
 
 const me = {
 	id: 'me',

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import DropView from '$lib/components/DropView.svelte';
-	import PasskeyAccount from '$lib/components/PasskeyAccount.svelte';
-	import { createDropController } from '$lib/drop/controller.svelte';
+	import DropView from '#lib/components/DropView.svelte';
+	import PasskeyAccount from '#lib/components/PasskeyAccount.svelte';
+	import { createDropController } from '#lib/drop/controller.svelte.ts';
 
 	let senderAuthenticated = $state(false);
 	let input = $state<HTMLInputElement>();

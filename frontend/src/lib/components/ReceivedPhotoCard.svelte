@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { isHeic, type ConversionMode } from '../../../../shared/photos.ts';
-	import type { ReceivedPhoto } from '$lib/photos/received';
-	import { formatBytes } from '$lib/photos';
+	import type { ReceivedPhoto } from '#lib/photos/received.ts';
+	import { formatBytes } from '#lib/photos/index.ts';
 	let {
 		photo,
 		previewFailed,

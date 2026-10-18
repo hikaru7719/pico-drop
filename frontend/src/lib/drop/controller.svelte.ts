@@ -2,7 +2,7 @@ import {
 	ReceivedPhotos,
 	releasePhoto,
 	type ReceivedPhoto
-} from '$lib/photos/received';
+} from '#lib/photos/received.ts';
 import type { PhotoAccess, ConversionMode } from '../../../../shared/photos.ts';
 import { tick } from 'svelte';
 import {
@@ -12,18 +12,18 @@ import {
 	type ServerMessage,
 	type Session
 } from '../../../../shared/protocol.ts';
-import { describePhotos, sharePhotos } from '$lib/photos';
+import { describePhotos, sharePhotos } from '#lib/photos/index.ts';
 import {
 	createSession,
 	Signaling,
 	type SignalingConnection
-} from '$lib/webrtc/signaling';
-import type { TransferPeer, TransferReceiver } from '$lib/webrtc/ports';
+} from '#lib/webrtc/signaling.ts';
+import type { TransferPeer, TransferReceiver } from '#lib/webrtc/ports.ts';
 import {
 	createTransferConnection,
 	type TransferFactory,
 	type IceConfig
-} from '$lib/webrtc/connection';
+} from '#lib/webrtc/connection.ts';
 
 type ViewCallbacks = {
 	clearSelection?: () => void;

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import PhotoThumbnail from './PhotoThumbnail.svelte';
-	import { formatBytes } from '$lib/photos';
+	import { formatBytes } from '#lib/photos/index.ts';
 	let {
 		files,
 		editable = false,
