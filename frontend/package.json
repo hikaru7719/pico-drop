@@ -8,6 +8,7 @@
 		"build-storybook": "storybook build"
 	},
 	"dependencies": {
+		"@simplewebauthn/browser": "14.0.0",
 		"qrcode-generator": "2.0.4"
 	},
 	"devDependencies": {

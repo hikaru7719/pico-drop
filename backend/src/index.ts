@@ -1,3 +1,4 @@
+import { PasskeyAuth, type AuthEnv } from './auth.ts';
 import {
 	createPhotoAccess,
 	consumePhoto,
@@ -17,9 +18,11 @@ import {
 	type TransferState
 } from '../../shared/protocol.ts';
 
-type Bindings = Env & { TURN_KEY_ID?: string; TURN_KEY_API_TOKEN?: string };
+type Bindings = Env &
+	AuthEnv & { TURN_KEY_ID?: string; TURN_KEY_API_TOKEN?: string };
 type Attachment = {
 	connectedAt: number;
+	authKey?: string;
 	session?: Omit<Session, 'token'>;
 	linkKey?: string;
 	transfer?: string;
@@ -64,8 +67,12 @@ function newLink(owner: string, files: PhotoMeta[]): ShareLink {
 	return { owner, files, expiresAt: Date.now() + LIMITS.linkMs };
 }
 
-type StoredSession = Omit<Session, 'token'> & { used?: boolean };
+type StoredSession = Omit<Session, 'token'> & {
+	used?: boolean;
+	authKey?: string;
+};
 type Rate = { count: number; expiresAt: number };
+type Expiring = { expiresAt?: number };
 type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
 type TransferMessage = Extract<ClientMessage, { id: string }>;
 const SESSION_LIMIT = '接続回数が多すぎます。1分後に再試行してください。';
@@ -90,7 +97,8 @@ function requestError(request: Request, url: URL) {
 	if (request.headers.get('Origin') !== url.origin) {
 		return json({ error: 'Origin not allowed' }, 403);
 	}
-	return API_PATHS.includes(url.pathname)
+	return API_PATHS.includes(url.pathname) ||
+		url.pathname.startsWith('/api/auth/')
 		? null
 		: json({ error: 'Not found' }, 404);
 }
@@ -183,8 +191,17 @@ export class NearbyHub extends DurableObject<Bindings> {
 		if (request.method !== 'POST') {
 			return json({ error: 'Method not allowed' }, 405);
 		}
+		if (path.startsWith('/api/auth/')) {
+			return this.ctx.blockConcurrencyWhile(() => this.authRequest(request));
+		}
 		return this.postRoute(request, path);
 	}
+	async authRequest(request: Request) {
+		const response = await this.auth().route(request);
+		await this.schedule();
+		return response;
+	}
+
 	async postRoute(request: Request, path: string) {
 		if (path === '/api/session') {
 			return this.ctx.blockConcurrencyWhile(() => this.createSession(request));
@@ -231,12 +248,33 @@ export class NearbyHub extends DurableObject<Bindings> {
 		if (!(await this.checkSessionRate(request))) {
 			return json({ error: SESSION_LIMIT }, 429);
 		}
-		const session = newSession();
-		const { token, ...stored } = session;
-		await this.ctx.storage.put('session:' + (await hash(token)), stored);
+		return this.storeSession(request, newSession());
+	}
+
+	async storeSession(request: Request, session: Session) {
+		const stored = await this.sessionIdentity(request, session);
+		await this.ctx.storage.put(
+			'session:' + (await hash(session.token)),
+			stored
+		);
 		await this.schedule();
 		return json(session, 201);
 	}
+
+	auth() {
+		return new PasskeyAuth(this.ctx.storage, this.env);
+	}
+
+	async sessionIdentity(request: Request, session: Session) {
+		const authKey = await this.auth().loginKey(request);
+		const account = await this.auth().identity(authKey);
+		if (account) {
+			session.name = account.name;
+		}
+		const { token: _token, ...stored } = session;
+		return { ...stored, authKey: account ? authKey : undefined };
+	}
+
 	async iceSocket(request: Request) {
 		const token =
 			request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
@@ -310,10 +348,13 @@ export class NearbyHub extends DurableObject<Bindings> {
 			);
 	}
 	async schedule() {
-		if ((await this.ctx.storage.getAlarm()) === null) {
-			await this.ctx.storage.setAlarm(Date.now() + 15_000);
+		const alarm = await this.ctx.storage.getAlarm();
+		const next = Date.now() + 15_000;
+		if (alarm === null || alarm > next) {
+			await this.ctx.storage.setAlarm(next);
 		}
 	}
+
 	clearTransfer(ws: WebSocket, id: string) {
 		const a = this.attachment(ws);
 		if (a.transfer === id) {
@@ -442,6 +483,7 @@ export class NearbyHub extends DurableObject<Bindings> {
 		const { key, session } = stored;
 		await this.ctx.storage.put(key, { ...session, used: true });
 		a.session = { ...device(session), expiresAt: session.expiresAt };
+		a.authKey = session.authKey;
 		ws.serializeAttachment(a);
 		send(ws, { type: 'ready', device: device(session) });
 	}
@@ -473,9 +515,14 @@ export class NearbyHub extends DurableObject<Bindings> {
 	}
 
 	async createLink(ws: WebSocket, a: Attachment, files: PhotoMeta[]) {
+		await this.auth().allowSend(a.authKey ?? '');
 		this.checkRequestRate(ws, a);
 		this.checkLinkParticipant(a);
 		await this.revokeLink(ws, a);
+		return this.issueLink(ws, a, files);
+	}
+
+	async issueLink(ws: WebSocket, a: Attachment, files: PhotoMeta[]) {
 		const token = randomToken();
 		const link = newLink(a.session!.id, files);
 		a.linkKey = 'link:' + (await hash(token));
@@ -640,13 +687,20 @@ export class NearbyHub extends DurableObject<Bindings> {
 		}
 	}
 	async reschedule(now: number) {
-		if (
-			this.ctx.getWebSockets().length ||
-			(await this.ctx.storage.list({ limit: 1 })).size
-		) {
-			await this.ctx.storage.setAlarm(now + 15_000);
+		const next = await this.nextAlarm(now);
+		if (Number.isFinite(next)) {
+			await this.ctx.storage.setAlarm(next);
 		}
 	}
+
+	async nextAlarm(now: number) {
+		if (this.ctx.getWebSockets().length) {
+			return now + 15_000;
+		}
+		const entries = await this.ctx.storage.list<Expiring>();
+		return Math.max(now + 15_000, firstExpiry(entries.values()));
+	}
+
 	async expire() {
 		const now = Date.now();
 		for (const ws of this.ctx.getWebSockets()) {
@@ -691,4 +745,14 @@ function currentRate(rate: Rate | undefined): Rate {
 	return rate && rate.expiresAt > Date.now()
 		? rate
 		: { count: 0, expiresAt: Date.now() + 60_000 };
+}
+
+function firstExpiry(entries: Iterable<Expiring>) {
+	let next = Infinity;
+	for (const entry of entries) {
+		if (typeof entry.expiresAt === 'number') {
+			next = Math.min(next, entry.expiresAt);
+		}
+	}
+	return next;
 }

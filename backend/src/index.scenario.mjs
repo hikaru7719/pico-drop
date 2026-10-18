@@ -1,3 +1,8 @@
+import {
+	registerPasskey,
+	installAuthPost,
+	verifyPasskeySecurity
+} from '../../shared/passkey-fixture.mjs';
 import assert from 'node:assert/strict';
 const { chromium } = await import(
 	process.env.PLAYWRIGHT_MODULE || 'playwright'
@@ -13,6 +18,13 @@ try {
 	await page.goto(
 		(process.env.TEST_URL || 'http://localhost:5173') + '/api/health'
 	);
+	await installAuthPost(page);
+	await registerPasskey(page);
+	assert.deepEqual(await verifyPasskeySecurity(page), {
+		name: 'Test Sender',
+		replay: 400,
+		forged: 400
+	});
 	await page.addScriptTag({
 		path: new URL('./index.browser-fixture.js', import.meta.url).pathname
 	});
@@ -33,7 +45,7 @@ try {
 	);
 	assert.equal(crossOrigin.status(), 403);
 	console.log(
-		'PASS: Origin checks, token validation/replay, single-use link rendezvous, receiver-only approval/completion, outsider rejection, direct start after receiver approval, TURN authorization, stale transfer rejection'
+		'PASS: passkey registration/login, replay/forged signature rejection, Origin checks, token validation/replay, single-use link rendezvous, receiver-only approval/completion, outsider rejection, direct start after receiver approval, TURN authorization, stale transfer rejection'
 	);
 } finally {
 	await browser.close();

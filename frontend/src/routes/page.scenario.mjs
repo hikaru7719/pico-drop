@@ -1,3 +1,4 @@
+import { virtualPasskey } from '../../../shared/passkey-fixture.mjs';
 // Run against `mise run dev` without location permission in either browser.
 import assert from 'node:assert/strict';
 import jsQR from 'jsqr';
@@ -202,7 +203,7 @@ function photoFiles(photo) {
 async function scenario() {
 	const a = await device(),
 		b = await device();
-	const photo = await selectPhotos(a);
+	const photo = await prepareSender(a);
 	await revoked(a, b);
 	await rejected(a, b);
 	await reuse(await receive(a, b));
@@ -217,11 +218,37 @@ async function finish(a, b) {
 try {
 	await scenario();
 	console.log(
-		'PASS: short-lived links, revoke, reject, single use, no RTC before approval, multi-photo RTC, SHA-256 match, mobile layout, save fallback, discard, disconnect without location permission'
+		'PASS: passkey registration/logout/login, anonymous send disabled, short-lived links, revoke, reject, single use, no RTC before approval, multi-photo RTC, SHA-256 match, mobile layout, save fallback, discard, disconnect without location permission'
 	);
 } finally {
 	for (const context of contexts) {
 		await context.close();
 	}
 	await browser.close();
+}
+
+async function verifyPasskeyLogin(page) {
+	await virtualPasskey(page);
+	await page.getByLabel('初めての方は表示名を入力').fill('Test Sender');
+	await clickButton(page, 'パスキーを作成してはじめる');
+	await loggedIn(page);
+	await clickButton(page, 'ログアウト');
+	await clickButton(page, 'パスキーでログイン');
+	await loggedIn(page);
+}
+
+async function loggedIn(page) {
+	await page
+		.getByRole('status')
+		.filter({ hasText: 'Test Sender としてログイン中' })
+		.waitFor();
+}
+
+async function prepareSender(page) {
+	const photo = await selectPhotos(page);
+	const send = page.getByRole('button', { name: '写真を渡す', exact: true });
+	assert.equal(await send.isDisabled(), true);
+	await verifyPasskeyLogin(page);
+	await page.screenshot({ path: '/tmp/pico-drop-auth.png', fullPage: true });
+	return photo;
 }

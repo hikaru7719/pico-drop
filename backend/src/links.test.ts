@@ -2,6 +2,7 @@ import { test, expect, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { URL } from 'node:url';
 import { stripTypeScriptTypes } from 'node:module';
+import { PasskeyAuth } from './auth.ts';
 import * as protocol from '../../shared/protocol.ts';
 
 const source = (await readFile(new URL('./index.ts', import.meta.url), 'utf8'))
@@ -10,7 +11,7 @@ const source = (await readFile(new URL('./index.ts', import.meta.url), 'utf8'))
 const factory = stripTypeScriptTypes(
 	`
 export function createHub(deps) {
-const { DurableObject, LIMITS, parseClient, authorizeTransfer, WebSocket } = deps;
+const { DurableObject, LIMITS, parseClient, authorizeTransfer, WebSocket, PasskeyAuth } = deps;
 ${source.replace('export class NearbyHub', 'class NearbyHub')}
 return NearbyHub;
 }`,
@@ -27,11 +28,8 @@ class Socket {
 	constructor(id: string) {
 		this.data = {
 			connectedAt: Date.now(),
-			session: {
-				id,
-				name: id,
-				expiresAt: Date.now() + protocol.LIMITS.sessionMs
-			}
+			authKey: id === 'sender' ? 'auth:login:test' : undefined,
+			session: testSession(id)
 		};
 	}
 	deserializeAttachment() {
@@ -58,10 +56,20 @@ class Fixture {
 	constructor() {
 		const Hub = createHub({
 			...protocol,
+			PasskeyAuth,
 			WebSocket: { OPEN: 1 },
 			DurableObject: this.base()
 		});
+		this.seedIdentity();
 		this.hub = new Hub(this.context());
+	}
+
+	seedIdentity() {
+		this.entries.set('auth:login:test', {
+			account: 'sender',
+			expiresAt: Date.now() + 60_000
+		});
+		this.entries.set('auth:account:sender', { id: 'sender', name: 'Sender' });
 	}
 	context() {
 		return {
@@ -224,3 +232,36 @@ async function checkTransferDeadline(app: Fixture) {
 	await app.hub.expireEntries(Date.now());
 	expect(app.entries.has('transfer:' + id)).toBe(true);
 }
+
+test('anonymous receivers cannot create a link', async () => {
+	const app = new Fixture();
+	await app.message(1, { type: 'create-link', files });
+	expect(app.sockets[1].last('error').message).toContain('ログイン');
+	expect(app.sockets[1].last('link-created')).toBeUndefined();
+});
+
+test('revoking the login blocks an already authenticated signaling socket', async () => {
+	const app = new Fixture();
+	app.entries.delete('auth:login:test');
+	await app.message(0, { type: 'create-link', files });
+	expect(app.sockets[0].last('error').message).toContain('ログイン');
+});
+
+test('disabled accounts cannot send', async () => {
+	const app = new Fixture();
+	app.entries.get('auth:account:sender').disabled = true;
+	await app.message(0, { type: 'create-link', files });
+	expect(app.sockets[0].last('error').message).toContain('ログイン');
+});
+
+function testSession(id: string) {
+	return { id, name: id, expiresAt: Date.now() + protocol.LIMITS.sessionMs };
+}
+
+test('persistent accounts survive cleanup without keeping an idle alarm active', async () => {
+	const app = new Fixture();
+	app.sockets = [];
+	await app.hub.expireEntries(Date.now() + 60_001);
+	expect(app.entries.has('auth:account:sender')).toBe(true);
+	expect(await app.hub.nextAlarm(Date.now())).toBe(Infinity);
+});

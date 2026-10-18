@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { isHeic, type ConversionMode } from '../../../../shared/photos.ts';
 	import type { ReceivedPhoto } from '$lib/photos/received';
 	import TransferProgress from './TransferProgress.svelte';
@@ -10,6 +11,8 @@
 		Session
 	} from '../../../../shared/protocol';
 	type Props = {
+		accountControls?: Snippet;
+		senderAuthenticated?: boolean;
 		incomingToken?: string;
 		shareLink?: string;
 		linkExpiresAt?: number;
@@ -47,6 +50,8 @@
 		discard?: () => void;
 	};
 	let {
+		accountControls,
+		senderAuthenticated = true,
 		incomingToken = '',
 		shareLink = '',
 		linkExpiresAt,
@@ -142,7 +147,7 @@
 	<title>Pico Drop — リンクで写真を共有</title>
 	<meta
 		name="description"
-		content="リンクひとつで写真を共有。アプリのインストールもログインも不要です。"
+		content="リンクひとつで写真を共有。受け取る人のログインは不要です。"
 	/>
 </svelte:head>
 
@@ -200,7 +205,7 @@
 							>{/each}
 					{/key}
 				</h1>
-				<p>写真を選んで、QRで渡す。<br />ログインは不要です。</p>
+				<p>写真を選んで、QRで渡す。<br />受け取りはログイン不要です。</p>
 			</section>
 		</div>
 	</div>
@@ -277,6 +282,7 @@
 					class="card photos"
 					aria-labelledby="photos-heading"
 				>
+					{@render accountControls?.()}
 					<h2 id="photos-heading">写真を選んで共有する</h2>
 					<label
 						class:disabled={!!request || selecting || creatingLink}
@@ -359,7 +365,8 @@
 					</p>
 					<button
 						class="primary send-button"
-						disabled={!metadata.length ||
+						disabled={!senderAuthenticated ||
+							!metadata.length ||
 							selecting ||
 							creatingLink ||
 							connection === 'connecting'}
@@ -372,7 +379,7 @@
 							: '写真を渡す'}</button
 					>
 					<p class="hint">
-						QRは10分間・1人だけ有効です。ログインや位置情報の許可は不要です。
+						QRは10分間・1人だけ有効です。受け取る人のログインや位置情報の許可は不要です。
 					</p>
 				</section>
 			{/if}

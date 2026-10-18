@@ -103,7 +103,7 @@
 							<small>STATE / DURABLE OBJECT</small>
 							<h3>NearbyHub</h3>
 							<p>
-								匿名セッション · 短命の共有リンク · Accept / Reject<br />WebSocket
+								送信者のパスキー認証 · 短命の共有リンク · Accept / Reject<br />WebSocket
 								signaling · 転送状態 · TURN資格情報の発行
 							</p>
 							<span>MVPは単一Hub（idFromName('mvp')）</span>
@@ -124,10 +124,12 @@
 				</div>
 				<ol class="steps">
 					<li>
-						<h3>匿名セッションを作成</h3>
+						<h3>送信者はパスキーでログイン</h3>
 						<p>
 							<code>POST /api/session</code>
-							でID・表示名・秘密トークンを取得。<code>/api/ws</code>
+							で端末セッションを取得。送信者は事前にパスキー認証が必要で、受信者は匿名のまま参加できます。<code
+								>/api/ws</code
+							>
 							に接続し、最初のメッセージで認証します。
 						</p>
 					</li>

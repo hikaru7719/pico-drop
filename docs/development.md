@@ -3,7 +3,7 @@
 ## 初期構成
 
 - `frontend/`: 公式Svelte CLIのminimalテンプレートを基にTypeScriptとCloudflare adapterを設定。SvelteKit設定は `vite.config.ts` に置く。
-- `backend/`: Workersの独立したエントリーポイント。匿名session API、短命の共有リンク、WebSocket signaling、TURN資格情報発行を提供。
+- `backend/`: Workersの独立したエントリーポイント。パスキー認証と端末session API、短命の共有リンク、WebSocket signaling、TURN資格情報発行を提供。
 - `docs/`: 設計・開発ドキュメント。
 - ルート: pnpmワークスペース、共通の整形設定、lockfile、miseのツール設定。
 
@@ -11,7 +11,7 @@ Node.js・pnpm・Wrangler・oxfmt・oxlintはmiseで管理する。開発・ビ�
 
 ## MVP実装
 
-匿名セッション、DO WebSocket Hibernation、短命の共有リンク、受信承諾、複数枚転送、保存UIを実装済み。通信の型・検証は `shared/protocol.ts`、ブラウザの通信は `frontend/src/lib/webrtc/` に分離しています。
+送信者のパスキー認証、受信者の匿名セッション、DO WebSocket Hibernation、短命の共有リンク、受信承諾、複数枚転送、保存UIを実装済み。通信の型・検証は `shared/protocol.ts`、ブラウザの通信は `frontend/src/lib/webrtc/` に分離しています。
 
 詳細な暫定値、実行方法と未検証事項は [MVP実装メモ](mvp.md) を参照してください。原本はDataChannelで転送します。共有リンクは256bitの秘密トークンをURLのfragmentに含め、DOにはSHA-256ハッシュをキーに所有者・写真メタデータ・期限を保存します。合言葉・位置情報は使用しません。
 

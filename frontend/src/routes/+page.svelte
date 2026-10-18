@@ -7,6 +7,7 @@
 	import type { PhotoAccess, ConversionMode } from '../../../shared/photos.ts';
 	import { onMount, tick } from 'svelte';
 	import DropView from '$lib/components/DropView.svelte';
+	import PasskeyAccount from '$lib/components/PasskeyAccount.svelte';
 	import {
 		LIMITS,
 		type PhotoMeta,
@@ -20,6 +21,7 @@
 
 	type RequestInfo = Extract<ServerMessage, { type: 'requested' }>;
 	let flowStarted = $state(false);
+	let senderAuthenticated = $state(false);
 	let session = $state<Session>();
 	let connection = $state<'idle' | 'connecting' | 'online' | 'offline'>('idle');
 	let incomingToken = $state('');
@@ -885,7 +887,13 @@
 	});
 </script>
 
+{#snippet accountControls()}
+	<PasskeyAccount bind:authenticated={senderAuthenticated} />
+{/snippet}
+
 <DropView
+	{accountControls}
+	{senderAuthenticated}
 	bind:flowStarted
 	bind:session
 	bind:connection
