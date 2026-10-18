@@ -1,3 +1,4 @@
+import { api, createApi, readJson } from '../api';
 import type {
 	ClientMessage,
 	ServerMessage,
@@ -91,24 +92,17 @@ export async function createSession(
 	token = '',
 	request: typeof fetch = fetch
 ) {
-	const suffix = token ? '?room=' + token.slice(0, 16) : '';
-	const init = { method: 'POST', signal };
-	return readSession(await request('/api/session' + suffix, init));
-}
-
-async function readSession(response: Response): Promise<Session> {
-	const data = (await response.json()) as Session & { error?: string };
-	if (!response.ok) {
-		throw new Error(data.error ?? '接続に失敗しました。');
-	}
-	return data;
+	const query = token ? { room: token.slice(0, 16) } : {};
+	const client = createApi(request);
+	const response = await client.session.$post({ query }, { init: { signal } });
+	return readJson(response, '接続に失敗しました。');
 }
 
 function socketUrl(room?: string) {
-	const url = new URL('/api/ws', location.href);
-	if (room) {
-		url.searchParams.set('room', room);
-	}
+	const url = new URL(
+		api.ws.$path({ query: room ? { room } : {} }),
+		location.href
+	);
 	url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
 	return url;
 }

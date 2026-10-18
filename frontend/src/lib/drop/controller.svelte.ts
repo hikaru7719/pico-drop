@@ -1,3 +1,4 @@
+import { createApi } from '#lib/api.ts';
 import {
 	ReceivedPhotos,
 	releasePhoto,
@@ -783,10 +784,9 @@ export function createDropController(
 	}
 
 	async function fetchIce(signal: AbortSignal) {
-		const response = await dependencies.fetch('/api/ice', {
-			method: 'POST',
+		const response = await createApi(dependencies.fetch).ice.$post(undefined, {
 			headers: { Authorization: `Bearer ${session!.token}` },
-			signal
+			init: { signal }
 		});
 		const config = (await response.json()) as IceConfig;
 		return { response, config };
@@ -806,7 +806,7 @@ export function createDropController(
 		];
 	}
 
-	function checkIce(response: Response, config: IceConfig) {
+	function checkIce(response: { ok: boolean }, config: IceConfig) {
 		if (!response.ok) {
 			throw new Error(config.error ?? '接続の準備に失敗しました。');
 		}

@@ -561,7 +561,7 @@ test('completion retains photos, closes transport and shows received photos', as
 	expect(app.controller.received[0].file).toBe(firstPhoto);
 	expect(app.controller.completed).toBe(true);
 	expect(app.controller.photosExpireAt).toBeGreaterThan(Date.now());
-	expect(app.view.showReceived).toHaveBeenCalledOnce();
+	await vi.waitFor(() => expect(app.view.showReceived).toHaveBeenCalledOnce());
 	assertTransportClosed(app);
 });
 

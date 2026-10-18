@@ -5,6 +5,20 @@ import { authRoute, roomRoute } from './routing.ts';
 import { photoRequest } from './images.ts';
 import type { ImageRenderer, PhotoAuthority } from '../application/images.ts';
 import { serviceError } from './errors.ts';
+import {
+	rpc,
+	type AccountStatus,
+	type RegistrationOptions as RegOptions,
+	type AuthenticationOptions
+} from './rpc.ts';
+import type {
+	RegistrationResponseJSON,
+	AuthenticationResponseJSON
+} from '@simplewebauthn/server';
+import type { Session } from '../../../shared/protocol.ts';
+import type { ConversionMode } from '../../../shared/photos.ts';
+import type { IceConfiguration } from '../application/room-ports.ts';
+
 export interface HubDestination extends PhotoAuthority {
 	fetch(request: Request): Promise<Response>;
 }
@@ -27,20 +41,19 @@ export function createApp<Bindings extends object>(
 ) {
 	const app = new Hono<ApiEnv<Bindings>>();
 	configure(app, gateway);
-	routes(app);
-	app.notFound(() => authJson({ error: 'Not found' }, 404));
+	const api = routes(app);
+	fallbackRoutes(app);
 	app.onError(serviceError);
-	return app;
+	return api;
 }
 
 function configure<B extends object>(
 	app: Hono<ApiEnv<B>>,
 	gateway: (env: B) => ApiGateway
 ) {
-	app.all('/api/health', () =>
-		authJson({ status: 'ok', service: 'pico-drop-backend' })
-	);
+	app.all('/api/health', health);
 	app.use('*', sameOrigin);
+	app.all('/api/auth', () => authJson({ error: 'Not found' }, 404));
 	dependencies(app, gateway);
 }
 
@@ -54,15 +67,22 @@ function dependencies<B extends object>(
 	});
 }
 
+export type AppType = ReturnType<typeof createApp>;
+type RoomQuery = { query: { room?: string } };
+type PhotoQuery = { query: { id: string; mode: ConversionMode } };
+type RegisterInput = { json: { name: string } };
+type RegisterProof = { json: RegistrationResponseJSON };
+type LoginProof = { json: AuthenticationResponseJSON };
+
 function routes<B extends object>(app: Hono<ApiEnv<B>>) {
-	app.all('/api/auth', () => authJson({ error: 'Not found' }, 404));
-	app.post('/api/auth/*', (c) => routeAuth(c));
-	app.all('/api/auth/*', methodError);
-	for (const path of SESSION_PATHS) {
-		app.post(path, (c) => routeSession(c));
-		app.all(path, methodError);
-	}
-	app.all('/api/ws', (c) => routeRoom(c));
+	const session = rpc((c: ApiContext<B>) => routeSession(c));
+	const socket = rpc(async (c: ApiContext<B>) => routeRoom(c));
+	return authRoutes(app)
+		.post('/api/session', session<Session, RoomQuery, 201>())
+		.post('/api/ice', session<IceConfiguration>())
+		.post('/api/photos/convert', session<never, PhotoQuery>())
+		.post('/api/photos/discard', session<null, {}, 204>())
+		.get('/api/ws', socket<never, RoomQuery>());
 }
 
 const SESSION_PATHS = [
@@ -71,6 +91,27 @@ const SESSION_PATHS = [
 	'/api/photos/convert',
 	'/api/photos/discard'
 ];
+
+function fallbackRoutes<B extends object>(app: Hono<ApiEnv<B>>) {
+	app.notFound(() => authJson({ error: 'Not found' }, 404));
+	app.all('/api/ws', (c) => routeRoom(c));
+	app.post('/api/auth/*', (c) => routeAuth(c));
+	app.all('/api/auth/*', methodError);
+	for (const path of SESSION_PATHS) {
+		app.all(path, methodError);
+	}
+}
+
+function authRoutes<B extends object>(app: Hono<ApiEnv<B>>) {
+	const auth = rpc((c: ApiContext<B>) => routeAuth(c));
+	return app
+		.post('/api/auth/status', auth<AccountStatus>())
+		.post('/api/auth/logout', auth<AccountStatus>())
+		.post('/api/auth/register/options', auth<RegOptions, RegisterInput>())
+		.post('/api/auth/register/verify', auth<AccountStatus, RegisterProof>())
+		.post('/api/auth/login/options', auth<AuthenticationOptions>())
+		.post('/api/auth/login/verify', auth<AccountStatus, LoginProof>());
+}
 
 const methodError = () => authJson({ error: 'Method not allowed' }, 405);
 
@@ -141,3 +182,5 @@ async function sameOrigin(c: Context, next: Next) {
 		? next()
 		: authJson({ error: 'Origin not allowed' }, 403);
 }
+
+const health = () => authJson({ status: 'ok', service: 'pico-drop-backend' });

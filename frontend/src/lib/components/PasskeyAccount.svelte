@@ -18,19 +18,19 @@
 	let error = $state('');
 
 	async function register() {
-		const optionsJSON = await api('register/options', { name });
+		const optionsJSON = await api.registerOptions(name);
 		const response = await startRegistration({ optionsJSON });
-		account = (await api('register/verify', response)).account;
+		account = (await api.registerVerify(response)).account;
 	}
 
 	async function login() {
-		const optionsJSON = await api('login/options');
+		const optionsJSON = await api.loginOptions();
 		const response = await startAuthentication({ optionsJSON });
-		account = (await api('login/verify', response)).account;
+		account = (await api.loginVerify(response)).account;
 	}
 
 	async function logout() {
-		account = (await api('logout')).account;
+		account = (await api.logout()).account;
 	}
 
 	function begin() {
@@ -58,7 +58,7 @@
 	}
 
 	async function restore() {
-		account = (await api('status')).account;
+		account = (await api.status()).account;
 	}
 
 	onMount(() => {

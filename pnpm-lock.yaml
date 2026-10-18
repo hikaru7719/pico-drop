@@ -121,6 +121,9 @@ importers:
       '@simplewebauthn/browser':
         specifier: 14.0.0
         version: 14.0.0
+      hono:
+        specifier: 4.13.13
+        version: 4.13.13
       qrcode-generator:
         specifier: 2.0.4
         version: 2.0.4

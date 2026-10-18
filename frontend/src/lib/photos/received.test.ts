@@ -80,7 +80,7 @@ test('expiry clears originals and derivatives and revokes conversion access', as
 	assert.equal(fixture.expired, true);
 	assert.deepEqual(fixture.photos, []);
 	assert.deepEqual(fixture.revoked, ['blob:original', 'blob:derived']);
-	assert.ok(fixture.requests.at(-1)?.url.includes('discard'));
+	assertRevokeRequest(fixture);
 });
 test('resume after a suspended timer checks the absolute deadline', () => {
 	const fixture = new PhotosFixture();
@@ -110,6 +110,10 @@ test('discard aborts conversion and late responses cannot restore photos', async
 });
 
 function assertRequest(fixture: PhotosFixture, original: File) {
+	const { url, options } = fixture.requests[0];
+	assert.equal(url, '/api/photos/convert?id=photo&mode=jpeg');
+	assert.equal(options?.method, 'POST');
+	assertAuthorization(options);
 	assert.equal(fixture.requests[0].options?.body, original);
 	assert.equal(fixture.requests[0].options?.cache, 'no-store');
 }
@@ -131,3 +135,18 @@ afterEach(() => {
 	vi.restoreAllMocks();
 	vi.useRealTimers();
 });
+
+function assertRevokeRequest(fixture: PhotosFixture) {
+	const { url, options } = fixture.requests.at(-1)!;
+	assert.equal(url, '/api/photos/discard');
+	assert.equal(options?.method, 'POST');
+	assert.equal(options?.keepalive, true);
+	assertAuthorization(options);
+}
+
+function assertAuthorization(options?: RequestInit) {
+	assert.equal(
+		new Headers(options?.headers).get('Authorization'),
+		'Bearer secret'
+	);
+}

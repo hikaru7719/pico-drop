@@ -126,10 +126,10 @@ test.each(['', 'a'.repeat(64)])(
 		const signal = new AbortController().signal;
 		expect(await createSession(signal, token, request)).toEqual(session);
 		const suffix = token ? '?room=' + token.slice(0, 16) : '';
-		expect(request).toHaveBeenCalledExactlyOnceWith('/api/session' + suffix, {
-			method: 'POST',
-			signal
-		});
+		expect(request).toHaveBeenCalledExactlyOnceWith(
+			'/api/session' + suffix,
+			expect.objectContaining({ method: 'POST', signal })
+		);
 	}
 );
 test.each([{}, { error: 'denied' }])(

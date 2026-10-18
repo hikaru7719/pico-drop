@@ -1,3 +1,4 @@
+import { api } from '../api';
 import {
 	MAX_CONVERSION_BYTES,
 	PHOTO_LIFETIME_MS,
@@ -36,11 +37,12 @@ export function releasePhoto(photo: ReceivedPhoto) {
 }
 
 function revokeAccess(token: string) {
-	void fetch('/api/photos/discard', {
-		method: 'POST',
-		headers: authorization(token),
-		keepalive: true
-	}).catch(() => {});
+	void api.photos.discard
+		.$post(undefined, {
+			headers: authorization(token),
+			init: { keepalive: true }
+		})
+		.catch(() => {});
 }
 
 function conversionProblem(photo: ReceivedPhoto, access?: PhotoAccess) {
@@ -178,7 +180,6 @@ export class ReceivedPhotos {
 
 	private requestOptions(file: File): RequestInit {
 		return {
-			method: 'POST',
 			headers: authorization(this.access!.token),
 			body: file,
 			signal: this.abort.signal,
@@ -187,13 +188,14 @@ export class ReceivedPhotos {
 	}
 
 	private async fetchConversion(job: Conversion) {
-		const url = `/api/photos/convert?id=${encodeURIComponent(job.photo.id!)}&mode=${job.mode}`;
-		const response = await fetch(url, this.requestOptions(job.photo.file));
+		const response = await api.photos.convert.$post(
+			{ query: { id: job.photo.id!, mode: job.mode } },
+			{ init: this.requestOptions(job.photo.file) }
+		);
 		if (!response.ok) {
 			throw new Error(FAILED);
 		}
-		const blob = await response.blob();
-		this.keepResult(blob, job);
+		this.keepResult(await response.blob(), job);
 	}
 
 	private keepResult(blob: Blob, job: Conversion) {
