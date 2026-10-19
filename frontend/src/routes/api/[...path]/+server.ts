@@ -1,10 +1,14 @@
+import { env } from 'cloudflare:workers';
 import type { RequestHandler } from './$types';
 
-const proxy: RequestHandler = async ({ request, platform }) => {
-	if (!platform?.env.BACKEND) {
-		return new Response('Backend unavailable', { status: 503 });
+const proxy: RequestHandler = async ({ request }) => {
+	if (!env.BACKEND) {
+		return Response.json(
+			{ error: 'サーバーに接続できません。時間をおいてお試しください。' },
+			{ status: 503 }
+		);
 	}
-	return platform.env.BACKEND.fetch(request);
+	return env.BACKEND.fetch(request);
 };
 
 export const GET = proxy;

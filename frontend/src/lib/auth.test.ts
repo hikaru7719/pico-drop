@@ -71,6 +71,20 @@ test('RPC preserves network failures', async () => {
 	vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('offline'));
 	await expect(authApi.status()).rejects.toThrow('offline');
 });
+
+test.each([
+	'Backend unavailable',
+	'<html>Bad Gateway</html>',
+	'',
+	'null',
+	'{"error":42}'
+])('RPC falls back for an invalid error response: %s', async (body) => {
+	vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+		new Response(body, { status: 503 })
+	);
+	await expect(authApi.status()).rejects.toThrow('認証できませんでした。');
+});
+
 test('RPC infers auth input and account response from the backend', () => {
 	expectTypeOf<
 		InferRequestType<typeof api.auth.register.options.$post>
