@@ -97,12 +97,12 @@
 		>
 			<h3>初めての方は新規登録</h3>
 			<label
-				>初めての方は表示名を入力<input
+				>初めての方はユーザーIDを入力<input
 					bind:value={name}
 					required
 					maxlength="40"
-					autocomplete="nickname"
-					placeholder="ニックネーム"
+					autocomplete="username"
+					placeholder="ユーザーID"
 					disabled={pending}
 				/></label
 			>

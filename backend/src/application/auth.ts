@@ -63,10 +63,10 @@ function verification(origin: URL, ceremony: Ceremony) {
 	};
 }
 
-function displayName(body: unknown) {
+function registrationName(body: unknown) {
 	const name = (body as { name?: unknown })?.name;
 	if (typeof name !== 'string' || !name.trim() || name.trim().length > 40) {
-		throw new Error('表示名を1〜40文字で入力してください。');
+		throw new Error('ユーザーIDを1〜40文字で入力してください。');
 	}
 	return name.trim().replace(/[\p{Cc}\p{Cf}]/gu, '');
 }
@@ -387,7 +387,7 @@ function verified(value: boolean) {
 }
 
 async function newAccount(request: AuthInput) {
-	const name = displayName(await request.body());
+	const name = registrationName(await request.body());
 	if (!name) {
 		throw new Error('Name');
 	}

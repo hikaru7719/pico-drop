@@ -270,7 +270,7 @@ try {
 
 async function verifyPasskeyLogin(page) {
 	await virtualPasskey(page);
-	await page.getByLabel('初めての方は表示名を入力').fill('Test Sender');
+	await page.getByLabel('初めての方はユーザーIDを入力').fill('Test Sender');
 	await clickButton(page, 'パスキーを作成してはじめる');
 	await loggedIn(page);
 	await clickButton(page, 'ログアウト');

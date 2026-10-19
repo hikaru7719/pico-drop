@@ -366,7 +366,7 @@ test.each([
 	).toBe(400);
 	expect(challenges(app)).toHaveLength(0);
 });
-test('display names are trimmed and control characters removed', async () => {
+test('registration names are trimmed and control characters removed', async () => {
 	const app = new Fixture();
 	await app.auth.route(
 		app.request('register/options', { name: '  A\u0000B  ' })

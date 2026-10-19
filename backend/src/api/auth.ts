@@ -93,7 +93,7 @@ const CEREMONIES = [
 	'loginVerify'
 ] as const;
 const AUTH_ERROR =
-	'認証できませんでした。表示名やパスキーを確認して再試行してください。';
+	'認証できませんでした。ユーザーIDやパスキーを確認して再試行してください。';
 type AuthAction =
 	| 'status'
 	| 'logout'
