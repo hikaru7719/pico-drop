@@ -7,10 +7,7 @@ import {
 	type ClientMessage,
 	type GroupParticipant
 } from '../../../../shared/protocol.ts';
-import {
-	createDropController,
-	type DropDependencies
-} from './controller.svelte';
+import { createDropController, type DropDependencies } from './controller.svelte';
 import type { SignalingConnection } from '../webrtc/signaling';
 import type { TransferFactory, IceConfig } from '../webrtc/connection';
 import { PHOTO_LIFETIME_MS } from '../../../../shared/photos.ts';
@@ -67,16 +64,10 @@ class PageFixture {
 		return transfer;
 	};
 	dependencies = {
-		createSession: vi.fn<DropDependencies['createSession']>((signal) =>
-			this.createSession(signal)
-		),
-		createSignaling: vi.fn<DropDependencies['createSignaling']>((...args) =>
-			this.openSocket(...args)
-		),
+		createSession: vi.fn<DropDependencies['createSession']>((signal) => this.createSession(signal)),
+		createSignaling: vi.fn<DropDependencies['createSignaling']>((...args) => this.openSocket(...args)),
 		createTransfer: this.createTransfer,
-		describePhotos: vi
-			.fn<DropDependencies['describePhotos']>()
-			.mockResolvedValue(files),
+		describePhotos: vi.fn<DropDependencies['describePhotos']>().mockResolvedValue(files),
 		sharePhotos: vi.fn<DropDependencies['sharePhotos']>(),
 		fetch: vi.fn<DropDependencies['fetch']>()
 	} satisfies DropDependencies;
@@ -98,8 +89,7 @@ class PageFixture {
 			isSecureContext: true,
 			location: this.location(),
 			RTCPeerConnection: class {},
-			addEventListener: (name: string, callback: () => void) =>
-				this.events.set(name, callback),
+			addEventListener: (name: string, callback: () => void) => this.events.set(name, callback),
 			removeEventListener: (name: string) => this.events.delete(name)
 		};
 	}
@@ -292,9 +282,7 @@ test('adding photos validates the combined selection', async () => {
 	await app.controller.select([firstPhoto]);
 	await app.controller.addPhotos([nextPhoto]);
 	assert.deepEqual(app.controller.selected, [firstPhoto, nextPhoto]);
-	assert.deepEqual(app.dependencies.describePhotos.mock.lastCall, [
-		[firstPhoto, nextPhoto]
-	]);
+	assert.deepEqual(app.dependencies.describePhotos.mock.lastCall, [[firstPhoto, nextPhoto]]);
 });
 test('invalid additions preserve the existing photos and metadata', async () => {
 	const app = setup();
@@ -361,9 +349,7 @@ test('a consumed invitation cannot be joined again after rejection', async () =>
 });
 
 function rejectSelection(app: PageFixture) {
-	app.dependencies.describePhotos.mockRejectedValueOnce(
-		new Error('写真は10枚・合計50MBまで選べます。')
-	);
+	app.dependencies.describePhotos.mockRejectedValueOnce(new Error('写真は10枚・合計50MBまで選べます。'));
 }
 
 async function startGroup(app: PageFixture) {
@@ -384,12 +370,7 @@ async function groupRequest(app: PageFixture) {
 	});
 }
 
-for (const reason of [
-	'complete',
-	'failed',
-	'disconnected',
-	'cancelled'
-] as const) {
+for (const reason of ['complete', 'failed', 'disconnected', 'cancelled'] as const) {
 	test(`group sender remains connected after an individual ${reason}`, async () => {
 		const app = setup();
 		await startGroup(app);
@@ -493,9 +474,7 @@ class FakeTransfer {
 }
 
 function mockIce(app: PageFixture) {
-	app.dependencies.fetch.mockImplementation(async () =>
-		Response.json({ iceServers: [], relay: true })
-	);
+	app.dependencies.fetch.mockImplementation(async () => Response.json({ iceServers: [], relay: true }));
 }
 
 async function receiveRequest(app: PageFixture, group = false) {
@@ -571,17 +550,14 @@ function assertTransportClosed(app: PageFixture) {
 	expect(app.transfers[0].args[1].aborted).toBe(true);
 }
 
-test.each(['shared', 'cancelled', 'unsupported'] as const)(
-	'saving received photos reports %s',
-	async (result) => {
-		const app = await completedReceiver();
-		app.dependencies.sharePhotos.mockResolvedValue(result);
-		await app.controller.save();
-		expect(app.dependencies.sharePhotos).toHaveBeenCalledWith([firstPhoto]);
-		expect(app.controller.sharing).toBe(false);
-		expect(app.controller.notice).toContain(saveNotices[result]);
-	}
-);
+test.each(['shared', 'cancelled', 'unsupported'] as const)('saving received photos reports %s', async (result) => {
+	const app = await completedReceiver();
+	app.dependencies.sharePhotos.mockResolvedValue(result);
+	await app.controller.save();
+	expect(app.dependencies.sharePhotos).toHaveBeenCalledWith([firstPhoto]);
+	expect(app.controller.sharing).toBe(false);
+	expect(app.controller.notice).toContain(saveNotices[result]);
+});
 const saveNotices = {
 	shared: '写真アプリ',
 	cancelled: 'キャンセル',
@@ -647,18 +623,15 @@ test('failed photo previews fall back without affecting absent photos', async ()
 	app.controller.previewFailed(9);
 	expect(app.controller.received[0].preview).toBe(false);
 });
-test.each([undefined, 'ICE unavailable'])(
-	'ICE HTTP failures expose a useful error: %s',
-	async (error) => {
-		const app = setup();
-		await connectOnce(app);
-		await requestTransfer(app);
-		mockIceFailure(app, error);
-		await emit(app, { type: 'start', id: 'transfer' });
-		await vi.waitFor(() => expect(app.controller.connection).toBe('offline'));
-		expect(app.controller.error).toBe(error ?? '接続の準備に失敗しました。');
-	}
-);
+test.each([undefined, 'ICE unavailable'])('ICE HTTP failures expose a useful error: %s', async (error) => {
+	const app = setup();
+	await connectOnce(app);
+	await requestTransfer(app);
+	mockIceFailure(app, error);
+	await emit(app, { type: 'start', id: 'transfer' });
+	await vi.waitFor(() => expect(app.controller.connection).toBe('offline'));
+	expect(app.controller.error).toBe(error ?? '接続の準備に失敗しました。');
+});
 test('late ICE responses cannot recreate a cancelled transfer', async () => {
 	const app = setup();
 	await connectOnce(app);
@@ -695,19 +668,14 @@ async function assertCopyInvitation(app: PageFixture) {
 	expect(app.controller.notice).toContain('コピーしました');
 }
 
-test.each([new Error('failed'), new DOMException('cancelled', 'AbortError')])(
-	'invitation share handles %s',
-	async (error) => {
-		const app = setup();
-		vi.stubGlobal('navigator', { share: vi.fn().mockRejectedValue(error) });
-		await app.controller.shareInvitation();
-		expect(app.controller.error).toBe(
-			error.name === 'AbortError'
-				? ''
-				: '共有できませんでした。リンクをコピーして送ってください。'
-		);
-	}
-);
+test.each([new Error('failed'), new DOMException('cancelled', 'AbortError')])('invitation share handles %s', async (error) => {
+	const app = setup();
+	vi.stubGlobal('navigator', { share: vi.fn().mockRejectedValue(error) });
+	await app.controller.shareInvitation();
+	expect(app.controller.error).toBe(
+		error.name === 'AbortError' ? '' : '共有できませんでした。リンクをコピーして送ってください。'
+	);
+});
 test('clipboard rejection offers manual copy guidance', async () => {
 	const app = setup();
 	vi.stubGlobal('navigator', {
@@ -726,9 +694,7 @@ test('unsupported browsers fail before creating a session', async () => {
 });
 test('session failures reset the busy state', async () => {
 	const app = setup();
-	app.dependencies.createSession.mockRejectedValueOnce(
-		new Error('session unavailable')
-	);
+	app.dependencies.createSession.mockRejectedValueOnce(new Error('session unavailable'));
 	await app.controller.select([firstPhoto]);
 	await app.controller.createLink();
 	expect(app.controller.creatingLink).toBe(false);
@@ -762,10 +728,7 @@ test('group participants still waiting are declined when the link ends', async (
 async function emitParticipants(app: PageFixture) {
 	await emit(app, {
 		type: 'group-state',
-		participants: [
-			participant('one', 'waiting'),
-			participant('two', 'complete')
-		]
+		participants: [participant('one', 'waiting'), participant('two', 'complete')]
 	});
 }
 
@@ -825,9 +788,7 @@ function expectLastAction(app: PageFixture, type: string) {
 }
 
 function mockIceFailure(app: PageFixture, error?: string) {
-	app.dependencies.fetch.mockImplementation(async () =>
-		Response.json({ error }, { status: 503 })
-	);
+	app.dependencies.fetch.mockImplementation(async () => Response.json({ error }, { status: 503 }));
 }
 
 function iceResponse() {

@@ -32,36 +32,25 @@ test('health is available without Origin or gateway access', async () => {
 	expect(response.headers.get('Cache-Control')).toBe('no-store');
 	expect(gateway).not.toHaveBeenCalled();
 });
-test.each(['', 'https://other.example'])(
-	'rejects Origin %s before routing or rate limiting',
-	async (Origin) => {
-		const fixture = new Fixture();
-		expect(
-			(await fixture.request('/api/session', 'POST', { Origin })).status
-		).toBe(403);
-		expect(fixture.gateway.hub).not.toHaveBeenCalled();
-		expect(fixture.gateway.rate).not.toHaveBeenCalled();
-	}
-);
-test.each([
-	'/api/session',
-	'/api/ice',
-	'/api/photos/convert',
-	'/api/photos/discard',
-	'/api/auth/status'
-])('rejects unsupported methods on %s', async (path) => {
+test.each(['', 'https://other.example'])('rejects Origin %s before routing or rate limiting', async (Origin) => {
 	const fixture = new Fixture();
-	expect((await fixture.request(path, 'GET')).status).toBe(405);
-	expect(fixture.fetch).not.toHaveBeenCalled();
+	expect((await fixture.request('/api/session', 'POST', { Origin })).status).toBe(403);
+	expect(fixture.gateway.hub).not.toHaveBeenCalled();
+	expect(fixture.gateway.rate).not.toHaveBeenCalled();
 });
-test.each(['/missing', '/api/session/', '/api/photos/missing', '/api/auth'])(
-	'unknown path %s is not forwarded',
+test.each(['/api/session', '/api/ice', '/api/photos/convert', '/api/photos/discard', '/api/auth/status'])(
+	'rejects unsupported methods on %s',
 	async (path) => {
 		const fixture = new Fixture();
-		expect((await fixture.request(path)).status).toBe(404);
+		expect((await fixture.request(path, 'GET')).status).toBe(405);
 		expect(fixture.fetch).not.toHaveBeenCalled();
 	}
 );
+test.each(['/missing', '/api/session/', '/api/photos/missing', '/api/auth'])('unknown path %s is not forwarded', async (path) => {
+	const fixture = new Fixture();
+	expect((await fixture.request(path)).status).toBe(404);
+	expect(fixture.fetch).not.toHaveBeenCalled();
+});
 test('session routing keeps the room and uses the IP quota', async () => {
 	const fixture = new Fixture();
 	await fixture.request('/api/session?room=' + room, 'POST', {
@@ -74,9 +63,7 @@ test('session routing keeps the room and uses the IP quota', async () => {
 test('new sessions get a generated room', async () => {
 	const fixture = new Fixture();
 	await fixture.request('/api/session');
-	expect(fixture.gateway.hub).toHaveBeenCalledWith(
-		expect.stringMatching(/^room:[a-f0-9]{16}$/)
-	);
+	expect(fixture.gateway.hub).toHaveBeenCalledWith(expect.stringMatching(/^room:[a-f0-9]{16}$/));
 });
 test('session rate limit stops forwarding', async () => {
 	const fixture = new Fixture();
@@ -84,16 +71,14 @@ test('session rate limit stops forwarding', async () => {
 	expect((await fixture.request('/api/session')).status).toBe(429);
 	expect(fixture.fetch).not.toHaveBeenCalled();
 });
-test.each([
-	'/api/ws',
-	'/api/session?room=bad',
-	'/api/ice',
-	'/api/photos/convert'
-])('invalid room on %s never reaches a hub', async (path) => {
-	const fixture = new Fixture();
-	expect((await fixture.request(path)).status).toBe(400);
-	expect(fixture.gateway.hub).not.toHaveBeenCalled();
-});
+test.each(['/api/ws', '/api/session?room=bad', '/api/ice', '/api/photos/convert'])(
+	'invalid room on %s never reaches a hub',
+	async (path) => {
+		const fixture = new Fixture();
+		expect((await fixture.request(path)).status).toBe(400);
+		expect(fixture.gateway.hub).not.toHaveBeenCalled();
+	}
+);
 test('auth routing replaces untrusted routing headers and preserves cookies', async () => {
 	const fixture = new Fixture();
 	const Cookie = '__Host-pico_auth=v2.ab.' + 'a'.repeat(64);
@@ -102,15 +87,12 @@ test('auth routing replaces untrusted routing headers and preserves cookies', as
 	expect(forwardedHeader(fixture, 'X-Auth-Route')).toBe('auth:ab');
 	expect(forwardedHeader(fixture, 'Cookie')).toBe(Cookie);
 });
-test.each(['status', 'logout'])(
-	'auth %s bypasses the login attempt quota',
-	async (action) => {
-		const fixture = new Fixture();
-		await fixture.request('/api/auth/' + action);
-		expect(fixture.gateway.rate).not.toHaveBeenCalled();
-		expect(fixture.gateway.clearChallenge).not.toHaveBeenCalled();
-	}
-);
+test.each(['status', 'logout'])('auth %s bypasses the login attempt quota', async (action) => {
+	const fixture = new Fixture();
+	await fixture.request('/api/auth/' + action);
+	expect(fixture.gateway.rate).not.toHaveBeenCalled();
+	expect(fixture.gateway.clearChallenge).not.toHaveBeenCalled();
+});
 test('auth rate limits do not invalidate a previous ceremony', async () => {
 	const fixture = new Fixture();
 	vi.mocked(fixture.gateway.rate).mockResolvedValue(false);
@@ -172,9 +154,7 @@ function forwardedHeader(fixture: Fixture, name: string) {
 }
 
 function expectRandomAuth(fixture: Fixture) {
-	expect(fixture.gateway.hub).toHaveBeenCalledWith(
-		expect.stringMatching(/^auth:[a-f0-9]{2}$/)
-	);
+	expect(fixture.gateway.hub).toHaveBeenCalledWith(expect.stringMatching(/^auth:[a-f0-9]{2}$/));
 }
 
 function markUpgrade(fixture: Fixture) {

@@ -1,11 +1,5 @@
 import type { Account, Credential, Login, Ceremony } from '../domain/auth.ts';
-import {
-	randomSecret,
-	secretHash,
-	loginKey,
-	challengeKey,
-	sessionLoginKey
-} from '../domain/tokens.ts';
+import { randomSecret, secretHash, loginKey, challengeKey, sessionLoginKey } from '../domain/tokens.ts';
 import { ServiceError } from './errors.ts';
 import type {
 	generateRegistrationOptions,
@@ -72,24 +66,17 @@ function registrationName(body: unknown) {
 }
 
 const RATE_ERROR = '認証の試行が多すぎます。しばらく待ってください。';
-const SEND_ERROR =
-	'1日あたりの送信上限に達しました。時間をおいてお試しください。';
+const SEND_ERROR = '1日あたりの送信上限に達しました。時間をおいてお試しください。';
 
 const credentialKey = (id: string) => 'auth:credential:' + id;
 
 type Rate = { count: number; expiresAt: number };
 
 function currentRate(old: Rate | undefined, duration: number): Rate {
-	return old && old.expiresAt > Date.now()
-		? old
-		: { count: 0, expiresAt: Date.now() + duration };
+	return old && old.expiresAt > Date.now() ? old : { count: 0, expiresAt: Date.now() + duration };
 }
 
-function ceremony(
-	kind: Ceremony['kind'],
-	challenge: string,
-	account?: Account
-): Ceremony {
+function ceremony(kind: Ceremony['kind'], challenge: string, account?: Account): Ceremony {
 	return { kind, challenge, account, expiresAt: Date.now() + CHALLENGE_MS };
 }
 
@@ -100,11 +87,7 @@ function checkCeremony(value: Ceremony | undefined, kind: Ceremony['kind']) {
 	return value;
 }
 
-function cookieResult(
-	data: unknown,
-	kind: 'auth' | 'challenge',
-	token: string
-): AuthResult {
+function cookieResult(data: unknown, kind: 'auth' | 'challenge', token: string): AuthResult {
 	return { data, cookie: { kind, token } };
 }
 
@@ -128,10 +111,7 @@ export type AuthResult = {
 	clearChallenge?: boolean;
 };
 
-function checkAccount(
-	account: Account | undefined,
-	response: AuthenticationResponseJSON
-) {
+function checkAccount(account: Account | undefined, response: AuthenticationResponseJSON) {
 	if (!account || account.disabled || !validHandle(response, account.id)) {
 		throw new Error('Account');
 	}
@@ -167,9 +147,7 @@ export class AuthService {
 		if (!login || login.expiresAt <= Date.now()) {
 			return undefined;
 		}
-		const account = await this.storage.get<Account>(
-			'auth:account:' + login.account
-		);
+		const account = await this.storage.get<Account>('auth:account:' + login.account);
 		return account && !account.disabled ? account : undefined;
 	}
 
@@ -234,9 +212,7 @@ export class AuthService {
 
 	async takeCeremony(request: AuthInput, kind: Ceremony['kind']) {
 		const key = await challengeKey(request.challenge);
-		const value = this.network
-			? await this.network.take(key)
-			: await this.takeStoredCeremony(key);
+		const value = this.network ? await this.network.take(key) : await this.takeStoredCeremony(key);
 		return checkCeremony(value, kind);
 	}
 
@@ -250,9 +226,7 @@ export class AuthService {
 		const value = await this.takeCeremony(request, 'register');
 		const response = (await request.body()) as RegistrationResponseJSON;
 		const credential = await this.verification.signup(response, origin, value);
-		await (this.network
-			? this.network.register(value.account!, credential)
-			: this.storeAccount(value.account!, credential));
+		await (this.network ? this.network.register(value.account!, credential) : this.storeAccount(value.account!, credential));
 		return this.issueLogin(request, value.account!);
 	}
 
@@ -297,18 +271,12 @@ export class AuthService {
 		const result = await this.verification.assertion(response, origin, data);
 		const account = await this.checkedAccount(data.stored.account, response);
 		data.stored.credential.counter = result.authenticationInfo.newCounter;
-		await this.storage.put(
-			credentialKey(data.stored.credential.id),
-			data.stored
-		);
+		await this.storage.put(credentialKey(data.stored.credential.id), data.stored);
 		return account;
 	}
 
 	async checkedAccount(id: string, response: Auth) {
-		return checkAccount(
-			await this.storage.get<Account>('auth:account:' + id),
-			response
-		);
+		return checkAccount(await this.storage.get<Account>('auth:account:' + id), response);
 	}
 
 	async issueLogin(request: AuthInput, account: Account) {
@@ -347,10 +315,7 @@ export class AuthService {
 }
 
 function validHandle(response: AuthenticationResponseJSON, id: string) {
-	const encoded = btoa(id)
-		.replaceAll('+', '-')
-		.replaceAll('/', '_')
-		.replace(/=+$/, '');
+	const encoded = btoa(id).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
 	return response.response.userHandle === encoded;
 }
 

@@ -10,23 +10,16 @@ export interface PhotoStore {
 	delete(key: string): Promise<boolean>;
 }
 
-const hex = (bytes: Uint8Array) =>
-	Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+const hex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
 const validToken = (token: string) => /^[a-f0-9]{64}$/.test(token);
 
 export async function grantKey(token: string) {
 	const data = new TextEncoder().encode(token);
-	return (
-		'photo:' + hex(new Uint8Array(await crypto.subtle.digest('SHA-256', data)))
-	);
+	return 'photo:' + hex(new Uint8Array(await crypto.subtle.digest('SHA-256', data)));
 }
 
-export async function createPhotoAccess(
-	storage: PhotoStore,
-	files: PhotoMeta[],
-	room?: string
-): Promise<PhotoAccess> {
+export async function createPhotoAccess(storage: PhotoStore, files: PhotoMeta[], room?: string): Promise<PhotoAccess> {
 	const token = routedToken(room);
 	const expiresAt = Date.now() + PHOTO_LIFETIME_MS;
 	await storage.put(await grantKey(token), { expiresAt, files, uses: {} });
@@ -42,11 +35,7 @@ export async function consumePhoto(storage: PhotoStore, query: PhotoQuery) {
 	return consumeStoredPhoto(storage, await grantKey(query.token), query);
 }
 
-async function consumeStoredPhoto(
-	storage: PhotoStore,
-	key: string,
-	query: PhotoQuery
-) {
+async function consumeStoredPhoto(storage: PhotoStore, key: string, query: PhotoQuery) {
 	const grant = await storage.get(key);
 	const result = reservePhoto(grant, query.id, query.mode);
 	await persistGrant(storage, key, result ? grant : undefined);
@@ -59,11 +48,7 @@ export async function revokePhoto(storage: PhotoStore, token: string) {
 	}
 }
 
-async function persistGrant(
-	storage: PhotoStore,
-	key: string,
-	grant?: PhotoGrant
-) {
+async function persistGrant(storage: PhotoStore, key: string, grant?: PhotoGrant) {
 	if (grant) {
 		await storage.put(key, grant);
 	}

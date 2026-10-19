@@ -25,16 +25,11 @@ test('TURN adapter requests short-lived credentials and returns only ICE servers
 	expect(fetch.mock.calls[0][1]).toMatchObject(turnRequest);
 });
 test('failed TURN requests are reported to the application service', async () => {
-	vi.stubGlobal(
-		'fetch',
-		vi.fn().mockResolvedValue(new Response(null, { status: 503 }))
-	);
+	vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
 	await expect(iceServers(config)).rejects.toThrow('TURN');
 });
 
-const turnServers = [
-	{ urls: 'turn:example', username: 'user', credential: 'short-lived' }
-];
+const turnServers = [{ urls: 'turn:example', username: 'user', credential: 'short-lived' }];
 const turnRequest = {
 	method: 'POST',
 	body: '{"ttl":900}',

@@ -15,12 +15,8 @@ export function roomApp(service: RoomService, upgrade: Upgrade) {
 }
 
 function sessionRoutes(app: Hono, service: RoomService) {
-	app.post('/api/session', async (c) =>
-		authJson(await service.createSession(await sessionInput(c.req.raw)), 201)
-	);
-	app.post('/api/ice', async (c) =>
-		authJson(await service.ice(bearerToken(c.req.raw)))
-	);
+	app.post('/api/session', async (c) => authJson(await service.createSession(await sessionInput(c.req.raw)), 201));
+	app.post('/api/ice', async (c) => authJson(await service.ice(bearerToken(c.req.raw))));
 }
 
 async function sessionInput(request: Request) {
@@ -30,13 +26,10 @@ async function sessionInput(request: Request) {
 	};
 }
 
-export const bearerToken = (request: Request) =>
-	request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+export const bearerToken = (request: Request) => request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
 
 const methodError = () => authJson({ error: 'Method not allowed' }, 405);
 
 function upgradeRequest(request: Request, upgrade: () => Promise<Response>) {
-	return request.headers.get('Upgrade')?.toLowerCase() === 'websocket'
-		? upgrade()
-		: methodError();
+	return request.headers.get('Upgrade')?.toLowerCase() === 'websocket' ? upgrade() : methodError();
 }

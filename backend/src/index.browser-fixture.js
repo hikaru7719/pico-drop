@@ -4,9 +4,7 @@ class TestSocket {
 	waiter = undefined;
 
 	constructor(room) {
-		this.ws = new WebSocket(
-			location.origin.replace('http', 'ws') + '/api/ws?room=' + room
-		);
+		this.ws = new WebSocket(location.origin.replace('http', 'ws') + '/api/ws?room=' + room);
 		sockets.push(this.ws);
 		this.ws.onmessage = (e) => this.receive(JSON.parse(e.data));
 	}
@@ -22,16 +20,11 @@ class TestSocket {
 	}
 
 	wait(type) {
-		return new Promise((resolve, reject) =>
-			this.waitForMessage(type, resolve, reject)
-		);
+		return new Promise((resolve, reject) => this.waitForMessage(type, resolve, reject));
 	}
 
 	waitForMessage(type, resolve, reject) {
-		const timer = setTimeout(
-			() => reject(new Error('Timed out: ' + type)),
-			5000
-		);
+		const timer = setTimeout(() => reject(new Error('Timed out: ' + type)), 5000);
 		this.waiter = (message) => {
 			clearTimeout(timer);
 			resolve(message);

@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import {
-	createSession,
-	Signaling,
-	type SignalingSocket,
-	type SocketFactory
-} from './signaling';
+import { createSession, Signaling, type SignalingSocket, type SocketFactory } from './signaling';
 import type { ServerMessage } from '../../../../shared/protocol.ts';
 
 class Socket implements SignalingSocket {
@@ -36,12 +31,7 @@ class Fixture {
 	signaling: Signaling;
 
 	constructor(room: string | undefined = session.room) {
-		this.signaling = new Signaling(
-			{ ...session, room },
-			this.message,
-			this.closed,
-			this.open
-		);
+		this.signaling = new Signaling({ ...session, room }, this.message, this.closed, this.open);
 		connections.push(this.signaling);
 	}
 }
@@ -57,13 +47,9 @@ afterEach(() => {
 
 test('socket authentication uses the session token and secure room URL', () => {
 	const f = new Fixture();
-	expect(f.open.mock.calls[0][0].href).toBe(
-		'wss://photos.example/api/ws?room=room'
-	);
+	expect(f.open.mock.calls[0][0].href).toBe('wss://photos.example/api/ws?room=room');
 	f.socket.onopen!();
-	expect(f.socket.send).toHaveBeenCalledExactlyOnceWith(
-		'{"type":"auth","token":"secret"}'
-	);
+	expect(f.socket.send).toHaveBeenCalledExactlyOnceWith('{"type":"auth","token":"secret"}');
 });
 test('local HTTP sessions use ws and omit absent rooms', () => {
 	vi.stubGlobal('location', new URL('http://localhost/'));
@@ -87,15 +73,12 @@ test('a socket that never becomes ready is closed after ten seconds', () => {
 	vi.advanceTimersByTime(1);
 	expect(f.socket.close).toHaveBeenCalledOnce();
 });
-test.each(['bad JSON', 'null'])(
-	'invalid incoming %s closes the socket',
-	(data) => {
-		const f = new Fixture();
-		f.socket.message(data);
-		expect(f.socket.close).toHaveBeenCalledOnce();
-		expect(f.message).not.toHaveBeenCalled();
-	}
-);
+test.each(['bad JSON', 'null'])('invalid incoming %s closes the socket', (data) => {
+	const f = new Fixture();
+	f.socket.message(data);
+	expect(f.socket.close).toHaveBeenCalledOnce();
+	expect(f.message).not.toHaveBeenCalled();
+});
 test('socket errors close the connection and an unexpected close notifies its owner', () => {
 	const f = new Fixture();
 	f.socket.onerror!();
@@ -119,30 +102,17 @@ test('sending on a closed socket fails without writing', () => {
 	expect(() => f.signaling.send({ type: 'revoke-link' })).toThrow('再接続');
 	expect(f.socket.send).not.toHaveBeenCalled();
 });
-test.each(['', 'a'.repeat(64)])(
-	'session request propagates cancellation and token routing: %s',
-	async (token) => {
-		const request = sessionRequest();
-		const signal = new AbortController().signal;
-		expect(await createSession(signal, token, request)).toEqual(session);
-		const suffix = token ? '?room=' + token.slice(0, 16) : '';
-		expect(request).toHaveBeenCalledExactlyOnceWith(
-			'/api/session' + suffix,
-			expect.objectContaining({ method: 'POST', signal })
-		);
-	}
-);
-test.each([{}, { error: 'denied' }])(
-	'session HTTP errors use a useful message: %j',
-	async (body) => {
-		const request = vi
-			.fn<typeof fetch>()
-			.mockResolvedValue(Response.json(body, { status: 403 }));
-		await expect(createSession(undefined, '', request)).rejects.toThrow(
-			body.error ?? '接続に失敗しました。'
-		);
-	}
-);
+test.each(['', 'a'.repeat(64)])('session request propagates cancellation and token routing: %s', async (token) => {
+	const request = sessionRequest();
+	const signal = new AbortController().signal;
+	expect(await createSession(signal, token, request)).toEqual(session);
+	const suffix = token ? '?room=' + token.slice(0, 16) : '';
+	expect(request).toHaveBeenCalledExactlyOnceWith('/api/session' + suffix, expect.objectContaining({ method: 'POST', signal }));
+});
+test.each([{}, { error: 'denied' }])('session HTTP errors use a useful message: %j', async (body) => {
+	const request = vi.fn<typeof fetch>().mockResolvedValue(Response.json(body, { status: 403 }));
+	await expect(createSession(undefined, '', request)).rejects.toThrow(body.error ?? '接続に失敗しました。');
+});
 
 function sessionRequest() {
 	return vi.fn<typeof fetch>().mockResolvedValue(Response.json(session));

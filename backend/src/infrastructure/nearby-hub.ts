@@ -1,8 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import type {
-	AuthenticationResponseJSON,
-	WebAuthnCredential
-} from '@simplewebauthn/server';
+import type { AuthenticationResponseJSON, WebAuthnCredential } from '@simplewebauthn/server';
 import type { Account, Ceremony } from '../domain/auth.ts';
 import type { Bindings } from './bindings.ts';
 import { AuthHub } from './auth-hub.ts';
@@ -52,11 +49,7 @@ export class NearbyHub extends DurableObject<Bindings> {
 		return (await this.handler('auth')).issueAccountLogin(account);
 	}
 
-	async verifyAccountLogin(
-		response: AuthenticationResponseJSON,
-		origin: string,
-		ceremony: Ceremony
-	) {
+	async verifyAccountLogin(response: AuthenticationResponseJSON, origin: string, ceremony: Ceremony) {
 		const auth = await this.handler('auth');
 		return auth.verifyAccountLogin(response, origin, ceremony);
 	}
@@ -65,10 +58,7 @@ export class NearbyHub extends DurableObject<Bindings> {
 		return (await this.handler('auth')).consumeCeremony(key);
 	}
 
-	async registerAccount(
-		account: Account,
-		credential: WebAuthnCredential
-	): Promise<void> {
+	async registerAccount(account: Account, credential: WebAuthnCredential): Promise<void> {
 		return (await this.handler('auth')).registerAccount(account, credential);
 	}
 

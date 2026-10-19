@@ -19,12 +19,7 @@ export function readCookie(request: Request, kind: string) {
 	);
 }
 
-export function setCookie(
-	request: Request,
-	kind: string,
-	value: string,
-	age: number
-) {
+export function setCookie(request: Request, kind: string, value: string, age: number) {
 	const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
 	return `${cookieName(request, kind)}=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${secure}`;
 }

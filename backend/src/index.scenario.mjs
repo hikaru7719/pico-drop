@@ -1,23 +1,13 @@
-import {
-	registerPasskey,
-	installAuthPost,
-	verifyPasskeySecurity
-} from '../../shared/passkey-fixture.mjs';
+import { registerPasskey, installAuthPost, verifyPasskeySecurity } from '../../shared/passkey-fixture.mjs';
 import assert from 'node:assert/strict';
-const { chromium } = await import(
-	process.env.PLAYWRIGHT_MODULE || 'playwright'
-);
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({
 	headless: true,
-	...(process.env.CHROME_PATH
-		? { executablePath: process.env.CHROME_PATH }
-		: {})
+	...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {})
 });
 try {
 	const page = await browser.newPage();
-	await page.goto(
-		(process.env.TEST_URL || 'http://localhost:5173') + '/api/health'
-	);
+	await page.goto((process.env.TEST_URL || 'http://localhost:5173') + '/api/health');
 	await installAuthPost(page);
 	await registerPasskey(page);
 	assert.deepEqual(await verifyPasskeySecurity(page), {
@@ -42,10 +32,9 @@ try {
 	assert.equal(result.forwarded.signal.description.sdp, 'test');
 	assert.equal(result.invalidCode, 1008);
 	assert.equal(result.replayCode, 1008);
-	const crossOrigin = await page.request.post(
-		(process.env.TEST_URL || 'http://localhost:5173') + '/api/session',
-		{ headers: { Origin: 'https://example.invalid' } }
-	);
+	const crossOrigin = await page.request.post((process.env.TEST_URL || 'http://localhost:5173') + '/api/session', {
+		headers: { Origin: 'https://example.invalid' }
+	});
 	assert.equal(crossOrigin.status(), 403);
 	console.log(
 		'PASS: passkey registration/login, replay/forged signature rejection, Origin checks, token validation/replay, single-use link rendezvous, receiver-only approval/completion, outsider rejection, direct start after receiver approval, TURN authorization, stale transfer rejection'

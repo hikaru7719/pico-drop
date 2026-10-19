@@ -51,12 +51,7 @@ class ConnectionFixture {
 	connection: TransferConnection;
 
 	constructor(sender = false) {
-		this.connection = new TransferConnection(
-			transfer,
-			this.abort.signal,
-			sender,
-			this.callbacks
-		);
+		this.connection = new TransferConnection(transfer, this.abort.signal, sender, this.callbacks);
 		onTestFinished(() => this.abort.abort());
 	}
 
@@ -70,9 +65,7 @@ class ConnectionFixture {
 		this.channel.message(data);
 		this.channel.message('{"type":"file-end","id":"photo"}');
 		this.channel.message('{"type":"done"}');
-		await vi.waitFor(() =>
-			expect(this.channel.send).toHaveBeenCalledWith('{"type":"verified"}')
-		);
+		await vi.waitFor(() => expect(this.channel.send).toHaveBeenCalledWith('{"type":"verified"}'));
 	}
 }
 afterEach(() => vi.unstubAllGlobals());
@@ -90,9 +83,7 @@ test('receiver queues chunks and confirms only after the final acknowledgement',
 
 async function assertReceived(f: ConnectionFixture) {
 	expect(f.callbacks.received).toHaveBeenCalledOnce();
-	expect(await f.callbacks.received.mock.calls[0][0].arrayBuffer()).toEqual(
-		data
-	);
+	expect(await f.callbacks.received.mock.calls[0][0].arrayBuffer()).toEqual(data);
 	expect(f.callbacks.progress).toHaveBeenCalledWith(8);
 	expect(f.channel.binaryType).toBe('arraybuffer');
 }
@@ -101,28 +92,21 @@ test('sender streams photos and accepts confirmation only after all bytes are se
 	const f = new ConnectionFixture(true);
 	f.channel.readyState = 'open';
 	f.attach();
-	await vi.waitFor(() =>
-		expect(f.channel.send).toHaveBeenCalledWith('{"type":"done"}')
-	);
+	await vi.waitFor(() => expect(f.channel.send).toHaveBeenCalledWith('{"type":"done"}'));
 	f.channel.message('{"type":"verified"}');
 	assertSenderComplete(f);
 });
 test.each([
 	['wrong', 8],
 	['{"type":"verified"}', 7]
-] as const)(
-	'sender rejects invalid confirmation %s at %s bytes',
-	(message, bytes) => {
-		const f = new ConnectionFixture(true);
-		f.callbacks.bytes.mockReturnValue(bytes);
-		f.attach();
-		f.channel.message(message);
-		expect(f.callbacks.fail.mock.calls[0][0].message).toContain(
-			'不正な受信確認'
-		);
-		expect(f.callbacks.complete).not.toHaveBeenCalled();
-	}
-);
+] as const)('sender rejects invalid confirmation %s at %s bytes', (message, bytes) => {
+	const f = new ConnectionFixture(true);
+	f.callbacks.bytes.mockReturnValue(bytes);
+	f.attach();
+	f.channel.message(message);
+	expect(f.callbacks.fail.mock.calls[0][0].message).toContain('不正な受信確認');
+	expect(f.callbacks.complete).not.toHaveBeenCalled();
+});
 test('duplicate and aborted channels are closed without installing handlers', () => {
 	const f = new ConnectionFixture();
 	f.attach();
@@ -161,17 +145,12 @@ async function assertAborted(f: ConnectionFixture) {
 	expect(f.callbacks.received).not.toHaveBeenCalled();
 }
 
-test.each([new ArrayBuffer(LIMITS.chunk + 1), 'x'.repeat(1025)])(
-	'oversized messages fail before processing',
-	(value) => {
-		const f = new ConnectionFixture();
-		f.attach();
-		f.channel.message(value);
-		expect(f.callbacks.fail.mock.calls[0][0].message).toContain(
-			'受信サイズの上限'
-		);
-	}
-);
+test.each([new ArrayBuffer(LIMITS.chunk + 1), 'x'.repeat(1025)])('oversized messages fail before processing', (value) => {
+	const f = new ConnectionFixture();
+	f.attach();
+	f.channel.message(value);
+	expect(f.callbacks.fail.mock.calls[0][0].message).toContain('受信サイズの上限');
+});
 test('malformed incoming messages fail through the serial processing queue', async () => {
 	const f = new ConnectionFixture();
 	f.attach();
@@ -184,9 +163,7 @@ test('send failure is reported when an opened channel is no longer usable', asyn
 	f.attach();
 	f.channel.onopen!();
 	await vi.waitFor(() => expect(f.callbacks.fail).toHaveBeenCalledOnce());
-	expect(f.callbacks.fail.mock.calls[0][0].message).toContain(
-		'接続が切れました'
-	);
+	expect(f.callbacks.fail.mock.calls[0][0].message).toContain('接続が切れました');
 });
 class BrowserPeer implements PeerConnection {
 	static latest: BrowserPeer;
@@ -208,14 +185,11 @@ class BrowserPeer implements PeerConnection {
 		BrowserPeer.latest = this;
 	}
 }
-test.each([true, false])(
-	'connect wires the browser peer for sender=%s',
-	async (sender) => {
-		const f = new ConnectionFixture(sender);
-		await connectBrowser(f, sender);
-		assertPeerWiring(f, sender);
-	}
-);
+test.each([true, false])('connect wires the browser peer for sender=%s', async (sender) => {
+	const f = new ConnectionFixture(sender);
+	await connectBrowser(f, sender);
+	assertPeerWiring(f, sender);
+});
 
 function assertPeerWiring(f: ConnectionFixture, sender: boolean) {
 	const pc = BrowserPeer.latest;

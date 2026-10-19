@@ -40,7 +40,6 @@ function runtime(state: DurableObjectState) {
 	return {
 		storage: state.storage,
 		getRoomSockets: () => state.getWebSockets(),
-		blockConcurrencyWhile: <T>(callback: () => Promise<T>) =>
-			state.blockConcurrencyWhile(callback)
+		blockConcurrencyWhile: <T>(callback: () => Promise<T>) => state.blockConcurrencyWhile(callback)
 	};
 }

@@ -3,14 +3,10 @@ import { virtualPasskey } from '../../../shared/passkey-fixture.mjs';
 import assert from 'node:assert/strict';
 import jsQR from 'jsqr';
 import { createHash } from 'node:crypto';
-const { chromium } = await import(
-	process.env.PLAYWRIGHT_MODULE || 'playwright'
-);
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({
 	headless: true,
-	...(process.env.CHROME_PATH
-		? { executablePath: process.env.CHROME_PATH }
-		: {})
+	...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {})
 });
 const baseURL = process.env.TEST_URL || 'http://localhost:5173';
 const contexts = [];
@@ -124,10 +120,7 @@ async function rejected(a, b) {
 	await join(b, await createLink(a));
 	await noPeers(a, b);
 	await b.getByRole('button', { name: '受け取らない', exact: true }).click();
-	await a
-		.getByRole('alert')
-		.filter({ hasText: '受け取りませんでした' })
-		.waitFor();
+	await a.getByRole('alert').filter({ hasText: '受け取りませんでした' }).waitFor();
 	await noPeers(a, b);
 }
 
@@ -142,9 +135,7 @@ async function receive(a, b) {
 }
 
 async function transferComplete(a, b) {
-	await b
-		.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true })
-		.waitFor({ timeout: 60_000 });
+	await b.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true }).waitFor({ timeout: 60_000 });
 	await a.getByRole('status').filter({ hasText: '同じデータ' }).waitFor();
 	await verifySelectedPhotos(a);
 }
@@ -168,10 +159,7 @@ async function verifyPhotos(b, photo) {
 }
 
 async function verifyLayout(b) {
-	assert.equal(
-		await b.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-		true
-	);
+	assert.equal(await b.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
 	await b.screenshot({
 		path: process.env.SCREENSHOT_PATH || '/tmp/pico-drop-received.png',
 		fullPage: true
@@ -202,10 +190,7 @@ async function saveAndDiscard(b) {
 }
 
 async function shareFallback(b) {
-	await b
-		.getByRole('status')
-		.filter({ hasText: 'このブラウザでは写真を共有できません' })
-		.waitFor();
+	await b.getByRole('status').filter({ hasText: 'このブラウザでは写真を共有できません' }).waitFor();
 	assert.equal(await b.locator('.gallery a').count(), 2);
 }
 
@@ -280,19 +265,13 @@ async function verifyPasskeyLogin(page) {
 }
 
 async function loggedIn(page) {
-	await page
-		.getByRole('status')
-		.filter({ hasText: 'Test Sender としてログイン中' })
-		.waitFor();
+	await page.getByRole('status').filter({ hasText: 'Test Sender としてログイン中' }).waitFor();
 }
 
 async function assertAuthScreen(page) {
 	await page.getByRole('heading', { name: '初めての方は新規登録' }).waitFor();
 	assert.equal(await page.locator('input[type=file]').count(), 0);
-	assert.equal(
-		await page.getByRole('button', { name: '写真を渡す', exact: true }).count(),
-		0
-	);
+	assert.equal(await page.getByRole('button', { name: '写真を渡す', exact: true }).count(), 0);
 }
 
 async function prepareSender(page) {
@@ -330,10 +309,7 @@ async function verifyAddingPhotos(page, photo) {
 async function rejectExcessPhotos(page, photo) {
 	const files = excessPhotos(photo);
 	await page.locator('.picker input').setInputFiles(files);
-	await page
-		.getByRole('alert')
-		.filter({ hasText: '10枚・合計50MBまで' })
-		.waitFor();
+	await page.getByRole('alert').filter({ hasText: '10枚・合計50MBまで' }).waitFor();
 	await verifySelectedPhotos(page);
 }
 
@@ -341,10 +317,7 @@ async function verifyDiscarded(b) {
 	await b.getByRole('heading', { name: '受け取りは終了しました' }).waitFor();
 	await verifyOldNoticeCleared(b);
 	assert.equal(await b.locator('.gallery a').count(), 0);
-	await b
-		.getByRole('status')
-		.filter({ hasText: '画面内の写真を削除しました' })
-		.waitFor();
+	await b.getByRole('status').filter({ hasText: '画面内の写真を削除しました' }).waitFor();
 }
 
 function excessPhotos(photo) {
@@ -376,12 +349,7 @@ function mockPendingShare() {
 }
 
 async function verifyOldNoticeCleared(b) {
-	assert.equal(
-		await b
-			.getByText('このブラウザでは写真を共有できません', { exact: false })
-			.count(),
-		0
-	);
+	assert.equal(await b.getByText('このブラウザでは写真を共有できません', { exact: false }).count(), 0);
 }
 
 async function groupScenario(sender, photo) {
@@ -432,17 +400,12 @@ async function holdIce(page) {
 
 async function approveAll(sender) {
 	for (let i = 0; i < 5; i++) {
-		await sender
-			.getByRole('button', { name: 'この相手に渡す', exact: true })
-			.first()
-			.click();
+		await sender.getByRole('button', { name: 'この相手に渡す', exact: true }).first().click();
 	}
 }
 
 async function groupReceived(guest) {
-	await guest
-		.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true })
-		.waitFor({ timeout: 60_000 });
+	await guest.getByRole('heading', { name: '2枚の写真を受け取りました', exact: true }).waitFor({ timeout: 60_000 });
 	assert.equal(await peerCount(guest), 1);
 }
 
@@ -492,9 +455,6 @@ async function allGroupReceived(guests) {
 async function checkGroupClosed(link) {
 	const late = await device();
 	await late.goto(link);
-	await late
-		.getByRole('alert')
-		.filter({ hasText: '有効期限が切れた' })
-		.waitFor();
+	await late.getByRole('alert').filter({ hasText: '有効期限が切れた' }).waitFor();
 	assert.deepEqual(errors, []);
 }

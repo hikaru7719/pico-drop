@@ -12,18 +12,10 @@
 		sending?: boolean;
 	} = $props();
 	const transferred = $derived(Math.max(0, Math.min(bytes, total)));
-	const percent = $derived(
-		total > 0 ? Math.min(100, Math.floor((transferred / total) * 100)) : 0
-	);
+	const percent = $derived(total > 0 ? Math.min(100, Math.floor((transferred / total) * 100)) : 0);
 	const verifying = $derived(!connecting && total > 0 && transferred === total);
 	const status = $derived(
-		connecting
-			? '接続を準備しています'
-			: verifying
-				? '写真を確認しています'
-				: sending
-					? '写真を送信中'
-					: '写真を受信中'
+		connecting ? '接続を準備しています' : verifying ? '写真を確認しています' : sending ? '写真を送信中' : '写真を受信中'
 	);
 </script>
 
@@ -54,9 +46,7 @@
 			class="percentage"
 			aria-hidden="true"
 		>
-			{#if connecting}<span class="waiting">—</span>{:else}{percent}<span
-					class="unit">%</span
-				>{/if}
+			{#if connecting}<span class="waiting">—</span>{:else}{percent}<span class="unit">%</span>{/if}
 		</div>
 	</div>
 	<div
@@ -80,18 +70,8 @@
 		</div>
 	</div>
 	<div class="progress-caption">
-		<span
-			>{connecting
-				? '転送開始までお待ちください'
-				: verifying
-					? 'あと少しで完了です'
-					: '転送済み'}</span
-		>
-		<span class="bytes"
-			>{connecting
-				? formatBytes(total)
-				: `${formatBytes(transferred)} / ${formatBytes(total)}`}</span
-		>
+		<span>{connecting ? '転送開始までお待ちください' : verifying ? 'あと少しで完了です' : '転送済み'}</span>
+		<span class="bytes">{connecting ? formatBytes(total) : `${formatBytes(transferred)} / ${formatBytes(total)}`}</span>
 	</div>
 </div>
 
@@ -160,12 +140,7 @@
 	.light {
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(
-			100deg,
-			transparent 25%,
-			#ffffff55 50%,
-			transparent 75%
-		);
+		background: linear-gradient(100deg, transparent 25%, #ffffff55 50%, transparent 75%);
 		transform: translateX(-100%);
 		animation: sheen 2.6s ease-in-out infinite;
 	}

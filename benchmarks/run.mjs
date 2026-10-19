@@ -6,10 +6,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 
 const runs = Number(process.env.BENCH_RUNS ?? 20);
-assert(
-	Number.isInteger(runs) && runs >= 5,
-	'BENCH_RUNS must be an integer >= 5'
-);
+assert(Number.isInteger(runs) && runs >= 5, 'BENCH_RUNS must be an integer >= 5');
 const targets = [
 	{ name: 'sveltekit', port: 4311, command: ['node', 'build/index.js'] },
 	{
@@ -71,10 +68,7 @@ async function interaction(page, button, selector, expected) {
 				}, 10_000);
 				const observer = new MutationObserver(() => {
 					const element = document.querySelector(selector);
-					const actual =
-						selector === 'ul'
-							? element.children.length
-							: Number(element.textContent);
+					const actual = selector === 'ul' ? element.children.length : Number(element.textContent);
 					if (actual !== expected) {
 						return;
 					}
@@ -148,30 +142,19 @@ async function measure(target, profile, iteration) {
 			waitUntil: 'networkidle'
 		});
 		assert(response.ok());
-		assert(
-			(await response.text()).includes('写真を選択'),
-			'SSR markup missing'
-		);
+		assert((await response.text()).includes('写真を選択'), 'SSR markup missing');
 		await page.waitForSelector('main[data-ready="true"]');
 		await Promise.all(pending);
 		const initial = await page.evaluate(() => ({
 			readyMs: window.benchmark.ready,
-			fcpMs:
-				performance.getEntriesByName('first-contentful-paint')[0]?.startTime ??
-				null,
+			fcpMs: performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? null,
 			lcpMs: window.benchmark.lcp,
 			ttfbMs: performance.getEntriesByType('navigation')[0].responseStart,
 			timeOrigin: performance.timeOrigin
 		}));
 		assert(initial.readyMs > 0 && initial.fcpMs !== null && initial.lcpMs > 0);
-		const jsBytes = [...scripts.values()].reduce(
-			(sum, body) => sum + body.length,
-			0
-		);
-		const jsGzipBytes = [...scripts.values()].reduce(
-			(sum, body) => sum + gzipSync(body).length,
-			0
-		);
+		const jsBytes = [...scripts.values()].reduce((sum, body) => sum + body.length, 0);
+		const jsGzipBytes = [...scripts.values()].reduce((sum, body) => sum + gzipSync(body).length, 0);
 		const jsEncodedBytes = await page.evaluate(
 			(urls) =>
 				performance
@@ -195,10 +178,7 @@ async function measure(target, profile, iteration) {
 						reject(new Error('Navigation timeout'));
 					}, 10_000);
 					const observer = new MutationObserver(() => {
-						if (
-							location.pathname !== '/details' ||
-							document.querySelector('h1')?.textContent !== '共有の説明'
-						) {
+						if (location.pathname !== '/details' || document.querySelector('h1')?.textContent !== '共有の説明') {
 							return;
 						}
 						observer.disconnect();
@@ -215,11 +195,7 @@ async function measure(target, profile, iteration) {
 					document.querySelector('a').click();
 				})
 		);
-		assert.equal(
-			await page.evaluate(() => performance.timeOrigin),
-			initial.timeOrigin,
-			'Navigation reloaded document'
-		);
+		assert.equal(await page.evaluate(() => performance.timeOrigin), initial.timeOrigin, 'Navigation reloaded document');
 		assert.deepEqual(errors, []);
 		delete initial.timeOrigin;
 		return {
@@ -268,22 +244,11 @@ try {
 	}
 	const summary = profiles.flatMap((profile) =>
 		targets.map((target) => {
-			const subset = samples.filter(
-				(sample) =>
-					sample.framework === target.name && sample.profile === profile.name
-			);
+			const subset = samples.filter((sample) => sample.framework === target.name && sample.profile === profile.name);
 			const metrics = Object.fromEntries(
-				[
-					'readyMs',
-					'fcpMs',
-					'lcpMs',
-					'ttfbMs',
-					'jsBytes',
-					'jsGzipBytes',
-					'jsEncodedBytes',
-					'selectMs',
-					'navigationMs'
-				].map((key) => [key, stats(subset.map((sample) => sample[key]))])
+				['readyMs', 'fcpMs', 'lcpMs', 'ttfbMs', 'jsBytes', 'jsGzipBytes', 'jsEncodedBytes', 'selectMs', 'navigationMs'].map(
+					(key) => [key, stats(subset.map((sample) => sample[key]))]
+				)
 			);
 			metrics.progressMs = stats(subset.flatMap((sample) => sample.progressMs));
 			return { framework: target.name, profile: profile.name, metrics };
@@ -304,10 +269,7 @@ try {
 		samples
 	};
 	await mkdir(new URL('./results/', import.meta.url), { recursive: true });
-	await writeFile(
-		new URL('./results/latest.json', import.meta.url),
-		JSON.stringify(result, null, 2) + '\n'
-	);
+	await writeFile(new URL('./results/latest.json', import.meta.url), JSON.stringify(result, null, 2) + '\n');
 	console.log(JSON.stringify(summary, null, 2));
 } finally {
 	await browser?.close();

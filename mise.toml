@@ -15,12 +15,7 @@ npm.package_manager = "npm"
 
 [tasks.setup]
 description = "依存パッケージをインストールし、開発用の型を生成する"
-run = [
-	"pnpm install --frozen-lockfile",
-	{ task = "//:gen" },
-	{ task = "//frontend:sync" },
-	{ task = "//:hooks:install" }
-]
+run = ["pnpm install --frozen-lockfile", { task = "//:gen" }, { task = "//frontend:sync" }, { task = "//:hooks:install" }]
 
 [tasks.dev]
 description = "フロントエンドとバックエンドを並列起動する"
@@ -40,12 +35,7 @@ depends = ["//frontend:build", "//backend:build", "//docs:build"]
 
 [tasks.verify]
 description = "整形・lint・全体ビルド・全ユニットテストとカバレッジを順に検証する"
-run = [
-	{ task = "//:format:check" },
-	{ task = "//:lint" },
-	{ task = "//:build" },
-	{ task = "//:test:coverage" }
-]
+run = [{ task = "//:format:check" }, { task = "//:lint" }, { task = "//:build" }, { task = "//:test:coverage" }]
 
 [tasks.lint]
 depends = ["//frontend:sync", "//:bench:sync"]

@@ -1,22 +1,14 @@
 /* eslint-disable no-control-regex -- Reject or sanitize control characters in photo names. */
-import {
-	LIMITS,
-	validPhotos,
-	type PhotoMeta
-} from '../../../../shared/protocol.ts';
+import { LIMITS, validPhotos, type PhotoMeta } from '../../../../shared/protocol.ts';
 const PHOTO_ERROR = 'JPEG・PNG・WebP・HEIC/HEIFの写真を選んでください。';
 
-const decode = (bytes: Uint8Array, start: number, end: number) =>
-	new TextDecoder().decode(bytes.slice(start, end));
+const decode = (bytes: Uint8Array, start: number, end: number) => new TextDecoder().decode(bytes.slice(start, end));
 
-const isJpeg = (b: Uint8Array) =>
-	b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+const isJpeg = (b: Uint8Array) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
 
-const isPng = (b: Uint8Array) =>
-	[137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => b[i] === v);
+const isPng = (b: Uint8Array) => [137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => b[i] === v);
 
-const isWebp = (b: Uint8Array) =>
-	decode(b, 0, 4) === 'RIFF' && decode(b, 8, 12) === 'WEBP';
+const isWebp = (b: Uint8Array) => decode(b, 0, 4) === 'RIFF' && decode(b, 8, 12) === 'WEBP';
 
 function heifType(b: Uint8Array, type: string) {
 	if (decode(b, 4, 8) !== 'ftyp') {
@@ -29,10 +21,7 @@ function heifBrand(brand: string, type: string) {
 	if (['heic', 'heix', 'hevc', 'hevx'].includes(brand)) {
 		return 'image/heic';
 	}
-	return ['mif1', 'msf1'].includes(brand) &&
-		['image/heic', 'image/heif'].includes(type)
-		? type
-		: '';
+	return ['mif1', 'msf1'].includes(brand) && ['image/heic', 'image/heif'].includes(type) ? type : '';
 }
 
 function photoType(b: Uint8Array, type: string) {
@@ -83,9 +72,7 @@ export function formatBytes(bytes: number) {
 	if (bytes < 1024) {
 		return `${bytes} B`;
 	}
-	return bytes >= 1024 * 1024
-		? `${(bytes / 1024 / 1024).toFixed(1)} MB`
-		: `${Math.ceil(bytes / 1024)} KB`;
+	return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
 }
 
 export async function sharePhotos(files: File[]) {

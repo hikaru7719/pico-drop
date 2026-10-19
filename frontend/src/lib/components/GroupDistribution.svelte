@@ -49,9 +49,7 @@
 				/></label
 			>
 			<div class="actions">
-				<button onclick={shareInvitation}>LINEなどで共有する</button><button
-					onclick={copyInvitation}>リンクをコピーする</button
-				>
+				<button onclick={shareInvitation}>LINEなどで共有する</button><button onclick={copyInvitation}>リンクをコピーする</button>
 			</div>
 		</details>
 		<p class="hint">
@@ -63,9 +61,7 @@
 		<p role="status">配布は終了しました。</p>
 	{/if}
 	<h3>参加者（{participants.length}/{LIMITS.participants}人）</h3>
-	<p class="hint">
-		相手の画面の確認コードを確かめてから「この相手に渡す」を押してください。表示名だけでは本人を確認できません。
-	</p>
+	<p class="hint">相手の画面の確認コードを確かめてから「この相手に渡す」を押してください。表示名だけでは本人を確認できません。</p>
 	<ul
 		aria-label="参加者一覧"
 		aria-live="polite"
@@ -83,12 +79,9 @@
 					<div class="actions">
 						{#if !participant.approved}<button
 								class="primary"
-								onclick={() => groupAction('approve', participant.id)}
-								>この相手に渡す</button
+								onclick={() => groupAction('approve', participant.id)}>この相手に渡す</button
 							>{/if}
-						<button onclick={() => groupAction('cancel', participant.id)}
-							>この相手への送信を中止</button
-						>
+						<button onclick={() => groupAction('cancel', participant.id)}>この相手への送信を中止</button>
 					</div>
 				{/if}
 			</li>

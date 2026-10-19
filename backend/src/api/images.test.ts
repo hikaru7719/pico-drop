@@ -6,9 +6,7 @@ import type { PhotoAuthority } from '../application/images.ts';
 import { imageRenderer, type ImageService } from '../infrastructure/images.ts';
 import { MAX_CONVERSION_BYTES } from '../../../shared/photos.ts';
 
-const heic = new Uint8Array([
-	0, 0, 0, 16, 102, 116, 121, 112, 104, 101, 105, 99, 0, 0, 0, 0
-]);
+const heic = new Uint8Array([0, 0, 0, 16, 102, 116, 121, 112, 104, 101, 105, 99, 0, 0, 0, 0]);
 const photo = {
 	id: 'photo',
 	name: 'test.heic',
@@ -29,8 +27,7 @@ class ConversionFixture {
 	revoked = false;
 	fail = false;
 	authority: PhotoAuthority = {
-		consumePhoto: async (token, id, mode) =>
-			token === 'secret' ? reservePhoto(this.access, id, mode) : null,
+		consumePhoto: async (token, id, mode) => (token === 'secret' ? reservePhoto(this.access, id, mode) : null),
 		revokePhoto: async () => {
 			this.revoked = true;
 		}
@@ -55,20 +52,16 @@ class ConversionFixture {
 			throw new Error('Unsupported image');
 		}
 		return {
-			response: () =>
-				new Response('JPEG', { headers: { 'Content-Type': 'image/jpeg' } })
+			response: () => new Response('JPEG', { headers: { 'Content-Type': 'image/jpeg' } })
 		};
 	}
 
 	request(body = heic, token = 'secret', mode = 'preview') {
-		return new Request(
-			`https://pico.test/api/photos/convert?id=photo&mode=${mode}`,
-			{
-				method: 'POST',
-				headers: { Authorization: `Bearer ${token}` },
-				body
-			}
-		);
+		return new Request(`https://pico.test/api/photos/convert?id=photo&mode=${mode}`, {
+			method: 'POST',
+			headers: { Authorization: `Bearer ${token}` },
+			body
+		});
 	}
 
 	run(request = this.request()) {
@@ -85,9 +78,7 @@ test('unauthorized requests never reach Images', async () => {
 function assertPreview(fixture: ConversionFixture, response: Response) {
 	assert.equal(response.headers.get('cache-control'), 'no-store');
 	assert.equal(response.headers.get('content-type'), 'image/jpeg');
-	assert.deepEqual(fixture.resizes, [
-		{ width: 640, height: 640, fit: 'scale-down' }
-	]);
+	assert.deepEqual(fixture.resizes, [{ width: 640, height: 640, fit: 'scale-down' }]);
 }
 
 test('preview resizes; download keeps full dimensions', async () => {

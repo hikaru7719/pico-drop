@@ -1,16 +1,8 @@
 import { reservePhoto, type PhotoGrant } from '../domain/photos.ts';
 import { test, expect, vi } from 'vitest';
 import assert from 'node:assert/strict';
-import {
-	createPhotoAccess,
-	consumePhoto,
-	revokePhoto,
-	grantKey,
-	type PhotoStore
-} from './photo-access.ts';
-const heic = new Uint8Array([
-	0, 0, 0, 16, 102, 116, 121, 112, 104, 101, 105, 99, 0, 0, 0, 0
-]);
+import { createPhotoAccess, consumePhoto, revokePhoto, grantKey, type PhotoStore } from './photo-access.ts';
+const heic = new Uint8Array([0, 0, 0, 16, 102, 116, 121, 112, 104, 101, 105, 99, 0, 0, 0, 0]);
 const photo = {
 	id: 'photo',
 	name: 'test.heic',
@@ -45,15 +37,11 @@ test('conversion quotas are per photo and mode and permit only HEIC', () => {
 
 class GrantStore implements PhotoStore {
 	entries = new Map<string, PhotoGrant>();
-	get = vi.fn<PhotoStore['get']>(async (key: string) =>
-		structuredClone(this.entries.get(key))
-	);
+	get = vi.fn<PhotoStore['get']>(async (key: string) => structuredClone(this.entries.get(key)));
 	put = vi.fn<PhotoStore['put']>(async (key: string, value: PhotoGrant) => {
 		this.entries.set(key, structuredClone(value));
 	});
-	delete = vi.fn<PhotoStore['delete']>(async (key: string) =>
-		this.entries.delete(key)
-	);
+	delete = vi.fn<PhotoStore['delete']>(async (key: string) => this.entries.delete(key));
 
 	async create() {
 		return createPhotoAccess(this, [photo], '1234567890abcdef');

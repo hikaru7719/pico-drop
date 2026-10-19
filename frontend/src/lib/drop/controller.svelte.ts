@@ -1,30 +1,12 @@
 import { createApi } from '#lib/api.ts';
-import {
-	ReceivedPhotos,
-	releasePhoto,
-	type ReceivedPhoto
-} from '#lib/photos/received.ts';
+import { ReceivedPhotos, releasePhoto, type ReceivedPhoto } from '#lib/photos/received.ts';
 import type { PhotoAccess, ConversionMode } from '../../../../shared/photos.ts';
 import { tick } from 'svelte';
-import {
-	LIMITS,
-	type GroupParticipant,
-	type PhotoMeta,
-	type ServerMessage,
-	type Session
-} from '../../../../shared/protocol.ts';
+import { LIMITS, type GroupParticipant, type PhotoMeta, type ServerMessage, type Session } from '../../../../shared/protocol.ts';
 import { describePhotos, sharePhotos } from '#lib/photos/index.ts';
-import {
-	createSession,
-	Signaling,
-	type SignalingConnection
-} from '#lib/webrtc/signaling.ts';
+import { createSession, Signaling, type SignalingConnection } from '#lib/webrtc/signaling.ts';
 import type { TransferPeer, TransferReceiver } from '#lib/webrtc/ports.ts';
-import {
-	createTransferConnection,
-	type TransferFactory,
-	type IceConfig
-} from '#lib/webrtc/connection.ts';
+import { createTransferConnection, type TransferFactory, type IceConfig } from '#lib/webrtc/connection.ts';
 
 type ViewCallbacks = {
 	clearSelection?: () => void;
@@ -34,11 +16,7 @@ type ViewCallbacks = {
 
 export interface DropDependencies {
 	createSession(signal: AbortSignal, token: string): Promise<Session>;
-	createSignaling(
-		session: Session,
-		message: (message: ServerMessage) => void,
-		closed: () => void
-	): SignalingConnection;
+	createSignaling(session: Session, message: (message: ServerMessage) => void, closed: () => void): SignalingConnection;
 	createTransfer: TransferFactory;
 	describePhotos: typeof describePhotos;
 	sharePhotos: typeof sharePhotos;
@@ -56,10 +34,7 @@ const browserDependencies: DropDependencies = {
 // Each page owns an independent reactive controller and its resources.
 // This composition scope contains the state and operations for one sharing session.
 // oxlint-disable-next-line max-lines-per-function
-export function createDropController(
-	view: ViewCallbacks = {},
-	dependencies: DropDependencies = browserDependencies
-) {
+export function createDropController(view: ViewCallbacks = {}, dependencies: DropDependencies = browserDependencies) {
 	type RequestInfo = Extract<ServerMessage, { type: 'requested' }>;
 	let groupMode = $state(false);
 	let groupReceiver = $state(false);
@@ -77,9 +52,7 @@ export function createDropController(
 	let metadata = $state<PhotoMeta[]>([]);
 	let selecting = $state(false);
 	let request = $state<RequestInfo>();
-	let phase = $state<'waiting' | 'queued' | 'connecting' | 'transferring'>(
-		'waiting'
-	);
+	let phase = $state<'waiting' | 'queued' | 'connecting' | 'transferring'>('waiting');
 	let bytes = $state(0);
 	let received = $state<ReceivedPhoto[]>([]);
 	let photoCollection: ReceivedPhotos | undefined;
@@ -98,14 +71,10 @@ export function createDropController(
 	let generation = 0;
 	let signalQueue = Promise.resolve();
 	let disposed = false;
-	const total = $derived(
-		request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0
-	);
+	const total = $derived(request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0);
 
-	const TRANSFER_STOPPED =
-		'転送が止まりました。画面を開いたまま再試行してください。';
-	const CONFIRM_EXPIRED =
-		'受け取るかどうかを確認する時間が過ぎました。新しい共有リンクで送り直してください。';
+	const TRANSFER_STOPPED = '転送が止まりました。画面を開いたまま再試行してください。';
+	const CONFIRM_EXPIRED = '受け取るかどうかを確認する時間が過ぎました。新しい共有リンクで送り直してください。';
 	const PREVIOUS_PHOTOS =
 		'前に受け取った写真がこの画面に残っているため、新しい写真は受け取りませんでした。保存できたことを確認して、画面内の写真を削除してください。';
 	const REJECTED_NOTICE = '写真の受け取りを断りました。';
@@ -117,11 +86,9 @@ export function createDropController(
 		timeout: '有効期限が切れました。もう一度送信してください。'
 	};
 	const shareMessages = {
-		shared:
-			'保存・共有の画面を閉じました。写真を保存した場合は、写真アプリなどで確認してください。',
+		shared: '保存・共有の画面を閉じました。写真を保存した場合は、写真アプリなどで確認してください。',
 		cancelled: '共有をキャンセルしました。写真はこの画面に残っています。',
-		unsupported:
-			'このブラウザでは写真を共有できません。写真のファイル名を押して、1枚ずつダウンロードしてください。'
+		unsupported: 'このブラウザでは写真を共有できません。写真のファイル名を押して、1枚ずつダウンロードしてください。'
 	};
 
 	function clearReceived() {
@@ -246,9 +213,7 @@ export function createDropController(
 	}
 
 	function errorMessage(cause: unknown) {
-		return cause instanceof Error
-			? cause.message
-			: '処理に失敗しました。再試行してください。';
+		return cause instanceof Error ? cause.message : '処理に失敗しました。再試行してください。';
 	}
 
 	function touch() {
@@ -270,10 +235,7 @@ export function createDropController(
 	}
 
 	function signalFailure(e: unknown, current: number) {
-		if (
-			activeGeneration(current) &&
-			!(e instanceof Error && e.name === 'AbortError')
-		) {
+		if (activeGeneration(current) && !(e instanceof Error && e.name === 'AbortError')) {
 			fail(e);
 		}
 	}
@@ -291,17 +253,13 @@ export function createDropController(
 	function connectionClosed(current: number) {
 		if (activeGeneration(current)) {
 			disconnect('offline');
-			fail(
-				new Error('接続が切れました。新しい共有リンクで再試行してください。')
-			);
+			fail(new Error('接続が切れました。新しい共有リンクで再試行してください。'));
 		}
 	}
 
 	function checkBrowser() {
 		if (!window.isSecureContext || !window.RTCPeerConnection) {
-			throw new Error(
-				'このブラウザでは写真を転送できません。SafariやChromeで、https://から始まるリンクを開いてください。'
-			);
+			throw new Error('このブラウザでは写真を転送できません。SafariやChromeで、https://から始まるリンクを開いてください。');
 		}
 	}
 
@@ -316,10 +274,7 @@ export function createDropController(
 
 	async function openSession(current: number) {
 		checkBrowser();
-		const next = await dependencies.createSession(
-			sessionAbort!.signal,
-			incomingToken
-		);
+		const next = await dependencies.createSession(sessionAbort!.signal, incomingToken);
 		if (activeGeneration(current)) {
 			openSignaling(next, current);
 		}
@@ -360,13 +315,7 @@ export function createDropController(
 	}
 
 	function canJoinLink() {
-		return (
-			connection !== 'connecting' &&
-			!request &&
-			!!incomingToken &&
-			!invitationUsed &&
-			!(completed && received.length)
-		);
+		return connection !== 'connecting' && !request && !!incomingToken && !invitationUsed && !(completed && received.length);
 	}
 
 	async function joinLink() {
@@ -398,9 +347,7 @@ export function createDropController(
 	}
 
 	function stoppedParticipant(p: GroupParticipant): GroupParticipant {
-		return ['waiting', 'queued', 'transferring'].includes(p.status)
-			? { ...p, status: 'declined' }
-			: p;
+		return ['waiting', 'queued', 'transferring'].includes(p.status) ? { ...p, status: 'declined' } : p;
 	}
 
 	function groupAction(type: 'approve' | 'cancel', id: string) {
@@ -412,9 +359,7 @@ export function createDropController(
 	}
 
 	function canRetryGroup() {
-		return (
-			groupReceiver && !request && !received.length && connection === 'online'
-		);
+		return groupReceiver && !request && !received.length && connection === 'online';
 	}
 
 	function retryGroup() {
@@ -425,9 +370,7 @@ export function createDropController(
 		send({ type: 'join-link', token: incomingToken });
 	}
 
-	function linkCreated(
-		message: Extract<ServerMessage, { type: 'link-created' }>
-	) {
+	function linkCreated(message: Extract<ServerMessage, { type: 'link-created' }>) {
 		clearTimeout(watchdog);
 		shareLink = `${window.location.origin}/#share=${message.token}`;
 		linkExpiresAt = message.expiresAt;
@@ -471,8 +414,7 @@ export function createDropController(
 			await navigator.clipboard.writeText(shareLink);
 			notice = 'リンクをコピーしました。LINEなどで相手に送ってください。';
 		} catch {
-			error =
-				'コピーできませんでした。表示されたリンクを選択してコピーしてください。';
+			error = 'コピーできませんでした。表示されたリンクを選択してコピーしてください。';
 		}
 	}
 
@@ -568,11 +510,7 @@ export function createDropController(
 	}
 
 	function controlTimedOut() {
-		fail(
-			new Error(
-				'共有リンクの準備に時間がかかっています。もう一度お試しください。'
-			)
-		);
+		fail(new Error('共有リンクの準備に時間がかかっています。もう一度お試しください。'));
 	}
 
 	function serverError(message: string) {
@@ -623,18 +561,11 @@ export function createDropController(
 		error = '';
 		notice = '';
 		relay = undefined;
-		watchdog = setTimeout(
-			() => fail(new Error(CONFIRM_EXPIRED)),
-			approvalTimeout(message)
-		);
+		watchdog = setTimeout(() => fail(new Error(CONFIRM_EXPIRED)), approvalTimeout(message));
 	}
 
 	function approvalTimeout(message: RequestInfo) {
-		return (
-			(message.group
-				? Math.max(0, (message.expiresAt ?? Date.now()) - Date.now())
-				: LIMITS.requestMs) + 1000
-		);
+		return (message.group ? Math.max(0, (message.expiresAt ?? Date.now()) - Date.now()) : LIMITS.requestMs) + 1000;
 	}
 
 	async function requested(message: RequestInfo) {
@@ -653,9 +584,7 @@ export function createDropController(
 		}
 	}
 
-	function transferOutcome(
-		reason: Extract<ServerMessage, { type: 'ended' }>['reason']
-	) {
+	function transferOutcome(reason: Extract<ServerMessage, { type: 'ended' }>['reason']) {
 		if (reason === 'complete') {
 			completed = true;
 			notice = '';
@@ -708,18 +637,14 @@ export function createDropController(
 		await start();
 	}
 
-	async function applyTransferMessage(
-		message: Extract<ServerMessage, { id: string }>
-	) {
+	async function applyTransferMessage(message: Extract<ServerMessage, { id: string }>) {
 		if (message.type === 'start') {
 			return beginTransfer();
 		}
 		return forwardTransferMessage(message);
 	}
 
-	async function forwardTransferMessage(
-		message: Extract<ServerMessage, { id: string }>
-	) {
+	async function forwardTransferMessage(message: Extract<ServerMessage, { id: string }>) {
 		if (message.type === 'signal') {
 			return peer?.receive(message.signal);
 		}
@@ -728,9 +653,7 @@ export function createDropController(
 		}
 	}
 
-	async function handleTransfer(
-		message: Extract<ServerMessage, { id: string }>
-	) {
+	async function handleTransfer(message: Extract<ServerMessage, { id: string }>) {
 		if (request && message.id === request.id) {
 			await applyTransferMessage(message);
 		}
@@ -746,9 +669,7 @@ export function createDropController(
 		return handleLinkMessage(message);
 	}
 
-	async function handleLinkMessage(
-		message: Exclude<ServerMessage, { type: 'ready' | 'link-created' }>
-	) {
+	async function handleLinkMessage(message: Exclude<ServerMessage, { type: 'ready' | 'link-created' }>) {
 		if (message.type === 'group-state') {
 			participants = message.participants;
 			return;
@@ -756,10 +677,7 @@ export function createDropController(
 		return handleLinkEnd(message);
 	}
 
-	type LinkEndMessage = Exclude<
-		ServerMessage,
-		{ type: 'ready' | 'link-created' | 'group-state' }
-	>;
+	type LinkEndMessage = Exclude<ServerMessage, { type: 'ready' | 'link-created' | 'group-state' }>;
 
 	async function handleLinkEnd(message: LinkEndMessage) {
 		if (message.type === 'link-ended') {
@@ -768,10 +686,7 @@ export function createDropController(
 		return handleRequestMessage(message);
 	}
 
-	type RequestMessage = Exclude<
-		ServerMessage,
-		{ type: 'ready' | 'link-created' | 'link-ended' | 'group-state' }
-	>;
+	type RequestMessage = Exclude<ServerMessage, { type: 'ready' | 'link-created' | 'link-ended' | 'group-state' }>;
 
 	async function handleRequestMessage(message: RequestMessage) {
 		if (message.type === 'error') {
@@ -800,10 +715,7 @@ export function createDropController(
 	function receivedPhoto(file: File) {
 		const preview = !['image/heic', 'image/heif'].includes(file.type);
 		const id = request?.files[received.length]?.id;
-		received = [
-			...received,
-			{ file, id, url: URL.createObjectURL(file), preview }
-		];
+		received = [...received, { file, id, url: URL.createObjectURL(file), preview }];
 	}
 
 	function checkIce(response: { ok: boolean }, config: IceConfig) {
@@ -841,11 +753,7 @@ export function createDropController(
 		};
 	}
 
-	async function connectTransfer(
-		transfer: RequestInfo,
-		signal: AbortSignal,
-		config: IceConfig
-	) {
+	async function connectTransfer(transfer: RequestInfo, signal: AbortSignal, config: IceConfig) {
 		const sender = transfer.from.id === session!.id;
 		const cb = transferCallbacks();
 		const link = dependencies.createTransfer(transfer, signal, sender, cb);
@@ -907,8 +815,7 @@ export function createDropController(
 		error = '';
 		completed = false;
 		photosExpireAt = undefined;
-		notice =
-			'受信から10分たったため、画面内の写真を削除しました。端末に保存した写真は残っています。';
+		notice = '受信から10分たったため、画面内の写真を削除しました。端末に保存した写真は残っています。';
 	}
 
 	function retainPhotos(access?: PhotoAccess) {
@@ -989,8 +896,7 @@ export function createDropController(
 		if (/^[a-f0-9]{64}$/.test(token)) {
 			joinInvitation(token);
 		} else {
-			error =
-				'共有リンクが正しくありません。送信者に作り直してもらってください。';
+			error = '共有リンクが正しくありません。送信者に作り直してもらってください。';
 		}
 	}
 

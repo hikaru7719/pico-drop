@@ -11,14 +11,11 @@ function storage(alarm: number | null = null) {
 	};
 }
 
-test.each([null, now + 60000])(
-	'schedules near-term expiry when alarm is %s',
-	async (alarm) => {
-		const store = storage(alarm);
-		await scheduleExpiry(store as never);
-		expect(store.setAlarm).toHaveBeenCalledWith(expect.any(Number));
-	}
-);
+test.each([null, now + 60000])('schedules near-term expiry when alarm is %s', async (alarm) => {
+	const store = storage(alarm);
+	await scheduleExpiry(store as never);
+	expect(store.setAlarm).toHaveBeenCalledWith(expect.any(Number));
+});
 test('preserves an earlier alarm', async () => {
 	const store = storage(now + 1000);
 	await scheduleExpiry(store as never);

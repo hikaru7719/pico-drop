@@ -2,9 +2,7 @@ import type { RoomRuntime } from './room-ports.ts';
 import { expireRecords } from './expiry.ts';
 type Rate = { count: number; expiresAt: number };
 export class RateLimiter {
-	constructor(
-		private ctx: Pick<RoomRuntime, 'storage' | 'blockConcurrencyWhile'>
-	) {}
+	constructor(private ctx: Pick<RoomRuntime, 'storage' | 'blockConcurrencyWhile'>) {}
 
 	async limitRequest(kind: string) {
 		return this.ctx.blockConcurrencyWhile(() => this.applyRequestLimit(kind));
@@ -28,7 +26,5 @@ export class RateLimiter {
 
 function requestWindow(old: Rate | undefined, kind: string): Rate {
 	const duration = kind === 'auth' ? 600_000 : 60_000;
-	return old && old.expiresAt > Date.now()
-		? old
-		: { count: 0, expiresAt: Date.now() + duration };
+	return old && old.expiresAt > Date.now() ? old : { count: 0, expiresAt: Date.now() + duration };
 }

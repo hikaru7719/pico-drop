@@ -1,13 +1,8 @@
 <script lang="ts">
 	import { authApi as api } from '#lib/auth.ts';
 	import { onMount } from 'svelte';
-	import {
-		startRegistration,
-		startAuthentication,
-		browserSupportsWebAuthn
-	} from '@simplewebauthn/browser';
-	let { authenticated = $bindable(false) }: { authenticated?: boolean } =
-		$props();
+	import { startRegistration, startAuthentication, browserSupportsWebAuthn } from '@simplewebauthn/browser';
+	let { authenticated = $bindable(false) }: { authenticated?: boolean } = $props();
 	$effect(() => {
 		authenticated = !!account && !pending;
 	});
@@ -80,9 +75,7 @@
 		>
 	{:else}
 		<h2>写真を送る準備をしましょう</h2>
-		<p>
-			ログインまたは新規登録すると、送る写真を選べます。受け取る人の登録は不要です。
-		</p>
+		<p>ログインまたは新規登録すると、送る写真を選べます。受け取る人の登録は不要です。</p>
 		<h3>アカウントをお持ちの方</h3>
 		<button
 			class="login"
@@ -106,9 +99,7 @@
 					disabled={pending}
 				/></label
 			>
-			<button disabled={pending || !supported || !name.trim()}
-				>パスキーを作成してはじめる</button
-			>
+			<button disabled={pending || !supported || !name.trim()}>パスキーを作成してはじめる</button>
 		</form>
 		<p class="hint">
 			顔・指紋・端末の画面ロックで確認します。本名・メール・パスワードは不要です。パスキーを失うと同じアカウントに戻れないため、保存先の同期を確認してください。

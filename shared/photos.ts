@@ -4,5 +4,4 @@ export const MAX_CONVERSION_BYTES = 20 * 1024 * 1024;
 export type ConversionMode = 'preview' | 'jpeg';
 export type PhotoAccess = { token: string; expiresAt: number };
 
-export const isHeic = (type: string) =>
-	['image/heic', 'image/heif'].includes(type);
+export const isHeic = (type: string) => ['image/heic', 'image/heif'].includes(type);

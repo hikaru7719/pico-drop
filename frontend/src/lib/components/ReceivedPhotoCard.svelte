@@ -46,9 +46,7 @@
 			<span>元の写真をダウンロード</span>
 		</a>
 		<p class="metadata">
-			{photo.file.type.replace('image/', '').toUpperCase()} · {formatBytes(
-				photo.file.size
-			)}
+			{photo.file.type.replace('image/', '').toUpperCase()} · {formatBytes(photo.file.size)}
 		</p>
 		{#if isHeic(photo.file.type)}
 			<details>

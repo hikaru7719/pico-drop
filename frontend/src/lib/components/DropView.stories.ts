@@ -10,15 +10,11 @@ const me = {
 	expiresAt: 0
 };
 const friend = { id: 'friend', name: 'ゲスト A24B' };
-const photoBytes = Uint8Array.from(atob(brandIcon.split(',')[1]!), (c) =>
-	c.charCodeAt(0)
-);
+const photoBytes = Uint8Array.from(atob(brandIcon.split(',')[1]!), (c) => c.charCodeAt(0));
 const file = new File([photoBytes], 'weekend.png', {
 	type: 'image/png'
 });
-const files = [
-	{ id: 'photo-1', name: file.name, type: file.type, size: file.size }
-];
+const files = [{ id: 'photo-1', name: file.name, type: file.type, size: file.size }];
 const request = {
 	type: 'requested' as const,
 	id: 'request-1',
@@ -205,8 +201,7 @@ export const ReceivedExpired: Story = {
 	name: '22 保存期限切れ',
 	args: {
 		...Discarded.args,
-		notice:
-			'受信から10分たったため、画面内の写真を削除しました。端末に保存した写真は残っています。'
+		notice: '受信から10分たったため、画面内の写真を削除しました。端末に保存した写真は残っています。'
 	}
 };
 export const ManyReceived: Story = {

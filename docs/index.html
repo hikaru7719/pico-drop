@@ -30,25 +30,17 @@
 				aria-labelledby="title"
 			>
 				<p class="eyebrow">SYSTEM ARCHITECTURE · 2026.09.24</p>
-				<h1 id="title">
-					写真は、端末から端末へ。<br /><span
-						>接続の調整は、Cloudflareで。</span
-					>
-				</h1>
+				<h1 id="title">写真は、端末から端末へ。<br /><span>接続の調整は、Cloudflareで。</span></h1>
 				<p class="intro">
 					近くにいる人へ、ブラウザから写真を渡す。pico-dropは、相手の発見と接続の調整をサーバーが担い、写真本体はWebRTC
 					DataChannelで転送する構成です。
 				</p>
 				<div class="tags">
-					<span>SvelteKit + TypeScript</span
-					><span>Workers + Durable Objects</span><span>WebRTC + TURN</span>
+					<span>SvelteKit + TypeScript</span><span>Workers + Durable Objects</span><span>WebRTC + TURN</span>
 				</div>
 				<nav aria-label="目次">
-					<a href="#overview">01 全体構成 ↗</a
-					><a href="#flow">02 転送の流れ ↗</a
-					><a href="#data">03 データの境界 ↗</a
-					><a href="#code">04 コード構成 ↗</a
-					><a href="#durable-objects">05 Durable Objects ↗</a>
+					<a href="#overview">01 全体構成 ↗</a><a href="#flow">02 転送の流れ ↗</a><a href="#data">03 データの境界 ↗</a
+					><a href="#code">04 コード構成 ↗</a><a href="#durable-objects">05 Durable Objects ↗</a>
 				</nav>
 			</section>
 
@@ -77,15 +69,9 @@
 							<span>SvelteKit UI</span>
 						</div>
 					</div>
-					<div class="data-path">
-						← WebRTC DataChannel →<small>写真のバイト列 · P2Pを優先</small>
-					</div>
-					<div class="relay">
-						直接接続できない場合：Cloudflare TURNで暗号化通信を中継
-					</div>
-					<div class="control-path">
-						↕ HTTPS / WebSocket · セッション、送信要求、SDP / ICE ↕
-					</div>
+					<div class="data-path">← WebRTC DataChannel →<small>写真のバイト列 · P2Pを優先</small></div>
+					<div class="relay">直接接続できない場合：Cloudflare TURNで暗号化通信を中継</div>
+					<div class="control-path">↕ HTTPS / WebSocket · セッション、送信要求、SDP / ICE ↕</div>
 					<div class="cloud">
 						<div class="node">
 							<small>WEB / FRONTEND WORKER</small>
@@ -103,17 +89,15 @@
 							<small>STATE / DURABLE OBJECT</small>
 							<h3>NearbyHub</h3>
 							<p>
-								送信者のパスキー認証 · 短命の共有リンク · Accept / Reject<br />WebSocket
-								signaling · 転送状態 · TURN資格情報の発行
+								送信者のパスキー認証 · 短命の共有リンク · Accept / Reject<br />WebSocket signaling · 転送状態 · TURN資格情報の発行
 							</p>
 							<span>送信セッションごとにHubを分割</span>
 						</div>
 					</div>
 				</div>
 				<p class="note">
-					開発時はViteの <code>/api</code> proxy（WebSocket対応）から
-					<code>localhost:8787</code> へ接続。本番はFrontend WorkerのService
-					Bindingを使います。TURN管理キー未設定時はSTUNのみを返すため、中継は利用できません。
+					開発時はViteの <code>/api</code> proxy（WebSocket対応）から <code>localhost:8787</code> へ接続。本番はFrontend
+					WorkerのService Bindingを使います。TURN管理キー未設定時はSTUNのみを返すため、中継は利用できません。
 				</p>
 			</section>
 
@@ -127,9 +111,7 @@
 						<h3>送信者はパスキーでログイン</h3>
 						<p>
 							<code>POST /api/session</code>
-							で端末セッションを取得。送信者は事前にパスキー認証が必要で、受信者は匿名のまま参加できます。<code
-								>/api/ws</code
-							>
+							で端末セッションを取得。送信者は事前にパスキー認証が必要で、受信者は匿名のまま参加できます。<code>/api/ws</code>
 							に接続し、最初のメッセージで認証します。
 						</p>
 					</li>
@@ -141,9 +123,7 @@
 					</li>
 					<li>
 						<h3>写真を選び、受信を承諾</h3>
-						<p>
-							まず送るのは名前・形式・サイズなどのメタデータ。受信者がAcceptするとHubがstartを通知し、転送を開始します。
-						</p>
+						<p>まず送るのは名前・形式・サイズなどのメタデータ。受信者がAcceptするとHubがstartを通知し、転送を開始します。</p>
 					</li>
 					<li>
 						<h3>WebRTC接続を確立</h3>
@@ -238,9 +218,7 @@
 							<tr>
 								<td>受信写真 / HEIC変換</td>
 								<td>10分 / 1枚20 MiBまで</td>
-								<td>
-									期限は閲覧・変換とも共通。写真・モードごとに最大3回の試行
-								</td>
+								<td>期限は閲覧・変換とも共通。写真・モードごとに最大3回の試行</td>
 							</tr>
 							<tr>
 								<td>共有リンク</td>
@@ -329,19 +307,13 @@
 						<tbody>
 							<tr>
 								<td>リクエストの行き先</td>
-								<td>
-									複数の実行インスタンスで処理。毎回同じメモリに届く保証はない
-								</td>
-								<td>
-									同じ名前空間・IDへの呼び出しは、同じ論理オブジェクトへ届く
-								</td>
+								<td>複数の実行インスタンスで処理。毎回同じメモリに届く保証はない</td>
+								<td>同じ名前空間・IDへの呼び出しは、同じ論理オブジェクトへ届く</td>
 							</tr>
 							<tr>
 								<td>状態の管理</td>
 								<td>インスタンスの変数を、全端末共通の状態としては使えない</td>
-								<td>
-									オブジェクトごとのメモリと、再起動後も残る専用ストレージを持つ
-								</td>
+								<td>オブジェクトごとのメモリと、再起動後も残る専用ストレージを持つ</td>
 							</tr>
 							<tr>
 								<td>このアプリでの担当</td>
@@ -380,9 +352,7 @@
 					<div class="node hub">
 						<small>NEARBY HUB / room ID</small>
 						<h3>受信者が承諾済み</h3>
-						<p>
-							転送状態を更新し、両端末にstartを通知。<br />その後のSDP・ICE候補も、相手のWebSocketに届けます。
-						</p>
+						<p>転送状態を更新し、両端末にstartを通知。<br />その後のSDP・ICE候補も、相手のWebSocketに届けます。</p>
 					</div>
 				</div>
 				<p class="note">
@@ -434,10 +404,7 @@
 				</aside>
 			</section>
 
-			<footer>
-				<span>pico-drop / Share photos with a link.</span
-				><span>Architecture notes · 01</span>
-			</footer>
+			<footer><span>pico-drop / Share photos with a link.</span><span>Architecture notes · 01</span></footer>
 		</main>
 	</body>
 </html>

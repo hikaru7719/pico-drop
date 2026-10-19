@@ -1,9 +1,5 @@
 import { api } from '../api';
-import {
-	MAX_CONVERSION_BYTES,
-	PHOTO_LIFETIME_MS,
-	isHeic
-} from '../../../../shared/photos.ts';
+import { MAX_CONVERSION_BYTES, PHOTO_LIFETIME_MS, isHeic } from '../../../../shared/photos.ts';
 import type { ConversionMode, PhotoAccess } from '../../../../shared/photos.ts';
 
 export type ReceivedPhoto = {
@@ -46,11 +42,7 @@ function revokeAccess(token: string) {
 }
 
 function conversionProblem(photo: ReceivedPhoto, access?: PhotoAccess) {
-	return photo.file.size > MAX_CONVERSION_BYTES
-		? TOO_LARGE
-		: !access
-			? NO_ACCESS
-			: '';
+	return photo.file.size > MAX_CONVERSION_BYTES ? TOO_LARGE : !access ? NO_ACCESS : '';
 }
 
 function jpegResult(blob: Blob, photo: ReceivedPhoto) {
@@ -61,9 +53,7 @@ function jpegResult(blob: Blob, photo: ReceivedPhoto) {
 }
 
 function conversionResult(blob: Blob, job: Conversion) {
-	return job.mode === 'preview'
-		? { previewUrl: URL.createObjectURL(blob), preview: true }
-		: jpegResult(blob, job.photo);
+	return job.mode === 'preview' ? { previewUrl: URL.createObjectURL(blob), preview: true } : jpegResult(blob, job.photo);
 }
 
 export class ReceivedPhotos {
@@ -82,10 +72,7 @@ export class ReceivedPhotos {
 	}
 
 	private expiryTimer() {
-		return setTimeout(
-			() => this.checkExpiry(),
-			Math.max(0, this.expiresAt - Date.now())
-		);
+		return setTimeout(() => this.checkExpiry(), Math.max(0, this.expiresAt - Date.now()));
 	}
 
 	checkExpiry() {
@@ -129,9 +116,7 @@ export class ReceivedPhotos {
 	}
 
 	private publish(index: number, values: Partial<ReceivedPhoto>) {
-		this.photos = this.photos.map((photo, i) =>
-			i === index ? { ...photo, ...values } : photo
-		);
+		this.photos = this.photos.map((photo, i) => (i === index ? { ...photo, ...values } : photo));
 		this.callbacks.changed(this.photos);
 	}
 
@@ -146,12 +131,7 @@ export class ReceivedPhotos {
 	}
 
 	private available(photo: ReceivedPhoto, mode: ConversionMode) {
-		return (
-			photo &&
-			!photo.busy &&
-			isHeic(photo.file.type) &&
-			!(mode === 'jpeg' ? photo.jpegUrl : photo.previewUrl)
-		);
+		return photo && !photo.busy && isHeic(photo.file.type) && !(mode === 'jpeg' ? photo.jpegUrl : photo.previewUrl);
 	}
 
 	private async startConversion(job: Conversion) {

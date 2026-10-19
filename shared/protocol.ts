@@ -91,13 +91,7 @@ export type ServerMessage =
 			type: 'ended';
 			photoAccess?: PhotoAccess;
 			id: string;
-			reason:
-				| 'rejected'
-				| 'failed'
-				| 'cancelled'
-				| 'disconnected'
-				| 'timeout'
-				| 'complete';
+			reason: 'rejected' | 'failed' | 'cancelled' | 'disconnected' | 'timeout' | 'complete';
 	  }
 	| {
 			type: 'signal';
@@ -113,39 +107,16 @@ export function record(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-const PHOTO_TYPES = [
-	'image/jpeg',
-	'image/png',
-	'image/webp',
-	'image/heic',
-	'image/heif'
-];
-const TRANSFER_ACTIONS = [
-	'accept',
-	'reject',
-	'cancel',
-	'complete',
-	'approve',
-	'fail'
-];
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const TRANSFER_ACTIONS = ['accept', 'reject', 'cancel', 'complete', 'approve', 'fail'];
 const INVALID_MESSAGE = '不正なメッセージです。';
 
 function validName(name: unknown): name is string {
-	return (
-		typeof name === 'string' &&
-		name.length >= 1 &&
-		name.length <= 100 &&
-		!/[\x00-\x1f/\\]/.test(name)
-	);
+	return typeof name === 'string' && name.length >= 1 && name.length <= 100 && !/[\x00-\x1f/\\]/.test(name);
 }
 
 function validPhoto(file: unknown): file is PhotoMeta {
-	return (
-		record(file) &&
-		validPhotoFields(file) &&
-		typeof file.id === 'string' &&
-		/^[a-zA-Z0-9-]{1,40}$/.test(file.id)
-	);
+	return record(file) && validPhotoFields(file) && typeof file.id === 'string' && /^[a-zA-Z0-9-]{1,40}$/.test(file.id);
 }
 
 function validPhotoFields(file: Record<string, unknown>) {
@@ -159,11 +130,7 @@ function validPhotoFields(file: Record<string, unknown>) {
 }
 
 export function validPhotos(value: unknown): value is PhotoMeta[] {
-	if (
-		!Array.isArray(value) ||
-		value.length < 1 ||
-		value.length > LIMITS.files
-	) {
+	if (!Array.isArray(value) || value.length < 1 || value.length > LIMITS.files) {
 		return false;
 	}
 	return Array.from(value).every(validPhoto) && validPhotoTotals(value);
@@ -189,47 +156,30 @@ function validCandidateFields(value: Record<string, unknown>) {
 	return (
 		(value.sdpMid == null || typeof value.sdpMid === 'string') &&
 		(value.sdpMLineIndex == null || Number.isInteger(value.sdpMLineIndex)) &&
-		(value.usernameFragment == null ||
-			typeof value.usernameFragment === 'string')
+		(value.usernameFragment == null || typeof value.usernameFragment === 'string')
 	);
 }
 
 function validCandidate(value: unknown) {
-	return (
-		record(value) &&
-		typeof value.candidate === 'string' &&
-		value.candidate.length < 2000 &&
-		validCandidateFields(value)
-	);
+	return record(value) && typeof value.candidate === 'string' && value.candidate.length < 2000 && validCandidateFields(value);
 }
 
 function validSignal(value: unknown) {
-	return (
-		record(value) &&
-		(validDescription(value.description) || validCandidate(value.candidate))
-	);
+	return record(value) && (validDescription(value.description) || validCandidate(value.candidate));
 }
 
 function validTransferMessage(value: Record<string, unknown>) {
 	return (
 		typeof value.id === 'string' &&
 		value.id.length <= 40 &&
-		(TRANSFER_ACTIONS.includes(String(value.type)) ||
-			(value.type === 'signal' && validSignal(value.signal)))
+		(TRANSFER_ACTIONS.includes(String(value.type)) || (value.type === 'signal' && validSignal(value.signal)))
 	);
 }
 
-const messageValidators: Record<
-	string,
-	(value: Record<string, unknown>) => boolean
-> = {
-	auth: (value) =>
-		typeof value.token === 'string' && /^[a-f0-9]{64}$/.test(value.token),
-	'create-link': (value) =>
-		validPhotos(value.files) &&
-		(value.mode === undefined || value.mode === 'group'),
-	'join-link': (value) =>
-		typeof value.token === 'string' && /^[a-f0-9]{64}$/.test(value.token),
+const messageValidators: Record<string, (value: Record<string, unknown>) => boolean> = {
+	auth: (value) => typeof value.token === 'string' && /^[a-f0-9]{64}$/.test(value.token),
+	'create-link': (value) => validPhotos(value.files) && (value.mode === undefined || value.mode === 'group'),
+	'join-link': (value) => typeof value.token === 'string' && /^[a-f0-9]{64}$/.test(value.token),
 	'revoke-link': () => true
 };
 
@@ -241,15 +191,10 @@ export function parseClient(value: unknown): ClientMessage {
 }
 
 function messageValidator(type: string) {
-	return Object.hasOwn(messageValidators, type)
-		? messageValidators[type]
-		: validTransferMessage;
+	return Object.hasOwn(messageValidators, type) ? messageValidators[type] : validTransferMessage;
 }
 
-function parseRecord(
-	value: Record<string, unknown>,
-	type: string
-): ClientMessage {
+function parseRecord(value: Record<string, unknown>, type: string): ClientMessage {
 	if (!messageValidator(type)(value)) {
 		throw new Error(INVALID_MESSAGE);
 	}
@@ -259,13 +204,7 @@ function parseRecord(
 export type GroupParticipant = {
 	id: string;
 	device: Device;
-	status:
-		| 'waiting'
-		| 'queued'
-		| 'transferring'
-		| 'complete'
-		| 'failed'
-		| 'declined';
+	status: 'waiting' | 'queued' | 'transferring' | 'complete' | 'failed' | 'declined';
 	approved: boolean;
 	accepted: boolean;
 	attempts: number;
@@ -289,38 +228,22 @@ type Authorization = {
 };
 const authorizationRules: [(context: Authorization) => boolean, string][] = [
 	[
-		({ transfer: t, actor, now }) =>
-			t.expiresAt <= now || ![t.from.id, t.to.id].includes(actor),
+		({ transfer: t, actor, now }) => t.expiresAt <= now || ![t.from.id, t.to.id].includes(actor),
 		'転送が期限切れ、または操作できません。'
 	],
 	[
-		({ transfer: t, actor, action }) =>
-			action === 'approve' && (!t.groupKey || actor !== t.from.id || t.started),
+		({ transfer: t, actor, action }) => action === 'approve' && (!t.groupKey || actor !== t.from.id || t.started),
 		'配布の送信者のみ確認できます。'
 	],
 	[
-		({ transfer: t, actor, action }) =>
-			['accept', 'reject', 'complete'].includes(action) && actor !== t.to.id,
+		({ transfer: t, actor, action }) => ['accept', 'reject', 'complete'].includes(action) && actor !== t.to.id,
 		'受信者のみ操作できます。'
 	],
-	[
-		({ transfer: t, action }) =>
-			['accept', 'reject'].includes(action) && t.started,
-		'すでに応答済みです。'
-	],
-	[
-		({ transfer: t, action }) =>
-			['signal', 'complete'].includes(action) && !t.started,
-		'先に受信を承諾してください。'
-	]
+	[({ transfer: t, action }) => ['accept', 'reject'].includes(action) && t.started, 'すでに応答済みです。'],
+	[({ transfer: t, action }) => ['signal', 'complete'].includes(action) && !t.started, '先に受信を承諾してください。']
 ];
 
-export function authorizeTransfer(
-	t: TransferState,
-	actor: string,
-	action: string,
-	now = Date.now()
-): void {
+export function authorizeTransfer(t: TransferState, actor: string, action: string, now = Date.now()): void {
 	checkAuthorization({ transfer: t, actor, action, now });
 }
 

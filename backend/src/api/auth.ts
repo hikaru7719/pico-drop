@@ -8,13 +8,7 @@ import {
 	type AuthNetwork,
 	type PasskeyVerifier
 } from '../application/auth.ts';
-import {
-	authJson,
-	authOrigin,
-	bodyJson,
-	readCookie,
-	setCookie
-} from './http.ts';
+import { authJson, authOrigin, bodyJson, readCookie, setCookie } from './http.ts';
 import { ServiceError } from '../application/errors.ts';
 import { sessionLoginKey } from '../domain/tokens.ts';
 export class PasskeyAuth {
@@ -51,9 +45,7 @@ export class PasskeyAuth {
 	private ceremonyRoutes() {
 		for (const action of CEREMONIES) {
 			const path = action.replace(/(Options|Verify)$/, '/$1').toLowerCase();
-			this.app.post('/api/auth/' + path, (c) =>
-				this.execute(c.req.raw, action)
-			);
+			this.app.post('/api/auth/' + path, (c) => this.execute(c.req.raw, action));
 		}
 	}
 
@@ -80,32 +72,15 @@ export class PasskeyAuth {
 		if (action !== 'status' && action !== 'logout') {
 			await this.service.authorizeAction(input);
 		}
-		return authResponse(
-			request,
-			await this.service[action](input, input.origin)
-		);
+		return authResponse(request, await this.service[action](input, input.origin));
 	}
 }
-const CEREMONIES = [
-	'registerOptions',
-	'loginOptions',
-	'registerVerify',
-	'loginVerify'
-] as const;
-const AUTH_ERROR =
-	'認証できませんでした。ユーザーIDやパスキーを確認して再試行してください。';
-type AuthAction =
-	| 'status'
-	| 'logout'
-	| 'registerOptions'
-	| 'loginOptions'
-	| 'registerVerify'
-	| 'loginVerify';
+const CEREMONIES = ['registerOptions', 'loginOptions', 'registerVerify', 'loginVerify'] as const;
+const AUTH_ERROR = '認証できませんでした。ユーザーIDやパスキーを確認して再試行してください。';
+type AuthAction = 'status' | 'logout' | 'registerOptions' | 'loginOptions' | 'registerVerify' | 'loginVerify';
 
 function authError(error: Error) {
-	return error instanceof ServiceError
-		? authJson({ error: error.message }, 429)
-		: authJson({ error: AUTH_ERROR }, 400);
+	return error instanceof ServiceError ? authJson({ error: error.message }, 429) : authJson({ error: AUTH_ERROR }, 400);
 }
 
 function authResponse(request: Request, result: AuthResult) {
@@ -123,14 +98,9 @@ type Cookie = NonNullable<AuthResult['cookie']>;
 
 function appendCookie(response: Response, request: Request, cookie: Cookie) {
 	const age = cookie.token ? (cookie.kind === 'auth' ? 604800 : 300) : 0;
-	response.headers.append(
-		'Set-Cookie',
-		setCookie(request, cookie.kind, cookie.token, age)
-	);
+	response.headers.append('Set-Cookie', setCookie(request, cookie.kind, cookie.token, age));
 }
 
 async function requirePost(c: Context, next: Next) {
-	return c.req.method === 'POST'
-		? next()
-		: authJson({ error: 'Method not allowed' }, 405);
+	return c.req.method === 'POST' ? next() : authJson({ error: 'Method not allowed' }, 405);
 }

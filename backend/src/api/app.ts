@@ -5,16 +5,8 @@ import { authRoute, roomRoute } from './routing.ts';
 import { photoRequest } from './images.ts';
 import type { ImageRenderer, PhotoAuthority } from '../application/images.ts';
 import { serviceError } from './errors.ts';
-import {
-	rpc,
-	type AccountStatus,
-	type RegistrationOptions as RegOptions,
-	type AuthenticationOptions
-} from './rpc.ts';
-import type {
-	RegistrationResponseJSON,
-	AuthenticationResponseJSON
-} from '@simplewebauthn/server';
+import { rpc, type AccountStatus, type RegistrationOptions as RegOptions, type AuthenticationOptions } from './rpc.ts';
+import type { RegistrationResponseJSON, AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { Session } from '../../../shared/protocol.ts';
 import type { ConversionMode } from '../../../shared/photos.ts';
 import type { IceConfiguration } from '../application/room-ports.ts';
@@ -36,9 +28,7 @@ type ApiContext<Bindings extends object> = Context<ApiEnv<Bindings>>;
 const SESSION_LIMIT = '接続回数が多すぎます。1分後に再試行してください。';
 const AUTH_LIMIT = '認証の試行が多すぎます。しばらく待ってください。';
 
-export function createApp<Bindings extends object>(
-	gateway: (env: Bindings) => ApiGateway
-) {
+export function createApp<Bindings extends object>(gateway: (env: Bindings) => ApiGateway) {
 	const app = new Hono<ApiEnv<Bindings>>();
 	configure(app, gateway);
 	const api = routes(app);
@@ -47,20 +37,14 @@ export function createApp<Bindings extends object>(
 	return api;
 }
 
-function configure<B extends object>(
-	app: Hono<ApiEnv<B>>,
-	gateway: (env: B) => ApiGateway
-) {
+function configure<B extends object>(app: Hono<ApiEnv<B>>, gateway: (env: B) => ApiGateway) {
 	app.all('/api/health', health);
 	app.use('*', sameOrigin);
 	app.all('/api/auth', () => authJson({ error: 'Not found' }, 404));
 	dependencies(app, gateway);
 }
 
-function dependencies<B extends object>(
-	app: Hono<ApiEnv<B>>,
-	gateway: (env: B) => ApiGateway
-) {
+function dependencies<B extends object>(app: Hono<ApiEnv<B>>, gateway: (env: B) => ApiGateway) {
 	app.use('*', async (c, next) => {
 		c.set('gateway', gateway(c.env));
 		await next();
@@ -85,12 +69,7 @@ function routes<B extends object>(app: Hono<ApiEnv<B>>) {
 		.get('/api/ws', socket<never, RoomQuery>());
 }
 
-const SESSION_PATHS = [
-	'/api/session',
-	'/api/ice',
-	'/api/photos/convert',
-	'/api/photos/discard'
-];
+const SESSION_PATHS = ['/api/session', '/api/ice', '/api/photos/convert', '/api/photos/discard'];
 
 function fallbackRoutes<B extends object>(app: Hono<ApiEnv<B>>) {
 	app.notFound(() => authJson({ error: 'Not found' }, 404));
@@ -172,15 +151,11 @@ function forwardRoom<B extends object>(c: ApiContext<B>, room: string) {
 }
 
 function rate<B extends object>(c: ApiContext<B>, kind: string) {
-	return c
-		.get('gateway')
-		.rate(c.req.header('CF-Connecting-IP') ?? 'local', kind);
+	return c.get('gateway').rate(c.req.header('CF-Connecting-IP') ?? 'local', kind);
 }
 
 async function sameOrigin(c: Context, next: Next) {
-	return c.req.header('Origin') === new URL(c.req.url).origin
-		? next()
-		: authJson({ error: 'Origin not allowed' }, 403);
+	return c.req.header('Origin') === new URL(c.req.url).origin ? next() : authJson({ error: 'Origin not allowed' }, 403);
 }
 
 const health = () => authJson({ status: 'ok', service: 'pico-drop-backend' });

@@ -1,9 +1,4 @@
-import type {
-	DataChannel,
-	PeerFactory,
-	TransferPeer,
-	TransferReceiver
-} from './ports';
+import type { DataChannel, PeerFactory, TransferPeer, TransferReceiver } from './ports';
 import { LIMITS, type ServerMessage } from '../../../../shared/protocol.ts';
 import { PhotoPeer } from './peer';
 import { PhotoReceiver, sendPhotos } from './transfer';
@@ -84,8 +79,7 @@ export class TransferConnection implements Transfer {
 		if (channel.readyState === 'open') {
 			this.open(channel);
 		}
-		channel.onerror = () =>
-			this.failIfActive(new Error('写真の転送に失敗しました。'));
+		channel.onerror = () => this.failIfActive(new Error('写真の転送に失敗しました。'));
 		channel.onclose = () => this.closed();
 	}
 
@@ -128,10 +122,7 @@ export class TransferConnection implements Transfer {
 	}
 
 	validConfirmation(data: unknown) {
-		return (
-			data === '{"type":"verified"}' &&
-			this.callbacks.bytes() === this.callbacks.total
-		);
+		return data === '{"type":"verified"}' && this.callbacks.bytes() === this.callbacks.total;
 	}
 
 	acknowledge(channel: DataChannel) {
@@ -163,12 +154,9 @@ export class TransferConnection implements Transfer {
 		}
 	}
 }
-export type TransferFactory = (
-	...args: ConstructorParameters<typeof TransferConnection>
-) => Transfer;
+export type TransferFactory = (...args: ConstructorParameters<typeof TransferConnection>) => Transfer;
 
-export const createTransferConnection: TransferFactory = (...args) =>
-	new TransferConnection(...args);
+export const createTransferConnection: TransferFactory = (...args) => new TransferConnection(...args);
 
 class IncomingChannel {
 	private verified = false;
@@ -202,11 +190,7 @@ class IncomingChannel {
 	}
 
 	validSize(data: unknown, size: number) {
-		return (
-			size <= LIMITS.chunk &&
-			this.queuedBytes <= LIMITS.bytes &&
-			!(typeof data === 'string' && data.length > 1024)
-		);
+		return size <= LIMITS.chunk && this.queuedBytes <= LIMITS.bytes && !(typeof data === 'string' && data.length > 1024);
 	}
 
 	enqueue(data: unknown) {
@@ -220,9 +204,7 @@ class IncomingChannel {
 	}
 
 	queueMessage(data: unknown, size: number) {
-		this.queue = this.queue
-			.then(() => this.consume(data, size))
-			.catch((e) => this.transfer.failIfActive(e));
+		this.queue = this.queue.then(() => this.consume(data, size)).catch((e) => this.transfer.failIfActive(e));
 	}
 
 	async consume(data: unknown, size: number) {

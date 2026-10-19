@@ -10,12 +10,7 @@
 	import PhotoSelection from './PhotoSelection.svelte';
 	import ReceivedPhotoCard from './ReceivedPhotoCard.svelte';
 	import { formatBytes } from '#lib/photos/index.ts';
-	import type {
-		GroupParticipant,
-		PhotoMeta,
-		ServerMessage,
-		Session
-	} from '../../../../shared/protocol';
+	import type { GroupParticipant, PhotoMeta, ServerMessage, Session } from '../../../../shared/protocol';
 	type Props = {
 		accountControls?: Snippet;
 		senderAuthenticated?: boolean;
@@ -165,25 +160,15 @@
 		}
 	});
 
-	const headlineWords = headline
-		.match(/[^、。]+[、。]?/g)!
-		.map((word, index, words) => ({
-			word,
-			offset: words.slice(0, index).join('').length
-		}));
+	const headlineWords = headline.match(/[^、。]+[、。]?/g)!.map((word, index, words) => ({
+		word,
+		offset: words.slice(0, index).join('').length
+	}));
 
-	const sent = $derived(
-		completed && !received.length && !request && !incomingToken
-	);
-	const receiverStopped = $derived(
-		!!incomingToken &&
-			!request &&
-			(connection === 'idle' || connection === 'offline')
-	);
+	const sent = $derived(completed && !received.length && !request && !incomingToken);
+	const receiverStopped = $derived(!!incomingToken && !request && (connection === 'idle' || connection === 'offline'));
 	const sending = $derived(!!request && request.from.id === session?.id);
-	const total = $derived(
-		request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0
-	);
+	const total = $derived(request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0);
 </script>
 
 <svelte:head>
@@ -227,9 +212,7 @@
 			class="identity"
 			role="status"
 		>
-			<span class="identity-label"
-				>{connection === 'online' ? 'この端末の名前' : '共有の状態'}</span
-			>
+			<span class="identity-label">{connection === 'online' ? 'この端末の名前' : '共有の状態'}</span>
 			<span class="badge"
 				><span
 					class:online={connection === 'online'}
@@ -266,8 +249,7 @@
 								aria-hidden="true"
 								>{#each [...word] as character, index}<span
 										class="headline-character"
-										class:last-character={offset + index ===
-											headline.length - 1}
+										class:last-character={offset + index === headline.length - 1}
 										style={`--type-delay: ${250 + (offset + index) * typingInterval}ms; --caret-duration: ${index === word.length - 1 && offset + index < headline.length - 1 ? typingInterval * 2 : typingInterval}ms`}
 										>{character}</span
 									>{/each}</span
@@ -279,12 +261,9 @@
 					class="sharing-guide"
 					aria-label="写真を共有する流れ"
 				>
-					<span>{senderAuthenticated ? '写真を選ぶ' : 'ログイン・登録'}</span
-					><span aria-hidden="true">→</span><span
+					<span>{senderAuthenticated ? '写真を選ぶ' : 'ログイン・登録'}</span><span aria-hidden="true">→</span><span
 						>{senderAuthenticated ? 'QRを見せる' : '写真を選ぶ'}</span
-					><span aria-hidden="true">→</span><span
-						>{senderAuthenticated ? '相手が受け取る' : 'QRで渡す'}</span
-					>
+					><span aria-hidden="true">→</span><span>{senderAuthenticated ? '相手が受け取る' : 'QRで渡す'}</span>
 				</div>
 			</section>
 		</div>
@@ -311,9 +290,7 @@
 			aria-labelledby="sent-heading"
 		>
 			<h2 id="sent-heading">送信完了</h2>
-			<p role="status">
-				すべての写真が相手の端末に届きました。元の写真と同じデータであることも確認できました。
-			</p>
+			<p role="status">すべての写真が相手の端末に届きました。元の写真と同じデータであることも確認できました。</p>
 			<PhotoSelection files={selected} />
 			<p class="hint">相手の端末への保存は、受け取った人が行います。</p>
 			<div class="next-actions">
@@ -344,9 +321,7 @@
 					aria-labelledby="ended-heading"
 				>
 					<h2 id="ended-heading">受け取りは終了しました</h2>
-					<p class="description">
-						もう一度受け取るには、送る人に新しいQR・共有リンクを作ってもらってください。
-					</p>
+					<p class="description">もう一度受け取るには、送る人に新しいQR・共有リンクを作ってもらってください。</p>
 					<a
 						class="home-link"
 						href="/">自分も写真を送る</a
@@ -363,18 +338,14 @@
 					{:else if connection === 'connecting' || connection === 'online'}
 						<p role="status">共有内容を確認中…</p>
 					{/if}
-					<p class="hint">
-						接続できない場合はSafariやChromeでリンクを開いてください。
-					</p>
+					<p class="hint">接続できない場合はSafariやChromeでリンクを開いてください。</p>
 				</section>
 			{:else if shareLink}
 				<section class="card">
 					<h2>今回の共有</h2>
 					<PhotoSelection files={selected} />
 					<h3>相手にQRを見せる</h3>
-					<p class="description">
-						相手のスマートフォンのカメラで読み取って、表示されたリンクを開いてもらってください。
-					</p>
+					<p class="description">相手のスマートフォンのカメラで読み取って、表示されたリンクを開いてもらってください。</p>
 					<ShareQr url={shareLink} />
 					<p class="hint">
 						相手が「受け取る」を押すまで、写真は送られません。転送が終わるまで、お互いに画面を開いたままにしてください。
@@ -392,8 +363,9 @@
 						>
 
 						<div class="actions">
-							<button onclick={shareInvitation}>LINEなどで共有する</button
-							><button onclick={copyInvitation}>リンクをコピーする</button>
+							<button onclick={shareInvitation}>LINEなどで共有する</button><button onclick={copyInvitation}
+								>リンクをコピーする</button
+							>
 						</div>
 					</details>
 					<p class="hint">
@@ -410,17 +382,13 @@
 				<section
 					class="card photos"
 					aria-labelledby={senderAuthenticated ? 'photos-heading' : undefined}
-					aria-label={senderAuthenticated
-						? undefined
-						: '写真を送るためのログイン・新規登録'}
+					aria-label={senderAuthenticated ? undefined : '写真を送るためのログイン・新規登録'}
 				>
 					{@render accountControls?.()}
 					{#if senderAuthenticated}
 						<h2 id="photos-heading">今回の共有</h2>
 						<p class="section-description">
-							{selected.length
-								? 'この写真を、相手に渡します。'
-								: '渡したい写真を、この端末から選んでください。'}
+							{selected.length ? 'この写真を、相手に渡します。' : '渡したい写真を、この端末から選んでください。'}
 						</p>
 						{#if selected.length}
 							<PhotoSelection
@@ -454,24 +422,15 @@
 										r="3"
 									/><path d="m8 33 10-9 8 7 6-6 9 9" /></svg
 								></span
-							><strong
-								>{selecting
-									? '写真を確認中…'
-									: selected.length
-										? '写真を追加'
-										: '写真を選ぶ'}</strong
-							><span
-								>{selected.length
-									? '選んだ写真を残して、合計10枚・50MBまで'
-									: '10枚まで・合計50MBまで'}</span
+							><strong>{selecting ? '写真を確認中…' : selected.length ? '写真を追加' : '写真を選ぶ'}</strong><span
+								>{selected.length ? '選んだ写真を残して、合計10枚・50MBまで' : '10枚まで・合計50MBまで'}</span
 							><input
 								bind:this={input}
 								type="file"
 								accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
 								multiple
 								disabled={!!request || selecting || creatingLink}
-								onchange={(event) =>
-									addPhotos(Array.from(event.currentTarget.files ?? []))}
+								onchange={(event) => addPhotos(Array.from(event.currentTarget.files ?? []))}
 							/></label
 						>
 
@@ -493,32 +452,19 @@
 								/></label
 							>
 						{/if}
-						<p class="hint">
-							元の画質で送ります。写真に含まれる撮影場所などの情報も、そのまま相手に渡ります。
-						</p>
+						<p class="hint">元の画質で送ります。写真に含まれる撮影場所などの情報も、そのまま相手に渡ります。</p>
 						<button
 							class="primary send-button"
-							disabled={!senderAuthenticated ||
-								!metadata.length ||
-								selecting ||
-								creatingLink ||
-								connection === 'connecting'}
+							disabled={!senderAuthenticated || !metadata.length || selecting || creatingLink || connection === 'connecting'}
 							onclick={() => {
 								started = true;
 								createLink();
-							}}
-							>{creatingLink || connection === 'connecting'
-								? 'QRを準備中…'
-								: '写真を渡す'}</button
+							}}>{creatingLink || connection === 'connecting' ? 'QRを準備中…' : '写真を渡す'}</button
 						>
 						<button
 							class="send-button"
-							disabled={!metadata.length ||
-								selecting ||
-								creatingLink ||
-								connection === 'connecting'}
-							onclick={() => createLink('group')}
-							>みんなに渡す（最大5人）</button
+							disabled={!metadata.length || selecting || creatingLink || connection === 'connecting'}
+							onclick={() => createLink('group')}>みんなに渡す（最大5人）</button
 						>
 
 						<p class="hint sharing-note">
@@ -536,9 +482,7 @@
 			aria-labelledby="transfer-heading"
 		>
 			<h2 id="transfer-heading">
-				{sending
-					? `${request.to.name}に写真を送る`
-					: `${request.from.name}から写真を受け取る`}
+				{sending ? `${request.to.name}に写真を送る` : `${request.from.name}から写真を受け取る`}
 			</h2>
 			{#if sending}
 				<PhotoSelection files={selected} />
@@ -547,8 +491,7 @@
 			{/if}
 			{#if request.group && !sending}
 				<p class="hint">
-					確認コード：<strong>{request.id.slice(0, 8).toUpperCase()}</strong
-					>。このコードを送る人に見せてください。
+					確認コード：<strong>{request.id.slice(0, 8).toUpperCase()}</strong>。このコードを送る人に見せてください。
 				</p>
 			{/if}
 			{#if phase === 'waiting'}
@@ -566,9 +509,7 @@
 						><button onclick={() => action('reject')}>受け取らない</button>
 					</div>{/if}
 			{:else if phase === 'queued'}
-				<p role="status">
-					受け取りを承諾しました。送る人の確認と順番を待っています。画面を開いたままお待ちください。
-				</p>
+				<p role="status">受け取りを承諾しました。送る人の確認と順番を待っています。画面を開いたままお待ちください。</p>
 			{:else}
 				<TransferProgress
 					{bytes}
@@ -613,9 +554,7 @@
 					/>
 				{/each}
 			</div>
-			{#if received.length > 1}<p class="gallery-hint">
-					横にスクロールして、1枚ずつ確認できます。
-				</p>{/if}
+			{#if received.length > 1}<p class="gallery-hint">横にスクロールして、1枚ずつ確認できます。</p>{/if}
 			<div class="save-collection">
 				<button
 					class="primary"
@@ -623,20 +562,12 @@
 					onclick={save}>写真を保存・共有する</button
 				>
 				<p class="hint">
-					{received.length > 1
-						? `全${received.length}枚をまとめて保存。`
-						: ''}iPhoneでは「画像を保存」を選んでください。
+					{received.length > 1 ? `全${received.length}枚をまとめて保存。` : ''}iPhoneでは「画像を保存」を選んでください。
 				</p>
 			</div>
 			<div class="expiry-note">
-				{#if photosExpireAt}<strong
-						>保存できる期限：{new Date(photosExpireAt).toLocaleTimeString(
-							'ja-JP'
-						)}</strong
-					>{/if}
-				<p>
-					受信から10分たつか、このページを閉じると、画面内の写真は削除されます。端末に保存した写真は残ります。
-				</p>
+				{#if photosExpireAt}<strong>保存できる期限：{new Date(photosExpireAt).toLocaleTimeString('ja-JP')}</strong>{/if}
+				<p>受信から10分たつか、このページを閉じると、画面内の写真は削除されます。端末に保存した写真は残ります。</p>
 			</div>
 			<div class="discard-collection">
 				<p class="hint">端末に保存できたことを確認してから削除してください。</p>
@@ -807,9 +738,7 @@
 		margin: 0;
 		background-color: #f4f0e7;
 		color: #283f35;
-		font-family:
-			'Noto Sans JP Variable', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
-			'Yu Gothic', Meiryo, sans-serif;
+		font-family: 'Noto Sans JP Variable', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
 	}
 	:global(*) {
 		box-sizing: border-box;

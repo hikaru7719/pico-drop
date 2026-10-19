@@ -11,29 +11,23 @@ vi.mock('cloudflare:workers', () => ({
 
 const backend = env.BACKEND;
 const unavailable = 'サーバーに接続できません。時間をおいてお試しください。';
-const response = Response.json(
-	{ account: null },
-	{ headers: { 'Set-Cookie': 'session=value' } }
-);
+const response = Response.json({ account: null }, { headers: { 'Set-Cookie': 'session=value' } });
 
 afterEach(() => {
 	env.BACKEND = backend;
 	vi.resetAllMocks();
 });
 
-test.each(['GET', 'POST'] as const)(
-	'proxy forwards %s without event.platform',
-	async (method) => {
-		const handler = { GET, POST }[method];
-		const request = new Request('https://pico.test/api/auth/status', {
-			method
-		});
-		backendFetch.mockResolvedValue(response);
-		const result = await handler({ request } as Parameters<typeof handler>[0]);
-		expect(result).toBe(response);
-		expect(backendFetch).toHaveBeenCalledExactlyOnceWith(request);
-	}
-);
+test.each(['GET', 'POST'] as const)('proxy forwards %s without event.platform', async (method) => {
+	const handler = { GET, POST }[method];
+	const request = new Request('https://pico.test/api/auth/status', {
+		method
+	});
+	backendFetch.mockResolvedValue(response);
+	const result = await handler({ request } as Parameters<typeof handler>[0]);
+	expect(result).toBe(response);
+	expect(backendFetch).toHaveBeenCalledExactlyOnceWith(request);
+});
 
 test('missing backend returns a JSON error', async () => {
 	env.BACKEND = undefined as unknown as typeof env.BACKEND;

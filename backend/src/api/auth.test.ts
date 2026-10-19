@@ -1,14 +1,7 @@
 import { test, expect, vi, afterEach } from 'vitest';
-import type {
-	AuthNetwork,
-	AuthStore,
-	PasskeyVerifier
-} from '../application/auth.ts';
+import type { AuthNetwork, AuthStore, PasskeyVerifier } from '../application/auth.ts';
 import type { Account } from '../domain/auth.ts';
-import type {
-	verifyRegistrationResponse,
-	verifyAuthenticationResponse
-} from '@simplewebauthn/server';
+import type { verifyRegistrationResponse, verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { PasskeyAuth } from './auth.ts';
 import { authOrigin } from './http.ts';
 import { secretHash } from '../domain/tokens.ts';
@@ -22,12 +15,7 @@ class Fixture {
 	lastChallenge = '';
 
 	constructor(network?: AuthNetwork, verifier?: Verifier) {
-		this.auth = new PasskeyAuth(
-			this.store(),
-			authEnv,
-			network,
-			verifier ?? passkeys
-		);
+		this.auth = new PasskeyAuth(this.store(), authEnv, network, verifier ?? passkeys);
 	}
 
 	store(): AuthStore {
@@ -64,11 +52,9 @@ class Fixture {
 	}
 }
 
-const cookieOf = (response: Response) =>
-	response.headers.get('Set-Cookie')!.split(';')[0];
+const cookieOf = (response: Response) => response.headers.get('Set-Cookie')!.split(';')[0];
 
-const challenges = (app: Fixture) =>
-	[...app.entries.keys()].filter((key) => key.startsWith('auth:challenge:'));
+const challenges = (app: Fixture) => [...app.entries.keys()].filter((key) => key.startsWith('auth:challenge:'));
 
 test('registration requires a discoverable passkey and user verification, with a protected cookie', async () => {
 	const response = await new Fixture().begin();
@@ -91,9 +77,7 @@ test('a challenge cannot be used by another browser', async () => {
 test('failed verification consumes the challenge and never creates an account', async () => {
 	const app = new Fixture();
 	const cookie = cookieOf(await app.begin());
-	const response = await app.auth.route(
-		app.request('register/verify', {}, cookie)
-	);
+	const response = await app.auth.route(app.request('register/verify', {}, cookie));
 	expect(response.status).toBe(400);
 	expect(challenges(app)).toHaveLength(0);
 	expect(hasAccount(app)).toBe(false);
@@ -131,9 +115,7 @@ test('send quota survives new browser sessions for the same account', async () =
 
 test('input size limits are enforced', async () => {
 	const app = new Fixture();
-	const response = await app.auth.route(
-		app.request('register/options', { name: 'x'.repeat(25_000) })
-	);
+	const response = await app.auth.route(app.request('register/options', { name: 'x'.repeat(25_000) }));
 	expect(response.status).toBe(400);
 });
 
@@ -148,34 +130,25 @@ test('authentication rate limits are enforced', async () => {
 test('production origin must be explicitly configured and must match', () => {
 	const request = new Request('https://photos.example/api/auth/status');
 	expect(() => authOrigin(request, {})).toThrow();
-	expect(() =>
-		authOrigin(request, { AUTH_ORIGIN: 'https://attacker.example' })
-	).toThrow();
-	expect(
-		authOrigin(request, { AUTH_ORIGIN: 'https://photos.example' }).hostname
-	).toBe('photos.example');
+	expect(() => authOrigin(request, { AUTH_ORIGIN: 'https://attacker.example' })).toThrow();
+	expect(authOrigin(request, { AUTH_ORIGIN: 'https://photos.example' }).hostname).toBe('photos.example');
 });
 
 const REQUIRED_PASSKEY = {
 	residentKey: 'required',
 	userVerification: 'required'
 };
-const PROTECTED_COOKIE =
-	/^__Host-pico_challenge=.*HttpOnly; SameSite=Strict; Max-Age=300; Secure$/;
+const PROTECTED_COOKIE = /^__Host-pico_challenge=.*HttpOnly; SameSite=Strict; Max-Age=300; Secure$/;
 
-const hasAccount = (app: Fixture) =>
-	[...app.entries.keys()].some((key) => key.startsWith('auth:account:'));
+const hasAccount = (app: Fixture) => [...app.entries.keys()].some((key) => key.startsWith('auth:account:'));
 
 async function verifyStatus(app: Fixture, kind: string, cookie: string) {
-	return (await app.auth.route(app.request(kind + '/verify', {}, cookie)))
-		.status;
+	return (await app.auth.route(app.request(kind + '/verify', {}, cookie))).status;
 }
 
 test('production cannot configure an insecure origin', () => {
 	const request = new Request('http://photos.example/api/auth/status');
-	expect(() =>
-		authOrigin(request, { AUTH_ORIGIN: 'http://photos.example' })
-	).toThrow();
+	expect(() => authOrigin(request, { AUTH_ORIGIN: 'http://photos.example' })).toThrow();
 });
 
 const credential = {
@@ -197,9 +170,7 @@ function verifier() {
 	return {
 		...passkeys,
 		verifyRegistrationResponse: registrationVerifier(),
-		verifyAuthenticationResponse: vi
-			.fn<typeof verifyAuthenticationResponse>()
-			.mockResolvedValue(loginResult)
+		verifyAuthenticationResponse: vi.fn<typeof verifyAuthenticationResponse>().mockResolvedValue(loginResult)
 	} satisfies PasskeyVerifier;
 }
 
@@ -218,9 +189,7 @@ const registrationResult = {
 
 async function register(app: Fixture) {
 	const cookie = cookieOf(await app.begin());
-	return app.auth.route(
-		app.request('register/verify', { id: credential.id }, cookie)
-	);
+	return app.auth.route(app.request('register/verify', { id: credential.id }, cookie));
 }
 
 function assertionBody(account: string) {
@@ -233,9 +202,7 @@ function assertionBody(account: string) {
 async function login(app: Fixture, account: string, cookie = '') {
 	const challenge = cookieOf(await app.begin('login'));
 	const cookies = [challenge, cookie].join('; ');
-	return app.auth.route(
-		app.request('login/verify', assertionBody(account), cookies)
-	);
+	return app.auth.route(app.request('login/verify', assertionBody(account), cookies));
 }
 
 function storedCredential(app: Fixture) {
@@ -243,18 +210,14 @@ function storedCredential(app: Fixture) {
 }
 
 async function sessionKey(app: Fixture, response: Response) {
-	return app.auth.loginKey(
-		app.request('status', undefined, cookieOf(response))
-	);
+	return app.auth.loginKey(app.request('status', undefined, cookieOf(response)));
 }
 
 async function registeredApp() {
 	const check = verifier();
 	const app = new Fixture(undefined, check);
 	const response = await register(app);
-	const account = [...app.entries.values()].find(
-		(value) => value.name === 'Guest'
-	) as Account;
+	const account = [...app.entries.values()].find((value) => value.name === 'Guest') as Account;
 	return { app, check, response, account };
 }
 
@@ -272,16 +235,11 @@ test('registration stores the verified credential and issues a protected login',
 	expect(response.status).toBe(200);
 	expect(storedCredential(app).account).toBe(account.id);
 	expect(await response.json()).toEqual({ account: { name: 'Guest' } });
-	expect(response.headers.get('set-cookie')).toContain(
-		'Max-Age=604800; Secure'
-	);
+	expect(response.headers.get('set-cookie')).toContain('Max-Age=604800; Secure');
 	assertSignupVerification(check, app.lastChallenge);
 });
 
-function assertSignupVerification(
-	check: ReturnType<typeof verifier>,
-	challenge: string
-) {
+function assertSignupVerification(check: ReturnType<typeof verifier>, challenge: string) {
 	const options = check.verifyRegistrationResponse.mock.calls[0][0];
 	expect(options.supportedAlgorithmIDs).toEqual([-7, -257]);
 	expectVerification(options, challenge);
@@ -316,9 +274,7 @@ test('unverified registration never stores an account', async () => {
 test('a credential cannot be registered twice', async () => {
 	const { app } = await registeredApp();
 	expect((await register(app)).status).toBe(400);
-	expect(
-		[...app.entries.keys()].filter((key) => key.startsWith('auth:account:'))
-	).toHaveLength(1);
+	expect([...app.entries.keys()].filter((key) => key.startsWith('auth:account:'))).toHaveLength(1);
 });
 test('unknown credentials are rejected before cryptographic verification', async () => {
 	const check = verifier();
@@ -326,19 +282,12 @@ test('unknown credentials are rejected before cryptographic verification', async
 	expect((await login(app, 'missing')).status).toBe(400);
 	expect(check.verifyAuthenticationResponse).not.toHaveBeenCalled();
 });
-test.each(['missing', 'disabled', 'handle'])(
-	'login rejects an account that is %s',
-	async (reason) => {
-		const { app, account } = await registeredApp();
-		invalidateAccount(app, account, reason);
-		expect(
-			(await login(app, reason === 'handle' ? 'other' : account.id)).status
-		).toBe(400);
-		expect(
-			app.entries.get('auth:credential:credential').credential.counter
-		).toBe(0);
-	}
-);
+test.each(['missing', 'disabled', 'handle'])('login rejects an account that is %s', async (reason) => {
+	const { app, account } = await registeredApp();
+	invalidateAccount(app, account, reason);
+	expect((await login(app, reason === 'handle' ? 'other' : account.id)).status).toBe(400);
+	expect(app.entries.get('auth:credential:credential').credential.counter).toBe(0);
+});
 
 function invalidateAccount(app: Fixture, account: Account, reason: string) {
 	if (reason === 'missing') {
@@ -351,33 +300,22 @@ function invalidateAccount(app: Fixture, account: Account, reason: string) {
 	}
 }
 
-test.each([
-	undefined,
-	null,
-	{},
-	{ name: 1 },
-	{ name: '' },
-	{ name: 'x'.repeat(41) },
-	{ name: '\u0000' }
-])('invalid registration name %j returns a generic error', async (body) => {
-	const app = new Fixture();
-	expect(
-		(await app.auth.route(app.request('register/options', body))).status
-	).toBe(400);
-	expect(challenges(app)).toHaveLength(0);
-});
+test.each([undefined, null, {}, { name: 1 }, { name: '' }, { name: 'x'.repeat(41) }, { name: '\u0000' }])(
+	'invalid registration name %j returns a generic error',
+	async (body) => {
+		const app = new Fixture();
+		expect((await app.auth.route(app.request('register/options', body))).status).toBe(400);
+		expect(challenges(app)).toHaveLength(0);
+	}
+);
 test('registration names are trimmed and control characters removed', async () => {
 	const app = new Fixture();
-	await app.auth.route(
-		app.request('register/options', { name: '  A\u0000B  ' })
-	);
+	await app.auth.route(app.request('register/options', { name: '  A\u0000B  ' }));
 	expect(app.entries.get(challenges(app)[0]).account.name).toBe('AB');
 });
 
 async function status(app: Fixture, cookie = '') {
-	return (
-		await app.auth.route(app.request('status', undefined, cookie))
-	).json();
+	return (await app.auth.route(app.request('status', undefined, cookie))).json();
 }
 
 test('status reports public account data and logout also works without a cookie', async () => {
@@ -387,16 +325,13 @@ test('status reports public account data and logout also works without a cookie'
 	expect(await status(app)).toEqual({ account: null });
 	expect((await app.auth.route(app.request('logout'))).status).toBe(200);
 });
-test.each(['expired', 'missing', 'disabled'])(
-	'identity rejects %s sessions or accounts',
-	async (reason) => {
-		const app = new Fixture();
-		const { key } = await app.identity();
-		invalidateIdentity(app, key, reason);
-		expect(await app.auth.service.identity(key)).toBeUndefined();
-		await expect(app.auth.service.allowSend(key)).rejects.toThrow('ログイン');
-	}
-);
+test.each(['expired', 'missing', 'disabled'])('identity rejects %s sessions or accounts', async (reason) => {
+	const app = new Fixture();
+	const { key } = await app.identity();
+	invalidateIdentity(app, key, reason);
+	expect(await app.auth.service.identity(key)).toBeUndefined();
+	await expect(app.auth.service.allowSend(key)).rejects.toThrow('ログイン');
+});
 
 function invalidateIdentity(app: Fixture, key: string, reason: string) {
 	if (reason === 'expired') {
@@ -447,10 +382,7 @@ function networkFixture() {
 	return { network, app: new Fixture(network, verifier()) };
 }
 
-async function remoteRegister(
-	app: Fixture,
-	network: ReturnType<typeof remoteNetwork>
-) {
+async function remoteRegister(app: Fixture, network: ReturnType<typeof remoteNetwork>) {
 	const cookie = cookieOf(await app.begin());
 	const ceremony = app.entries.get(challenges(app)[0]);
 	network.take.mockResolvedValue(ceremony);
@@ -496,7 +428,5 @@ async function assertRemoteLogin(network: ReturnType<typeof remoteNetwork>) {
 afterEach(() => vi.restoreAllMocks());
 
 function registrationVerifier() {
-	return vi
-		.fn<typeof verifyRegistrationResponse>()
-		.mockResolvedValue(registrationResult);
+	return vi.fn<typeof verifyRegistrationResponse>().mockResolvedValue(registrationResult);
 }

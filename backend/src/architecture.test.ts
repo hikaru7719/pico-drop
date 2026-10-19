@@ -11,15 +11,11 @@ const allowed: Record<string, string[]> = {
 };
 
 function sources(layer: string) {
-	return readdirSync(resolve(root, layer)).filter(
-		(name) => name.endsWith('.ts') && !name.endsWith('.test.ts')
-	);
+	return readdirSync(resolve(root, layer)).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'));
 }
 
 function imports(source: string) {
-	return [...source.matchAll(/(?:from\s+|import\s*\()['"]([^'"]+)['"]/g)].map(
-		(match) => match[1]
-	);
+	return [...source.matchAll(/(?:from\s+|import\s*\()['"]([^'"]+)['"]/g)].map((match) => match[1]);
 }
 
 function checkImport(layer: string, file: string, specifier: string) {
@@ -35,9 +31,7 @@ function checkTarget(layer: string, file: string, target: string) {
 		expect(target.startsWith('../../shared/')).toBe(true);
 		return;
 	}
-	expect(allowed[layer], `${layer}/${file} imports ${target}`).toContain(
-		target.split('/')[0]
-	);
+	expect(allowed[layer], `${layer}/${file} imports ${target}`).toContain(target.split('/')[0]);
 }
 
 for (const layer of Object.keys(allowed)) {
@@ -50,14 +44,11 @@ for (const layer of Object.keys(allowed)) {
 		}
 	});
 }
-test.each(['domain', 'application'])(
-	'%s does not depend on HTTP or Cloudflare runtime APIs',
-	(layer) => {
-		for (const file of sources(layer)) {
-			const source = readFileSync(resolve(root, layer, file), 'utf8');
-			expect(source, file).not.toMatch(
-				/\b(?:Request|Response|DurableObjectState|DurableObjectStorage|WebSocketPair|Bindings)\b|from ['"](?:hono|cloudflare:)/
-			);
-		}
+test.each(['domain', 'application'])('%s does not depend on HTTP or Cloudflare runtime APIs', (layer) => {
+	for (const file of sources(layer)) {
+		const source = readFileSync(resolve(root, layer, file), 'utf8');
+		expect(source, file).not.toMatch(
+			/\b(?:Request|Response|DurableObjectState|DurableObjectStorage|WebSocketPair|Bindings)\b|from ['"](?:hono|cloudflare:)/
+		);
 	}
-);
+});

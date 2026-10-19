@@ -17,9 +17,7 @@
 		{locating ? '現在地を確認しています' : '近くの人を探しています'}
 	</p>
 	<small
-		>{locating
-			? '位置情報の利用を許可してください。'
-			: '相手もこのページで近くの人を探し始めると、ここに表示されます。'}</small
+		>{locating ? '位置情報の利用を許可してください。' : '相手もこのページで近くの人を探し始めると、ここに表示されます。'}</small
 	>
 </div>
 
@@ -43,12 +41,7 @@
 		width: 88%;
 		aspect-ratio: 1;
 		border-radius: 50%;
-		background: radial-gradient(
-			circle,
-			#0071e30b 0%,
-			#0071e305 40%,
-			transparent 70%
-		);
+		background: radial-gradient(circle, #0071e30b 0%, #0071e305 40%, transparent 70%);
 	}
 	.ripple {
 		position: absolute;

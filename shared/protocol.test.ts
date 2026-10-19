@@ -6,13 +6,7 @@ const deniedActions = [
 ];
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import {
-	authorizeTransfer,
-	parseClient,
-	validPhotos,
-	LIMITS,
-	type TransferState
-} from './protocol.ts';
+import { authorizeTransfer, parseClient, validPhotos, LIMITS, type TransferState } from './protocol.ts';
 const photo = {
 	id: 'photo-1',
 	name: 'photo.jpg',
@@ -79,10 +73,7 @@ test('signaling validation rejects malformed and obsolete messages', () => {
 	for (const input of invalidMessages) {
 		assert.throws(() => parseClient(input));
 	}
-	assert.equal(
-		parseClient({ type: 'join-link', token: 'a'.repeat(64) }).type,
-		'join-link'
-	);
+	assert.equal(parseClient({ type: 'join-link', token: 'a'.repeat(64) }).type, 'join-link');
 });
 const invalidLinks = [
 	{ type: 'join-link', token: '1234' },
@@ -92,10 +83,7 @@ const invalidLinks = [
 	{ type: 'request', to: 'b', files: [photo] }
 ];
 test('links require valid metadata and unguessable tokens; legacy discovery is rejected', () => {
-	assert.equal(
-		parseClient({ type: 'create-link', files: [photo] }).type,
-		'create-link'
-	);
+	assert.equal(parseClient({ type: 'create-link', files: [photo] }).type, 'create-link');
 	assert.equal(parseClient({ type: 'revoke-link' }).type, 'revoke-link');
 	for (const input of invalidLinks) {
 		assert.throws(() => parseClient(input));
@@ -107,7 +95,5 @@ test('group approval is restricted to the sender before transfer starts', () => 
 	authorizeTransfer(t, 'a', 'approve');
 	assert.throws(() => authorizeTransfer(t, 'b', 'approve'));
 	assert.throws(() => authorizeTransfer(transfer(), 'a', 'approve'));
-	assert.throws(() =>
-		authorizeTransfer({ ...t, started: true }, 'a', 'approve')
-	);
+	assert.throws(() => authorizeTransfer({ ...t, started: true }, 'a', 'approve'));
 });

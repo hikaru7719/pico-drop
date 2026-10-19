@@ -6,12 +6,7 @@ export type PhotoGrant = {
 	uses: Record<string, number>;
 };
 
-export function reservePhoto(
-	grant: PhotoGrant | undefined,
-	id: string,
-	mode: string,
-	now = Date.now()
-) {
+export function reservePhoto(grant: PhotoGrant | undefined, id: string, mode: string, now = Date.now()) {
 	return !grant || grant.expiresAt <= now || !['preview', 'jpeg'].includes(mode)
 		? null
 		: reserveFile(grant, id, mode as ConversionMode);

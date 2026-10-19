@@ -1,9 +1,7 @@
 import type { IceConfiguration } from '../application/room-ports.ts';
 type TurnEnvironment = { TURN_KEY_ID?: string; TURN_KEY_API_TOKEN?: string };
 
-export async function iceServers(
-	env: TurnEnvironment
-): Promise<IceConfiguration> {
+export async function iceServers(env: TurnEnvironment): Promise<IceConfiguration> {
 	return env.TURN_KEY_ID && env.TURN_KEY_API_TOKEN
 		? turnServers(env)
 		: { iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }], relay: false };

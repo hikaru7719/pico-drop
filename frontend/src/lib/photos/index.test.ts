@@ -3,9 +3,7 @@ import assert from 'node:assert/strict';
 import { describePhotos, formatBytes, sharePhotos } from './index.ts';
 const data = new Uint8Array([255, 216, 255, 224, 1, 2, 3, 4]).buffer;
 test('photo classification uses file bytes', async () => {
-	const [jpeg] = await describePhotos([
-		new File([data], 'camera.heic', { type: 'image/heic' })
-	]);
+	const [jpeg] = await describePhotos([new File([data], 'camera.heic', { type: 'image/heic' })]);
 	assert.equal(jpeg.type, 'image/jpeg');
 });
 test('photo classification rejects renamed non-photos', async () => {
@@ -15,9 +13,7 @@ test('photo classification rejects renamed non-photos', async () => {
 test('photo classification preserves HEIC', async () => {
 	const heic = new Uint8Array(24);
 	heic.set(new TextEncoder().encode('ftypheic'), 4);
-	const [photo] = await describePhotos([
-		new File([heic], 'camera.heic', { type: 'image/heic' })
-	]);
+	const [photo] = await describePhotos([new File([heic], 'camera.heic', { type: 'image/heic' })]);
 	assert.equal(photo.type, 'image/heic');
 	assert.equal(photo.name, 'camera.heic');
 });

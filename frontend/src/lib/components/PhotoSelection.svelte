@@ -17,8 +17,7 @@
 <div class="selection">
 	<p class="summary">
 		{files.length}枚の写真
-		<span>· {formatBytes(files.reduce((sum, file) => sum + file.size, 0))}</span
-		>
+		<span>· {formatBytes(files.reduce((sum, file) => sum + file.size, 0))}</span>
 	</p>
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex (Allow keyboard scrolling of the photo strip.) -->
 	<div
@@ -46,9 +45,7 @@
 			{/each}
 		</ul>
 	</div>
-	{#if files.length > 1}<p class="scroll-hint">
-			横にスクロールして、すべての写真を確認できます。
-		</p>{/if}
+	{#if files.length > 1}<p class="scroll-hint">横にスクロールして、すべての写真を確認できます。</p>{/if}
 </div>
 
 <style>

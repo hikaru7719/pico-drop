@@ -24,7 +24,6 @@ export function roomRoute(request: Request) {
 }
 
 function bearerRoom(request: Request) {
-	const token =
-		request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
+	const token = request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
 	return /^[a-f0-9]{64}$/.test(token) ? token.slice(0, 16) : '';
 }

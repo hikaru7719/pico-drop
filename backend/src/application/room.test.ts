@@ -45,10 +45,7 @@ class Fixture {
 	deadline: number | null = null;
 
 	constructor() {
-		this.hub = new RoomService(
-			this.context() as never,
-			this.environment() as never
-		);
+		this.hub = new RoomService(this.context() as never, this.environment() as never);
 	}
 
 	environment() {
@@ -97,17 +94,13 @@ class Fixture {
 		};
 	}
 
-	put = async (key: string, value: any) =>
-		this.entries.set(key, structuredClone(value));
+	put = async (key: string, value: any) => this.entries.set(key, structuredClone(value));
 	setAlarm = async (time: number) => {
 		this.deadline = time;
 	};
 
 	async message(index: number, message: unknown) {
-		await this.hub.webSocketMessage(
-			this.sockets[index],
-			JSON.stringify(message)
-		);
+		await this.hub.webSocketMessage(this.sockets[index], JSON.stringify(message));
 	}
 
 	async link() {
@@ -119,9 +112,7 @@ test('link is hashed, bounded to ten minutes, consumed once, and approval gates 
 	const app = new Fixture();
 	const link = await app.link();
 	expect(link.token).toMatch(/^[a-f0-9]{64}$/);
-	expect(link.expiresAt - Date.now()).toBeLessThanOrEqual(
-		protocol.LIMITS.linkMs
-	);
+	expect(link.expiresAt - Date.now()).toBeLessThanOrEqual(protocol.LIMITS.linkMs);
 	expect([...app.entries.keys()][0]).not.toContain(link.token);
 	await checkJoin(app, link.token);
 });
@@ -189,24 +180,18 @@ test('self joining and legacy discovery cannot create a transfer', async () => {
 });
 
 function invalidationMessage(reason: string) {
-	return reason === 'replace'
-		? { type: 'create-link', files }
-		: { type: 'revoke-link' };
+	return reason === 'replace' ? { type: 'create-link', files } : { type: 'revoke-link' };
 }
 
 test('simultaneous participants consume an invitation only once', async () => {
 	const app = new Fixture();
 	const link = await app.link();
-	await Promise.all(
-		[1, 2].map((i) => app.message(i, { type: 'join-link', token: link.token }))
-	);
+	await Promise.all([1, 2].map((i) => app.message(i, { type: 'join-link', token: link.token })));
 	assertSingleParticipant(app);
 });
 
 function assertSingleParticipant(app: Fixture) {
-	const requests = app.sockets[0].messages.filter(
-		(m) => m.type === 'requested'
-	);
+	const requests = app.sockets[0].messages.filter((m) => m.type === 'requested');
 	expect(requests).toHaveLength(1);
 	expect(app.sockets.filter((ws) => ws.last('error'))).toHaveLength(1);
 }
@@ -328,11 +313,7 @@ test('same QR admits several recipients and transfers sequentially after complet
 	await assertSequentialCompletion(app, first, second);
 });
 
-async function assertSequentialCompletion(
-	app: Fixture,
-	first: string,
-	second: string
-) {
+async function assertSequentialCompletion(app: Fixture, first: string, second: string) {
 	assertQueued(app);
 	await app.message(1, { type: 'complete', id: first });
 	assertNextStarted(app, second);
@@ -362,9 +343,7 @@ for (const kind of ['revoke', 'disconnect', 'expire']) {
 async function stopAndCheckGroup(app: Fixture, link: any, kind: string) {
 	await stopDistribution(app, link, kind);
 	expect(app.sockets[2].last('start')).toBeUndefined();
-	expect(
-		[...app.entries.keys()].filter((key) => key.startsWith('transfer:'))
-	).toHaveLength(0);
+	expect([...app.entries.keys()].filter((key) => key.startsWith('transfer:'))).toHaveLength(0);
 	await app.message(2, { type: 'join-link', token: link.token });
 	expect(app.sockets[2].last('error').message).toMatch(/有効期限/);
 }
@@ -427,9 +406,7 @@ function memberStatuses(app: Fixture) {
 }
 
 async function joinMany(app: Fixture, token: string) {
-	await Promise.all(
-		[1, 2, 3, 4, 5, 6].map((i) => app.message(i, { type: 'join-link', token }))
-	);
+	await Promise.all([1, 2, 3, 4, 5, 6].map((i) => app.message(i, { type: 'join-link', token })));
 }
 
 async function stopDistribution(app: Fixture, link: any, kind: string) {
@@ -516,17 +493,14 @@ test('legacy anonymous sessions are supported without room metadata', async () =
 	expect(session.room).toBeUndefined();
 	expect(app.entries.get('routing:room')).toBe('');
 });
-test.each(['missing', 'expired', 'used'])(
-	'rejects a %s session before accepting a socket',
-	async (kind) => {
-		const app = new Fixture();
-		const { session, ws, index } = await newConnection(app);
-		alterSession(app, session, kind);
-		await app.message(index, { type: 'auth', token: session.token });
-		expect(ws.readyState).toBe(3);
-		expect(ws.last('ready')).toBeUndefined();
-	}
-);
+test.each(['missing', 'expired', 'used'])('rejects a %s session before accepting a socket', async (kind) => {
+	const app = new Fixture();
+	const { session, ws, index } = await newConnection(app);
+	alterSession(app, session, kind);
+	await app.message(index, { type: 'auth', token: session.token });
+	expect(ws.readyState).toBe(3);
+	expect(ws.last('ready')).toBeUndefined();
+});
 
 function alterSession(app: Fixture, session: protocol.Session, kind: string) {
 	const entry = [...app.entries].find(([, value]) => value.id === session.id)!;
@@ -575,18 +549,15 @@ function seedIceTransfer(app: Fixture, ws: Socket) {
 	});
 }
 
-test.each(['missing', 'pending', 'expired'])(
-	'ICE rejects a %s transfer',
-	async (kind) => {
-		const app = new Fixture();
-		const { session, ws } = await connectedSession(app);
-		seedIceTransfer(app, ws);
-		alterIceTransfer(app, kind);
-		await expect(app.hub.ice(session.token)).rejects.toMatchObject({
-			code: 'forbidden'
-		});
-	}
-);
+test.each(['missing', 'pending', 'expired'])('ICE rejects a %s transfer', async (kind) => {
+	const app = new Fixture();
+	const { session, ws } = await connectedSession(app);
+	seedIceTransfer(app, ws);
+	alterIceTransfer(app, kind);
+	await expect(app.hub.ice(session.token)).rejects.toMatchObject({
+		code: 'forbidden'
+	});
+});
 
 function alterIceTransfer(app: Fixture, kind: string) {
 	const transfer = app.entries.get('transfer:ice-transfer');
@@ -604,8 +575,7 @@ test('group senders have a bounded larger ICE allowance', async () => {
 	const { session, ws } = await connectedSession(app);
 	seedIceTransfer(app, ws);
 	ws.data.linkKey = 'link:group';
-	ws.data.turnCount =
-		protocol.LIMITS.participants * protocol.LIMITS.groupAttempts - 1;
+	ws.data.turnCount = protocol.LIMITS.participants * protocol.LIMITS.groupAttempts - 1;
 	expect((await app.hub.ice(session.token)).relay).toBe(false);
 	await iceError(app, session.token, 'rate-limit');
 });
@@ -648,9 +618,7 @@ test('socket errors close connections and complete cleanup', async () => {
 	await app.link();
 	await app.hub.webSocketError(app.sockets[0]);
 	expect(app.sockets[0].readyState).toBe(3);
-	expect([...app.entries.keys()].some((key) => key.startsWith('link:'))).toBe(
-		false
-	);
+	expect([...app.entries.keys()].some((key) => key.startsWith('link:'))).toBe(false);
 });
 test('alarms close idle unauthenticated and expired authenticated sockets', async () => {
 	const app = new Fixture();
@@ -674,9 +642,7 @@ test('a socket closing during an outgoing message does not break cleanup', async
 		throw new Error('closed');
 	});
 	await app.link();
-	expect([...app.entries.keys()].some((key) => key.startsWith('link:'))).toBe(
-		true
-	);
+	expect([...app.entries.keys()].some((key) => key.startsWith('link:'))).toBe(true);
 });
 
 async function iceError(app: Fixture, token: string, code: string) {

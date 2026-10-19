@@ -2,31 +2,18 @@ import type { Signal } from '../../../../shared/protocol.ts';
 
 export interface SendChannel extends Pick<
 	RTCDataChannel,
-	| 'readyState'
-	| 'bufferedAmount'
-	| 'bufferedAmountLowThreshold'
-	| 'addEventListener'
-	| 'removeEventListener'
+	'readyState' | 'bufferedAmount' | 'bufferedAmountLowThreshold' | 'addEventListener' | 'removeEventListener'
 > {
 	send(data: string): void;
 	send(data: ArrayBuffer): void;
 }
 
 export interface DataChannel
-	extends
-		SendChannel,
-		Pick<
-			RTCDataChannel,
-			'binaryType' | 'onopen' | 'onclose' | 'onerror' | 'onmessage' | 'close'
-		> {}
+	extends SendChannel, Pick<RTCDataChannel, 'binaryType' | 'onopen' | 'onclose' | 'onerror' | 'onmessage' | 'close'> {}
 
 export interface PeerConnection extends Pick<
 	RTCPeerConnection,
-	| 'connectionState'
-	| 'onicecandidate'
-	| 'ondatachannel'
-	| 'onconnectionstatechange'
-	| 'close'
+	'connectionState' | 'onicecandidate' | 'ondatachannel' | 'onconnectionstatechange' | 'close'
 > {
 	createOffer(): Promise<RTCSessionDescriptionInit>;
 	createAnswer(): Promise<RTCSessionDescriptionInit>;

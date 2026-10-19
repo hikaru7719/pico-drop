@@ -7,10 +7,7 @@ const INVALID_DATA = '不正な転送データです。';
 const INVALID_ORDER = '受信データの順序・サイズが一致しません。';
 
 export async function digest(data: ArrayBuffer): Promise<string> {
-	return Array.from(
-		new Uint8Array(await crypto.subtle.digest('SHA-256', data)),
-		(b) => b.toString(16).padStart(2, '0')
-	).join('');
+	return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', data)), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 class DrainWaiter {
@@ -66,9 +63,7 @@ function checkChannel(channel: SendChannel, signal: AbortSignal) {
 async function drain(channel: SendChannel, signal: AbortSignal) {
 	checkChannel(channel, signal);
 	if (channel.bufferedAmount > 256 * 1024) {
-		await new Promise<void>(
-			(resolve, reject) => new DrainWaiter(channel, signal, { resolve, reject })
-		);
+		await new Promise<void>((resolve, reject) => new DrainWaiter(channel, signal, { resolve, reject }));
 	}
 }
 
@@ -98,9 +93,7 @@ class PhotoSender {
 		const data = await this.readFile(file);
 		await this.sendHeader(data, meta.id);
 		await this.sendChunks(data);
-		this.options.channel.send(
-			JSON.stringify({ type: 'file-end', id: meta.id })
-		);
+		this.options.channel.send(JSON.stringify({ type: 'file-end', id: meta.id }));
 	}
 
 	private async readFile(file: File) {
@@ -172,11 +165,7 @@ export class PhotoReceiver {
 	private validChunk(data: ArrayBuffer) {
 		const meta = this.metadata[this.index];
 		return (
-			this.active &&
-			meta &&
-			data.byteLength > 0 &&
-			data.byteLength <= LIMITS.chunk &&
-			this.bytes + data.byteLength <= meta.size
+			this.active && meta && data.byteLength > 0 && data.byteLength <= LIMITS.chunk && this.bytes + data.byteLength <= meta.size
 		);
 	}
 
@@ -209,8 +198,7 @@ export class PhotoReceiver {
 
 	private beginFile(marker: Record<string, unknown>) {
 		const meta = this.metadata[this.index];
-		const validHash =
-			typeof marker.sha256 === 'string' && /^[a-f0-9]{64}$/.test(marker.sha256);
+		const validHash = typeof marker.sha256 === 'string' && /^[a-f0-9]{64}$/.test(marker.sha256);
 		if (this.active || !meta || marker.id !== meta.id || !validHash) {
 			throw new Error(INVALID_ORDER);
 		}
@@ -220,8 +208,7 @@ export class PhotoReceiver {
 
 	private endMetadata(marker: Record<string, unknown>) {
 		const meta = this.metadata[this.index];
-		const valid =
-			this.active && meta && marker.id === meta.id && this.bytes === meta.size;
+		const valid = this.active && meta && marker.id === meta.id && this.bytes === meta.size;
 		if (!valid) {
 			throw new Error(INVALID_ORDER);
 		}

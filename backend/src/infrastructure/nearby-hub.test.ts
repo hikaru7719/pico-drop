@@ -106,9 +106,7 @@ test('sharded logins retain routing prefixes and empty revocation is harmless', 
 	const app = new Fixture();
 	const sharded = { ...account, id: 'v2.ab.user' };
 	await app.hub().registerAccount(sharded, credential);
-	expect(await app.hub({ HUB: {} }).issueAccountLogin(sharded)).toMatch(
-		/^v2\.ab\./
-	);
+	expect(await app.hub({ HUB: {} }).issueAccountLogin(sharded)).toMatch(/^v2\.ab\./);
 	await app.hub().revokeLogin('');
 	expect(app.entries.has('auth:account:v2.ab.user')).toBe(true);
 });
@@ -131,9 +129,7 @@ test('room fetch creates a durable anonymous session', async () => {
 test('photo permissions remain usable through the RPC boundary', async () => {
 	const app = new Fixture();
 	const access = await createPhotoAccess(app.storage, [heic]);
-	expect(
-		(await app.hub().consumePhoto(access.token, 'p', 'preview'))?.photo.id
-	).toBe('p');
+	expect((await app.hub().consumePhoto(access.token, 'p', 'preview'))?.photo.id).toBe('p');
 	await app.hub().revokePhoto(access.token);
 	expect(await app.hub().consumePhoto(access.token, 'p', 'jpeg')).toBeNull();
 });
@@ -149,13 +145,9 @@ test('auth rate quotas use the longer auth window', async () => {
 const heic = { id: 'p', name: 'p.heic', type: 'image/heic', size: 16 };
 
 function post(app: Fixture, path: string) {
-	return app
-		.hub()
-		.fetch(new Request('http://localhost' + path, { method: 'POST' }));
+	return app.hub().fetch(new Request('http://localhost' + path, { method: 'POST' }));
 }
 
 function challenge(app: Fixture) {
-	return [...app.entries.keys()].find((key) =>
-		key.startsWith('auth:challenge:')
-	)!;
+	return [...app.entries.keys()].find((key) => key.startsWith('auth:challenge:'))!;
 }

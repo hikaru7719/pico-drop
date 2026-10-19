@@ -46,9 +46,7 @@ class PhotosFixture {
 	}
 
 	mockIO() {
-		vi.spyOn(URL, 'revokeObjectURL').mockImplementation((url: string) =>
-			this.revoked.push(url)
-		);
+		vi.spyOn(URL, 'revokeObjectURL').mockImplementation((url: string) => this.revoked.push(url));
 		vi.spyOn(URL, 'createObjectURL').mockImplementation(() => 'blob:derived');
 		vi.spyOn(globalThis, 'fetch').mockImplementation((url, options) =>
 			this.fetch(url instanceof Request ? url.url : url.toString(), options)
@@ -57,9 +55,7 @@ class PhotosFixture {
 
 	fetch(url: string, options?: RequestInit) {
 		this.requests.push({ url, options });
-		return url.includes('discard')
-			? Promise.resolve(new Response(null, { status: 204 }))
-			: this.result;
+		return url.includes('discard') ? Promise.resolve(new Response(null, { status: 204 })) : this.result;
 	}
 }
 
@@ -90,9 +86,7 @@ test('resume after a suspended timer checks the absolute deadline', () => {
 });
 test('a failed conversion retains the original for download', async () => {
 	const fixture = new PhotosFixture();
-	fixture.result = Promise.resolve(
-		new Response('Unavailable', { status: 503 })
-	);
+	fixture.result = Promise.resolve(new Response('Unavailable', { status: 503 }));
 	await fixture.collection.convert(0, 'jpeg');
 	assert.equal(fixture.photos[0].url, 'blob:original');
 	assert.ok(fixture.photos[0].problem);
@@ -145,8 +139,5 @@ function assertRevokeRequest(fixture: PhotosFixture) {
 }
 
 function assertAuthorization(options?: RequestInit) {
-	assert.equal(
-		new Headers(options?.headers).get('Authorization'),
-		'Bearer secret'
-	);
+	assert.equal(new Headers(options?.headers).get('Authorization'), 'Bearer secret');
 }

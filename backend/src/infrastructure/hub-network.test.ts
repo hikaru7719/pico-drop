@@ -16,8 +16,7 @@ import { authName, routedToken } from '../domain/tokens.ts';
 import { authRoute, roomRoute } from '../api/routing.ts';
 const secret = 'a'.repeat(64);
 
-const request = (path: string, headers = {}) =>
-	new Request('https://photos.example' + path, { headers });
+const request = (path: string, headers = {}) => new Request('https://photos.example' + path, { headers });
 
 const cookie = {
 	Cookie: `__Host-pico_challenge=v2.ab.${secret}; __Host-pico_auth=v2.cd.${secret}`
@@ -40,9 +39,7 @@ for (const path of ['/api/ice', '/api/photos/convert', '/api/photos/discard']) {
 		const room = '1234567890abcdef';
 		const token = routedToken(room);
 		expect(token).toMatch(/^[a-f0-9]{64}$/);
-		expect(roomRoute(request(path, { Authorization: 'Bearer ' + token }))).toBe(
-			room
-		);
+		expect(roomRoute(request(path, { Authorization: 'Bearer ' + token }))).toBe(room);
 	});
 }
 class Namespace implements AuthHub {
@@ -136,9 +133,7 @@ test('authenticated identity and send checks reach the session issuer', async ()
 	expect(app.authorizeSend).toHaveBeenCalledWith(key);
 });
 test('missing cookies choose random auth shards and missing room tokens stay empty', () => {
-	expect(authRoute(request('/api/auth/login/options', cookie))).toMatch(
-		/^auth:[a-f0-9]{2}$/
-	);
+	expect(authRoute(request('/api/auth/login/options', cookie))).toMatch(/^auth:[a-f0-9]{2}$/);
 	expect(authRoute(request('/api/auth/status'))).toMatch(/^auth:[a-f0-9]{2}$/);
 	expect(roomRoute(request('/api/ws'))).toBe('');
 	expect(roomRoute(request('/api/ice'))).toBe('');
@@ -147,11 +142,7 @@ test('missing cookies choose random auth shards and missing room tokens stay emp
 });
 
 function assertRemoteVerification(app: Namespace) {
-	expect(app.verifyAccountLogin).toHaveBeenCalledWith(
-		assertion,
-		'https://photos.example',
-		ceremony
-	);
+	expect(app.verifyAccountLogin).toHaveBeenCalledWith(assertion, 'https://photos.example', ceremony);
 }
 
 async function rateForIP(app: Namespace, ip: string) {

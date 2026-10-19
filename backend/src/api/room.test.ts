@@ -32,12 +32,9 @@ test('anonymous session and ICE adapter preserve their input defaults', async ()
 	await iceRequest(app);
 	expect(service.ice).toHaveBeenCalledWith('token');
 });
-test.each(['/api/session', '/api/ws', '/missing'])(
-	'room adapter rejects unsupported request %s',
-	async (path) => {
-		expect((await fixture().app.request(origin + path)).status).toBe(405);
-	}
-);
+test.each(['/api/session', '/api/ws', '/missing'])('room adapter rejects unsupported request %s', async (path) => {
+	expect((await fixture().app.request(origin + path)).status).toBe(405);
+});
 test('websocket upgrades are returned without modifying their response', async () => {
 	const { app, upgrade } = fixture();
 	const response = await app.request(origin + '/api/ws', {
