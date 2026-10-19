@@ -71,7 +71,7 @@ TURN未設定時はSTUNと直接接続のみです。iPhone Safari実機、異�
 
 仕様は `docs/pico-drop-design.md`、実装順序は `docs/development.md` を参照してください。
 
-認証の設定・制限・復旧方針は[パスキー認証](docs/auth.md)を参照してください。公開前にバックエンドの `AUTH_ORIGIN` をフロントエンドの公開オリジンに設定してください。
+認証の設定・制限・復旧方針は[パスキー認証](docs/auth.md)を参照してください。バックエンドのデプロイタスクは `AUTH_ORIGIN` にフロントエンドの公開オリジンを設定します。
 
 ## 写真の期限とHEIC変換
 

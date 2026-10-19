@@ -16,7 +16,7 @@ run = "wrangler deploy --dry-run --outdir dist"
 
 [tasks.deploy]
 description = "バックエンドをCloudflareへ公開する"
-run = "wrangler deploy"
+run = "wrangler deploy --var AUTH_ORIGIN:https://pico-drop-frontend.pico-drop-backend.workers.dev"
 
 [tasks.test]
 description = "backendのVitestテストを実行する"

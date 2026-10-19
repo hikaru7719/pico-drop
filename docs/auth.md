@@ -6,7 +6,7 @@
 
 ## 設定
 
-公開前にバックエンドの `AUTH_ORIGIN` をフロントエンドの固定した公開オリジン（例：`https://photos.example.com`、末尾 `/` なし）に設定してください。`backend/wrangler.jsonc` の `vars` に指定するか、バックエンドのディレクトリで `mise exec -- wrangler secret put AUTH_ORIGIN` を実行します。未設定・不一致なら公開環境では認証を拒否します。
+`mise run //backend:deploy` は、バックエンドの `AUTH_ORIGIN` にフロントエンドの公開オリジン `https://pico-drop-frontend.pico-drop-backend.workers.dev` を設定します。GitHub Actionsもこのタスクを使用します。公開ドメインを変更する場合は、`backend/mise.toml` のデプロイ引数を更新してください（末尾 `/` なし）。未設定・不一致なら公開環境では認証を拒否します。ローカル開発にはこのデプロイ引数を適用しません。
 
 ローカルでは `http://localhost:5173` または `http://127.0.0.1:5173` のオリジンを使用できます。任意のホスト名での自動判定は行いません。WebAuthnのRP IDは設定したオリジンのホスト名です。公開ドメインの変更は既存パスキーの利用可否に影響するため、登録を始める前に固定してください。外部の認証プロバイダーや鍵の設定は不要です。
 
