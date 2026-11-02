@@ -6,7 +6,7 @@ config_roots = ["frontend", "backend", "docs"]
 [tools]
 node = "26.13.0"
 "npm:pnpm" = "10.34.7"
-"npm:wrangler" = "4.151.1"
+"npm:wrangler" = "4.156.0"
 "npm:oxfmt" = "0.73.0"
 "npm:oxlint" = "1.88.0"
 
