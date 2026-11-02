@@ -10,9 +10,11 @@ Share photos with a link.
 frontend/  SvelteKit / TypeScript / Cloudflare Workers
 backend/   Hono / TypeScript / Cloudflare Workers / Durable Objects
 docs/      設計方針・開発メモ
+shared/    frontend・backend共通のプロトコル・写真処理の定義
+benchmarks/ React Router / SvelteKitの性能比較アプリ
 ```
 
-frontend・backend・docsはpnpmワークスペースの独立したパッケージです。共通設定とlockfileをルートで管理します。
+frontend・backend・docs・`benchmarks/react-router`・`benchmarks/sveltekit` はpnpmワークスペースの独立したパッケージです。`shared/` はパッケージにせず、各パッケージから直接参照します。共通設定とlockfileをルートで管理します。
 
 バックエンドは `api/`（Hono）・`application/`（ユースケース）・`domain/`（業務ルール）・`infrastructure/`（Cloudflare等の実装）の4層に分離しています。依存方向と互換性の方針は [ADR-0003](docs/adr/0003-layered-backend-with-hono.md) を参照してください。
 
@@ -45,13 +47,13 @@ mise run build
 mise run //frontend:preview
 ```
 
-`mise run setup` は依存のインストール、Workers型の生成、SvelteKitの同期を順に実行します。依存更新のために `mise exec -- pnpm install` を直接実行した場合は、`mise run //frontend:sync` でSvelteKitを同期してください。
+`mise run setup` は依存のインストール、Workers型の生成、SvelteKitの同期、Git hooksの有効化を順に実行します。Git hooksは[コミット前チェック](docs/git-hooks.md)を参照してください。依存更新のために `mise exec -- pnpm install` を直接実行した場合は、`mise run //frontend:sync` でSvelteKitを同期してください。
 
 タスク一覧は `mise tasks ls --all` で確認できます。ルートのタスクはルートディレクトリで実行します。他のディレクトリからルートのlintを実行する場合は `mise run //:lint` のように指定します。
 
 Wrangler設定変更後は `mise run gen` で型を再生成します。整形は `mise run format`。
 
-整形設定は `.oxfmtrc.json`、lint設定は `.oxlintrc.json` で管理します。整形はリポジトリ全体（`shared/` を含む）が対象です。lintは `frontend/`・`backend/`・`shared/`・`docs/` が対象です。生成ファイル・ビルド出力・作業用ディレクトリは対象外にしています。設定のJSON Schemaはmiseで固定したバージョンを参照するため、ツール更新時にあわせて更新してください。
+整形設定は `.oxfmtrc.json`、lint設定は `.oxlintrc.json` で管理します。整形はリポジトリ全体（`shared/` を含む）が対象です。lintは `frontend/`・`backend/`・`shared/`・`docs/`・`benchmarks/` とルートのVitest設定が対象です。生成ファイル・ビルド出力・作業用ディレクトリは対象外にしています。設定のJSON Schemaはmiseで固定したバージョンを参照するため、ツール更新時にあわせて更新してください。
 
 関数間は空行を1行入れて記述します。oxfmtは既存の空行を保持しますが、関数間に空行を自動挿入する設定はありません。`printWidth: 130` は長い行の折り返しの目安であり、文字列などを含むすべての行の長さを強制する上限ではありません。`singleAttributePerLine: true` で複数属性を持つ要素を1属性1行にし、`objectWrap: "preserve"` で既存のオブジェクトの改行を保持します。型定義も複数行で記述し、整形後も改行を維持します。Svelteの整形にはルートの `svelte` 依存と、formatタスクの `NODE_PATH` を使用します。
 
@@ -61,7 +63,7 @@ Wrangler設定変更後は `mise run gen` で型を再生成します。整形�
 
 ## 現在の実装範囲
 
-送信者のパスキー認証、受信者の匿名セッション、10分間有効な共有リンク、受信承諾、WebRTCによる複数枚転送、進捗・キャンセル・プレビュー・共有保存を実装しています。1回10枚・合計50MBまで。写真をサーバーに保存しません。受信写真は受信完了から10分、破棄、ページ離脱のいずれかでブラウザ内の参照を解放します。HEIC/HEIFは、利用者の操作でCloudflare Imagesへ送ってプレビュー・JPEG変換できます。原本は変更しません。
+送信者のパスキー認証、受信者の匿名セッション、10分間有効な共有リンク、受信承諾、WebRTCによる複数枚転送、進捗・キャンセル・プレビュー・共有保存を実装しています。1回10枚・合計50MiBまで。写真をサーバーに保存しません。受信写真は受信完了から10分、破棄、ページ離脱のいずれかでブラウザ内の参照を解放します。HEIC/HEIFは、利用者の操作でCloudflare Imagesへ送ってプレビュー・JPEG変換できます。原本は変更しません。
 
 1対1で渡す場合は、送信側でパスキー登録・ログインを行い、写真を選んで「写真を渡す」を押し、表示されたQRを目の前の相手のカメラで読み取ってもらってください。「リンクで送る」からリンク共有・コピーもできます。受信側はリンクを開くと相手の名前・写真の枚数・容量が表示され、「受け取る」を押すと転送します。リンクは受信画面の読み込み時点で使用済みになります。双方とも画面を開いたままにしてください。リンクは作成から10分間、最初の参加だけに有効です。取り消し・送信者の切断でも失効します。参加済みの転送はリンク期限から独立して継続します。合言葉・位置情報は使いません。受け取った写真は、共有シートまたは個別ダウンロードから保存できます。
 
@@ -97,7 +99,7 @@ TURNを有効にする場合は、backendディレクトリで `mise exec -- wra
 
 ## GitHub Actions
 
-- `.github/workflows/build.yml`: PR・mainへのpush・手動実行で、セットアップとfrontend・backend・docsのビルドを実行します。
+- `.github/workflows/build.yml`: PR・mainへのpush・手動実行で、セットアップ、整形チェック、型情報付きlint、ユニットテスト、frontend・backend・docsのビルドを実行します。
 
 デプロイはCI/CDで行わず、上記「公開」の手順で手元から実行します。
 
@@ -125,7 +127,7 @@ http://127.0.0.1:5174 で閲覧できます。`mise run dev` はアプリ用で�
 `mise run //frontend:storybook` で起動し、http://127.0.0.1:6006/ を開きます。
 `mise run //frontend:build-storybook` で `frontend/storybook-static/` に静的出力します。
 
-「画面 / 写真を共有」から写真選択、リンク作成、リンク共有、参加、受信承諾、転送、受信完了、エラーなど19状態を確認できます。
+「画面 / 写真を共有」から写真選択、リンク作成、リンク共有、参加、受信承諾、転送、受信完了、エラーなど22状態を確認できます。
 「コンポーネント / 探索の波紋」ではアニメーション単体を確認できます。
 
 本番と共通の `DropView.svelte` を固定データで表示します。バックエンド、WebRTCは不要です。
