@@ -16,7 +16,7 @@ frontend・backend・docsはpnpmワークスペースの独立したパッケー
 
 バックエンドは `api/`（Hono）・`application/`（ユースケース）・`domain/`（業務ルール）・`infrastructure/`（Cloudflare等の実装）の4層に分離しています。依存方向と互換性の方針は [ADR-0003](docs/adr/0003-layered-backend-with-hono.md) を参照してください。
 
-依存パッケージはexactバージョンで指定し、`.npmrc` の `save-exact=true` により `pnpm add` でも固定します。更新時はpackage.jsonとlockfileをあわせて更新してください。Node.jsは24系を維持し、`@types/node`も24系の最新を使用します。
+依存パッケージはexactバージョンで指定し、`.npmrc` の `save-exact=true` により `pnpm add` でも固定します。更新時はpackage.jsonとlockfileをあわせて更新してください。Node.jsは26系を維持し、`@types/node`も26系の最新を使用します。
 
 バックエンドはTypeScript 7.0.2のGo製コンパイラ（旧称tsgo）を使用します。正式版のコマンド名は `tsc` です。フロントエンドは `@typescript/native` エイリアスでTypeScript 7.0.2を併用し、通常・watchともに `svelte-check --tsgo` で型検査します。SvelteKit 3とSvelte関連ツールの内部処理用に `typescript` は6.0.3を維持します（[svelte-checkのTypeScript 7対応](https://github.com/sveltejs/language-tools/tree/master/packages/svelte-check#typescript-7-supports)では6と7の併用が必要です）。React Routerの比較用アプリはTypeScript 7.0.2を使用します。
 
