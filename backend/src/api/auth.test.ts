@@ -1,5 +1,5 @@
 import { test, expect, vi, afterEach } from 'vitest';
-import type { AuthStore, PasskeyVerifier } from '../application/auth.ts';
+import { AuthService, type AuthStore, type PasskeyVerifier } from '../application/auth.ts';
 import { memoryAuthStore } from '../application/auth.fixture.ts';
 import type { Account } from '../domain/auth.ts';
 import type { verifyRegistrationResponse, verifyAuthenticationResponse } from '@simplewebauthn/server';
@@ -17,7 +17,7 @@ class Fixture {
 	lastChallenge = '';
 
 	constructor(verifier?: Verifier) {
-		this.auth = new PasskeyAuth(this.store(), authEnv, verifier ?? passkeys);
+		this.auth = new PasskeyAuth(new AuthService(this.store(), verifier ?? passkeys), authEnv);
 	}
 
 	store(): AuthStore {
@@ -351,7 +351,7 @@ test('only known POST auth routes are accepted', async () => {
 	expect((await app.auth.route(app.request('unknown'))).status).toBe(404);
 });
 test('local HTTP development uses unprefixed non-secure cookies', async () => {
-	const auth = new PasskeyAuth(new Fixture().store(), {}, passkeys);
+	const auth = new PasskeyAuth(new AuthService(new Fixture().store(), passkeys), {});
 	const request = new Request('http://localhost/api/auth/login/options', {
 		method: 'POST'
 	});

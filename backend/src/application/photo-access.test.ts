@@ -17,6 +17,10 @@ const grant = (): PhotoGrant => ({
 	uses: {}
 });
 
+test('photo grant keys preserve the existing SHA-256 storage format', async () => {
+	expect(await grantKey('a'.repeat(64))).toBe('photo:ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb');
+});
+
 test('conversion grants reject expired, absent, wrong photo and invalid mode', () => {
 	assert.equal(reservePhoto(undefined, photo.id, 'jpeg'), null);
 	assert.equal(reservePhoto(grant(), 'other', 'jpeg'), null);

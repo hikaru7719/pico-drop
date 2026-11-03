@@ -1,5 +1,5 @@
 import { reservePhoto, type PhotoGrant } from '../domain/photos.ts';
-import { routedToken } from '../domain/tokens.ts';
+import { routedToken, secretHash } from '../domain/tokens.ts';
 import type { PhotoMeta } from '../../../shared/protocol.ts';
 import { PHOTO_LIFETIME_MS } from '../../../shared/photos.ts';
 import type { PhotoAccess } from '../../../shared/photos.ts';
@@ -10,13 +10,10 @@ export interface PhotoStore {
 	delete(key: string): Promise<boolean>;
 }
 
-const hex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-
 const validToken = (token: string) => /^[a-f0-9]{64}$/.test(token);
 
 export async function grantKey(token: string) {
-	const data = new TextEncoder().encode(token);
-	return 'photo:' + hex(new Uint8Array(await crypto.subtle.digest('SHA-256', data)));
+	return 'photo:' + (await secretHash(token));
 }
 
 export async function createPhotoAccess(storage: PhotoStore, files: PhotoMeta[], room?: string): Promise<PhotoAccess> {

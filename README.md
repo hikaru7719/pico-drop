@@ -132,6 +132,8 @@ Dependabotは毎週月曜09:00（Asia/Tokyo）に、ルートのlockfileで管�
 
 永続データの構成、D1の全テーブル・フィールド、ルームDOのKV・WebSocket attachment、データ間の関係と保存期間は [データの概念スキーマとフィールド定義](docs/data-schema.md) を参照してください。
 
+ブラウザの共有処理は [画面コントローラー](frontend/src/lib/drop/controller.svelte.ts) が接続と転送を統括し、[招待リンク](frontend/src/lib/drop/invitations.svelte.ts) がURL・共有・リンク期限、[受信写真の操作](frontend/src/lib/drop/received-photos.svelte.ts) が表示状態・保存・変換・写真の期限を管理します。各ページが独立した状態を持ち、ページ離脱時にコントローラーから接続・タイマー・写真の参照を解放します。接続の世代判定と転送中断はコントローラーに集約します。
+
 `docs/index.html` に現在のアーキテクチャをまとめています。
 
 ```sh

@@ -1,7 +1,6 @@
-import { test, expect, vi } from 'vitest';
-import { hubFor } from './hub-network.ts';
+import { test, expect } from 'vitest';
 import { routedToken, sessionLoginKey } from '../domain/tokens.ts';
-import { roomRoute } from '../api/routing.ts';
+import { roomRoute } from './routing.ts';
 
 const request = (path: string, headers = {}) => new Request('https://photos.example' + path, { headers });
 
@@ -19,12 +18,6 @@ for (const path of ['/api/ice', '/api/photos/convert', '/api/photos/discard']) {
 		expect(roomRoute(request(path, { Authorization: 'Bearer ' + token }))).toBe(room);
 	});
 }
-test('room destinations use their own object IDs', () => {
-	const get = vi.fn((name: string) => ({ name }));
-	const env = { HUB: { idFromName: (name: string) => name, get } };
-	expect(hubFor(env, 'room:a')).toEqual({ name: 'room:a' });
-	expect(hubFor(env, 'room:b')).toEqual({ name: 'room:b' });
-});
 
 test('old sharded login cookies are invalidated and new secrets are hashed', async () => {
 	const secret = 'a'.repeat(64);

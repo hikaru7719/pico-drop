@@ -1,5 +1,6 @@
 import { createApi } from '#lib/api.ts';
-import { ReceivedPhotos, releasePhoto, type ReceivedPhoto } from '#lib/photos/received.ts';
+import { Invitations } from './invitations.svelte.ts';
+import { ReceivedPhotoActions } from './received-photos.svelte.ts';
 import type { PhotoAccess, ConversionMode } from '../../../../shared/photos.ts';
 import { tick } from 'svelte';
 import { LIMITS, type GroupParticipant, type PhotoMeta, type ServerMessage, type Session } from '../../../../shared/protocol.ts';
@@ -44,26 +45,17 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	let flowStarted = $state(false);
 	let session = $state<Session>();
 	let connection = $state<'idle' | 'connecting' | 'online' | 'offline'>('idle');
-	let incomingToken = $state('');
-	let invitationUsed = $state(false);
-	let shareLink = $state('');
-	let linkExpiresAt = $state<number>();
 	let creatingLink = $state(false);
-	let linkTimer: ReturnType<typeof setTimeout> | undefined;
 	let selected = $state<File[]>([]);
 	let metadata = $state<PhotoMeta[]>([]);
 	let selecting = $state(false);
 	let request = $state<RequestInfo>();
 	let phase = $state<'waiting' | 'queued' | 'connecting' | 'transferring'>('waiting');
 	let bytes = $state(0);
-	let received = $state<ReceivedPhoto[]>([]);
-	let photoCollection: ReceivedPhotos | undefined;
-	let photosExpireAt = $state<number>();
 	let completed = $state(false);
 	let notice = $state('');
 	let error = $state('');
 	let relay = $state<boolean>();
-	let sharing = $state(false);
 	let signaling: SignalingConnection | undefined;
 	let sessionAbort: AbortController | undefined;
 	let peer: TransferPeer | undefined;
@@ -74,6 +66,29 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	let signalQueue = Promise.resolve();
 	let disposed = false;
 	const total = $derived(request?.files.reduce((sum, f) => sum + f.size, 0) ?? 0);
+
+	const messages = {
+		notice(message: string) {
+			notice = message;
+		},
+		error(message: string) {
+			error = message;
+		}
+	};
+	const invitation = new Invitations({
+		...messages,
+		expired: linkExpired,
+		join() {
+			flowStarted = true;
+			void joinLink();
+		}
+	});
+	const photos = new ReceivedPhotoActions(dependencies.sharePhotos, {
+		...messages,
+		cleared() {
+			completed = false;
+		}
+	});
 
 	const TRANSFER_STOPPED = '転送が止まりました。画面を開いたまま再試行してください。';
 	const CONFIRM_EXPIRED = '受け取るかどうかを確認する時間が過ぎました。新しい共有リンクで送り直してください。';
@@ -87,28 +102,6 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 		disconnected: '相手との接続が切れました。再試行してください。',
 		timeout: '有効期限が切れました。もう一度送信してください。'
 	};
-	const shareMessages = {
-		shared: '保存・共有の画面を閉じました。写真を保存した場合は、写真アプリなどで確認してください。',
-		cancelled: '共有をキャンセルしました。写真はこの画面に残っています。',
-		unsupported: 'このブラウザでは写真を共有できません。写真のファイル名を押して、1枚ずつダウンロードしてください。'
-	};
-
-	function clearReceived() {
-		photoCollection?.dispose();
-		photoCollection = undefined;
-		photosExpireAt = undefined;
-		for (const item of received) {
-			releasePhoto(item);
-		}
-		received = [];
-		completed = false;
-	}
-
-	function discard() {
-		clearReceived();
-		error = '';
-		notice = '画面内の写真を削除しました。端末に保存した写真は残っています。';
-	}
 
 	function restartSharing(keepPhotos: boolean) {
 		completed = false;
@@ -150,9 +143,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	}
 
 	function resetLink() {
-		clearTimeout(linkTimer);
-		shareLink = '';
-		linkExpiresAt = undefined;
+		invitation.reset();
 		creatingLink = false;
 	}
 
@@ -203,14 +194,14 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 			disconnect('offline');
 		}
 		cleanupTransfer();
-		clearReceived();
+		photos.clear();
 	}
 
 	function retainOrDiscard() {
 		if (!completed) {
-			clearReceived();
-		} else if (received.length && !photoCollection) {
-			retainPhotos();
+			photos.clear();
+		} else if (photos.items.length && !photos.retained) {
+			photos.retain();
 		}
 	}
 
@@ -228,7 +219,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 		error = '';
 		notice = '';
 		connection = 'connecting';
-		creatingLink = !incomingToken;
+		creatingLink = !invitation.token;
 		sessionAbort = new AbortController();
 	}
 
@@ -276,7 +267,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 
 	async function openSession(current: number) {
 		checkBrowser();
-		const next = await dependencies.createSession(sessionAbort!.signal, incomingToken);
+		const next = await dependencies.createSession(sessionAbort!.signal, invitation.token);
 		if (activeGeneration(current)) {
 			openSignaling(next, current);
 		}
@@ -301,7 +292,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	}
 
 	async function createLink(mode: 'single' | 'group' = 'single') {
-		if (creatingLink || selecting || !metadata.length || request || shareLink) {
+		if (creatingLink || selecting || !metadata.length || request || invitation.link) {
 			return;
 		}
 		prepareGroup(mode);
@@ -317,7 +308,9 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	}
 
 	function canJoinLink() {
-		return connection !== 'connecting' && !request && !!incomingToken && !invitationUsed && !(completed && received.length);
+		return (
+			connection !== 'connecting' && !request && !!invitation.token && !invitation.used && !(completed && photos.items.length)
+		);
 	}
 
 	async function joinLink() {
@@ -361,7 +354,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	}
 
 	function canRetryGroup() {
-		return groupReceiver && !request && !received.length && connection === 'online';
+		return groupReceiver && !request && !photos.items.length && connection === 'online';
 	}
 
 	function retryGroup() {
@@ -369,55 +362,13 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 			return;
 		}
 		error = '';
-		send({ type: 'join-link', token: incomingToken });
+		send({ type: 'join-link', token: invitation.token });
 	}
 
 	function linkCreated(message: Extract<ServerMessage, { type: 'link-created' }>) {
 		clearTimeout(watchdog);
-		shareLink = `${window.location.origin}/#share=${message.token}`;
-		linkExpiresAt = message.expiresAt;
+		invitation.created(message.token, message.expiresAt);
 		creatingLink = false;
-		scheduleLinkExpiry(message.expiresAt);
-	}
-
-	function scheduleLinkExpiry(expiresAt: number) {
-		clearTimeout(linkTimer);
-		linkTimer = setTimeout(linkExpired, Math.max(0, expiresAt - Date.now()));
-	}
-
-	async function shareInvitation() {
-		try {
-			await publishInvitation();
-		} catch (e) {
-			if (!(e instanceof Error && e.name === 'AbortError')) {
-				error = '共有できませんでした。リンクをコピーして送ってください。';
-			}
-		}
-	}
-
-	async function publishInvitation() {
-		if (navigator.share) {
-			await navigator.share(invitationData());
-		} else {
-			await copyInvitation();
-		}
-	}
-
-	function invitationData() {
-		return {
-			title: 'Pico Drop',
-			text: '写真の共有リンク（10分間有効）',
-			url: shareLink
-		};
-	}
-
-	async function copyInvitation() {
-		try {
-			await navigator.clipboard.writeText(shareLink);
-			notice = 'リンクをコピーしました。LINEなどで相手に送ってください。';
-		} catch {
-			error = 'コピーできませんでした。表示されたリンクを選択してコピーしてください。';
-		}
 	}
 
 	async function describeSelection(files: File[]) {
@@ -441,7 +392,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	}
 
 	async function select(files: File[]) {
-		if (shareLink || creatingLink || selecting || request) {
+		if (invitation.link || creatingLink || selecting || request) {
 			return;
 		}
 		selecting = true;
@@ -466,11 +417,11 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	}
 
 	function finishCancellation(type: 'reject' | 'cancel') {
-		if (groupMode && shareLink) {
+		if (groupMode && invitation.link) {
 			return;
 		}
 		disconnect();
-		clearReceived();
+		photos.clear();
 		notice = type === 'reject' ? REJECTED_NOTICE : '転送を中止しました。';
 	}
 
@@ -492,8 +443,8 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	function ready() {
 		connection = 'online';
 		startControlTimer();
-		if (incomingToken) {
-			send({ type: 'join-link', token: incomingToken });
+		if (invitation.token) {
+			send({ type: 'join-link', token: invitation.token });
 		} else {
 			sendCreateLink();
 		}
@@ -516,7 +467,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	}
 
 	function serverError(message: string) {
-		if (groupMode && shareLink) {
+		if (groupMode && invitation.link) {
 			error = message;
 			return;
 		}
@@ -534,7 +485,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	}
 
 	function declineWhileUnsaved(message: RequestInfo) {
-		if (!completed || !received.length || message.to.id !== session?.id) {
+		if (!completed || !photos.items.length || message.to.id !== session?.id) {
 			return false;
 		}
 		send({ type: 'reject', id: message.id });
@@ -552,8 +503,8 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 
 	function initializeRequest(message: RequestInfo) {
 		groupReceiver = !!message.group && message.to.id === session?.id;
-		clearReceived();
-		invitationUsed = !!incomingToken;
+		photos.clear();
+		invitation.used = !!invitation.token;
 		request = message;
 		bytes = 0;
 		phase = 'waiting';
@@ -597,13 +548,13 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 
 	function failedOutcome(reason: keyof typeof endMessages) {
 		error = endMessages[reason];
-		clearReceived();
+		photos.clear();
 	}
 
 	type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
 
 	async function ended(reason: EndReason, access?: PhotoAccess) {
-		if ((groupMode && shareLink) || (groupReceiver && reason === 'failed')) {
+		if ((groupMode && invitation.link) || (groupReceiver && reason === 'failed')) {
 			return groupEnded(reason);
 		}
 		return finishSingleTransfer(reason, access);
@@ -611,8 +562,8 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 
 	async function finishSingleTransfer(reason: EndReason, access?: PhotoAccess) {
 		transferOutcome(reason);
-		if (reason === 'complete' && received.length) {
-			retainPhotos(access);
+		if (reason === 'complete' && photos.items.length) {
+			photos.retain(access);
 		}
 		disconnect();
 		return showReceived();
@@ -620,14 +571,14 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 
 	function groupEnded(reason: EndReason) {
 		cleanupTransfer();
-		clearReceived();
+		photos.clear();
 		if (reason !== 'complete') {
 			error = endMessages[reason];
 		}
 	}
 
 	async function showReceived() {
-		if (completed && received.length) {
+		if (completed && photos.items.length) {
 			await tick();
 			view.showReceived?.();
 		}
@@ -683,7 +634,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 
 	async function handleLinkEnd(message: LinkEndMessage) {
 		if (message.type === 'link-ended') {
-			return shareLink ? linkExpired() : resetLink();
+			return invitation.link ? linkExpired() : resetLink();
 		}
 		return handleRequestMessage(message);
 	}
@@ -715,9 +666,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	}
 
 	function receivedPhoto(file: File) {
-		const preview = !['image/heic', 'image/heif'].includes(file.type);
-		const id = request?.files[received.length]?.id;
-		received = [...received, { file, id, url: URL.createObjectURL(file), preview }];
+		photos.add(file, request?.files[photos.items.length]?.id);
 	}
 
 	function checkIce(response: { ok: boolean }, config: IceConfig) {
@@ -780,84 +729,8 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 		await prepareTransfer(transfer, abort.signal);
 	}
 
-	async function shareFiles(files: File[]) {
-		const collection = photoCollection;
-		const result = await dependencies.sharePhotos(files);
-		if (collection === photoCollection && received.length) {
-			notice = shareMessages[result];
-		}
-	}
-
-	async function tryShare() {
-		try {
-			await shareFiles(received.map((item) => item.file));
-		} catch {
-			shareFailed();
-		} finally {
-			sharing = false;
-		}
-	}
-
-	function shareFailed() {
-		if (received.length) {
-			error = '共有できませんでした。各写真のダウンロードをお試しください。';
-		}
-	}
-
-	async function save() {
-		if (!photoCollection?.checkExpiry()) {
-			return;
-		}
-		sharing = true;
-		error = '';
-		await tryShare();
-	}
-
-	function photosExpired() {
-		error = '';
-		completed = false;
-		photosExpireAt = undefined;
-		notice = '受信から10分たったため、画面内の写真を削除しました。端末に保存した写真は残っています。';
-	}
-
-	function retainPhotos(access?: PhotoAccess) {
-		photoCollection = new ReceivedPhotos(received, access, {
-			changed: updateReceived,
-			expired: photosExpired
-		});
-		photosExpireAt = photoCollection.expiresAt;
-	}
-
-	function updateReceived(photos: ReceivedPhoto[]) {
-		received = photos;
-	}
-
 	function checkPhotoExpiry() {
-		return photoCollection?.checkExpiry() ?? false;
-	}
-
-	async function convertPhoto(index: number, mode: ConversionMode) {
-		await photoCollection?.convert(index, mode);
-	}
-
-	async function shareJpeg(index: number) {
-		if (!photoCollection?.checkExpiry()) {
-			return;
-		}
-		const jpeg = received[index]?.jpeg;
-		if (jpeg) {
-			await shareConverted(jpeg);
-		}
-	}
-
-	async function shareConverted(jpeg: File) {
-		try {
-			await shareFiles([jpeg]);
-		} catch {
-			if (received.length) {
-				error = '共有できませんでした。JPEGをダウンロードしてください。';
-			}
-		}
+		return photos.checkExpiry();
 	}
 
 	function leave() {
@@ -866,7 +739,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 		view.clearSelection?.();
 		disposed = true;
 		disconnect();
-		clearReceived();
+		photos.clear();
 	}
 
 	function resume(e: PageTransitionEvent) {
@@ -878,40 +751,16 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 
 	function unmount() {
 		leave();
-		window.removeEventListener('hashchange', readInvitation);
+		window.removeEventListener('hashchange', invitation.read);
 		window.removeEventListener('pagehide', leave);
 		window.removeEventListener('pageshow', resume);
 		window.removeEventListener('focus', checkPhotoExpiry);
 		window.removeEventListener('visibilitychange', checkPhotoExpiry);
 	}
 
-	function readInvitation() {
-		const params = new URLSearchParams(window.location.hash.slice(1));
-		const token = params.get('share');
-		incomingToken = '';
-		if (token !== null) {
-			applyInvitation(token);
-		}
-	}
-
-	function applyInvitation(token: string) {
-		if (/^[a-f0-9]{64}$/.test(token)) {
-			joinInvitation(token);
-		} else {
-			error = '共有リンクが正しくありません。送信者に作り直してもらってください。';
-		}
-	}
-
-	function joinInvitation(token: string) {
-		invitationUsed = false;
-		incomingToken = token;
-		flowStarted = true;
-		void joinLink();
-	}
-
 	function mount() {
-		readInvitation();
-		window.addEventListener('hashchange', readInvitation);
+		invitation.read();
+		window.addEventListener('hashchange', invitation.read);
 		window.addEventListener('pagehide', leave);
 		window.addEventListener('pageshow', resume);
 		window.addEventListener('focus', checkPhotoExpiry);
@@ -920,19 +769,12 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 	}
 
 	function removePhoto(index: number) {
-		if (shareLink || creatingLink || selecting || request) {
+		if (invitation.link || creatingLink || selecting || request) {
 			return;
 		}
 		selected = selected.filter((_, i) => i !== index);
 		metadata = metadata.filter((_, i) => i !== index);
 		view.clearSelection?.();
-	}
-
-	function previewFailed(index: number) {
-		const photo = received[index];
-		if (photo) {
-			photo.preview = false;
-		}
 	}
 
 	return {
@@ -975,7 +817,7 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 			return bytes;
 		},
 		get received() {
-			return received;
+			return photos.items;
 		},
 		get completed() {
 			return completed;
@@ -990,42 +832,42 @@ export function createDropController(view: ViewCallbacks = {}, dependencies: Dro
 			return relay;
 		},
 		get sharing() {
-			return sharing;
+			return photos.sharing;
 		},
 		get invitationUsed() {
-			return invitationUsed;
+			return invitation.used;
 		},
 		get incomingToken() {
-			return incomingToken;
+			return invitation.token;
 		},
 		get shareLink() {
-			return shareLink;
+			return invitation.link;
 		},
 		get linkExpiresAt() {
-			return linkExpiresAt;
+			return invitation.expiresAt;
 		},
 		get creatingLink() {
 			return creatingLink;
 		},
 		get photosExpireAt() {
-			return photosExpireAt;
+			return photos.expiresAt;
 		},
 		mount,
 		createLink,
 		joinLink,
 		revokeLink,
-		shareInvitation,
-		copyInvitation,
+		shareInvitation: () => invitation.share(),
+		copyInvitation: () => invitation.copy(),
 		select,
 		addPhotos,
 		restartSharing,
 		action,
-		save,
-		discard,
-		convertPhoto,
-		shareJpeg,
+		save: () => photos.save(),
+		discard: () => photos.discard(),
+		convertPhoto: (index: number, mode: ConversionMode) => photos.convert(index, mode),
+		shareJpeg: (index: number) => photos.shareJpeg(index),
 		checkPhotoExpiry,
 		removePhoto,
-		previewFailed
+		previewFailed: (index: number) => photos.previewFailed(index)
 	};
 }

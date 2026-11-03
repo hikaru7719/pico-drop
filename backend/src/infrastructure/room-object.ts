@@ -8,9 +8,10 @@ import { iceServers } from './turn.ts';
 import type { Bindings } from './bindings.ts';
 
 export class RoomObject extends DurableObject<Bindings> {
+	private readonly auth = authentication(this.env);
 	private readonly service = new RoomService(runtime(this.ctx), {
-		identity: (key) => authentication(this.env).service.identity(key),
-		allowSend: (key) => authentication(this.env).service.allowSend(key),
+		identity: (key) => this.auth.identity(key),
+		allowSend: (key) => this.auth.allowSend(key),
 		iceServers: () => iceServers(this.env)
 	});
 

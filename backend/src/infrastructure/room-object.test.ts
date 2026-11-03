@@ -129,6 +129,13 @@ test('D1 identity and send authorization connect to ICE issuance after acceptanc
 	expect(await response.json()).toEqual({ iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }], relay: false });
 });
 
+test('the retained authentication service observes a D1 logout before creating another link', async () => {
+	const { room, sender, db } = await sharingRoom();
+	await db.store.deleteLogin(await loginKey(authToken));
+	await message(room, sender, { type: 'create-link', files: [heic] });
+	expect(sender.last('error').message).toMatch(/ログインしてください/);
+});
+
 test.each(['webSocketClose', 'webSocketError'] as const)('%s ends the transfer and notifies the receiver', async (event) => {
 	const { app, room, sender, receiver, id } = await sharingRoom();
 	await room[event](sender as never);
@@ -180,7 +187,7 @@ async function sharingRoom() {
 	const receiver = await connect(app, room);
 	await message(room, sender, { type: 'create-link', files: [heic] });
 	await message(room, receiver, { type: 'join-link', token: sender.last('link-created').token });
-	return { app, room, sender, receiver, id: receiver.last('requested').id };
+	return { app, db, room, sender, receiver, id: receiver.last('requested').id };
 }
 
 function message(room: RoomObject, socket: Socket, data: ClientMessage) {

@@ -40,6 +40,8 @@ HTTPでは `RoomObject.fetch()` → `roomApp`（Hono）→ `RoomService` の処�
 
 `RoomService` はCloudflareの実装を直接生成せず、上記インターフェースを通して利用する。ただしソケットのインターフェースにはattachmentの読み書きも含まれており、接続状態の管理はその機能を前提にしている。
 
+`RoomObject` はD1に接続した `AuthService` も保持し、サービスの `identity`・`allowSend` を直接渡す。認証HTTP用のHonoルーターはDO内では生成しない。認証状態そのものはキャッシュせず、判定時にD1を参照する。
+
 Cloudflareが休止後などに `RoomObject` を再生成すると、保持する `RoomService` も新しく生成する。永続的なルーム状態はクラスのフィールドではなく同じDOのKVとWebSocket attachmentに置くため、再生成したサービスも保存済みの状態を参照できる。
 
 実装は [room-object.ts](../backend/src/infrastructure/room-object.ts)、[application/room.ts](../backend/src/application/room.ts)、[room-ports.ts](../backend/src/application/room-ports.ts)、[api/room.ts](../backend/src/api/room.ts) を参照。レイヤーの設計方針は [ADR-0003](adr/0003-layered-backend-with-hono.md) に記載する。
@@ -239,6 +241,8 @@ HTTPSのCookie名は `__Host-pico_challenge`、ローカルHTTPでは `pico_chal
 
 送信者からの転送は1人ずつ進める。同じセッションIDの参加者が `failed` かつ3回未満の場合に再試行でき、参加者の値を新しい転送IDに差し替えて確認・承諾をやり直す。人数判定はアカウントや実端末ではなく `device.id` を使う。
 
+人数・再送可否・承諾・結果の判定と参加者配列の更新は [domain/groups.ts](../backend/src/domain/groups.ts) の関数が担当する。更新関数は元の参加者を変更せず、新しい配列を返す。`RoomService` はDOの排他制御、更新結果の保存、通知、次の転送開始を担当する。
+
 ### `transfer:<transferId>`：送信者と受信者1人の転送
 
 値の型は `TransferState`。
@@ -323,18 +327,19 @@ D1とDOの間にSQL外部キーや一括トランザクションはない。DO�
 
 ## 実装を確認する入口
 
-| 内容                                                 | ファイル                                                                                                                                                 |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1のSQL定義・制約・インデックス                      | [backend/schema.sql](../backend/schema.sql)                                                                                                              |
-| D1の読み書き・比較付き更新・原子的消費・期限切れ削除 | [d1-store.ts](../backend/src/infrastructure/d1-store.ts)                                                                                                 |
-| 認証・ログイン発行・アカウント単位の制限             | [application/auth.ts](../backend/src/application/auth.ts)                                                                                                |
-| IP単位のセッション発行制限                           | [d1-auth.ts](../backend/src/infrastructure/d1-auth.ts)                                                                                                   |
-| D1の削除スケジュール・DOのbindingとSQLite設定        | [index.ts](../backend/src/index.ts)、[wrangler.jsonc](../backend/wrangler.jsonc)                                                                         |
-| ルームの選択とDO名                                   | [api/routing.ts](../backend/src/api/routing.ts)、[api/app.ts](../backend/src/api/app.ts)、[hub-network.ts](../backend/src/infrastructure/hub-network.ts) |
-| DOの入口・WebSocketと実行環境の接続                  | [room-object.ts](../backend/src/infrastructure/room-object.ts)                                                                                           |
-| ルームのKV・attachment・転送進行・Alarm              | [application/room.ts](../backend/src/application/room.ts)                                                                                                |
-| 写真変換権限のキーと保存・消費・失効                 | [application/photo-access.ts](../backend/src/application/photo-access.ts)、[domain/photos.ts](../backend/src/domain/photos.ts)                           |
-| 共通データ型・枚数と容量・期限・グループの制限       | [shared/protocol.ts](../shared/protocol.ts)、[shared/photos.ts](../shared/photos.ts)                                                                     |
-| Cookie・トークンのキー生成                           | [api/http.ts](../backend/src/api/http.ts)、[domain/tokens.ts](../backend/src/domain/tokens.ts)                                                           |
+| 内容                                                 | ファイル                                                                                                                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D1のSQL定義・制約・インデックス                      | [backend/schema.sql](../backend/schema.sql)                                                                                                      |
+| D1の読み書き・比較付き更新・原子的消費・期限切れ削除 | [d1-store.ts](../backend/src/infrastructure/d1-store.ts)                                                                                         |
+| 認証・ログイン発行・アカウント単位の制限             | [application/auth.ts](../backend/src/application/auth.ts)                                                                                        |
+| IP単位のセッション発行制限                           | [d1-auth.ts](../backend/src/infrastructure/d1-auth.ts)                                                                                           |
+| D1の削除スケジュール・DOのbindingとSQLite設定        | [index.ts](../backend/src/index.ts)、[wrangler.jsonc](../backend/wrangler.jsonc)                                                                 |
+| ルームの選択とDO名                                   | [api/routing.ts](../backend/src/api/routing.ts)、[api/app.ts](../backend/src/api/app.ts)、[gateway.ts](../backend/src/infrastructure/gateway.ts) |
+| DOの入口・WebSocketと実行環境の接続                  | [room-object.ts](../backend/src/infrastructure/room-object.ts)                                                                                   |
+| ルームのKV・attachment・転送進行・Alarm              | [application/room.ts](../backend/src/application/room.ts)                                                                                        |
+| グループ参加者の状態更新・人数と再送の判定           | [domain/groups.ts](../backend/src/domain/groups.ts)                                                                                              |
+| 写真変換権限のキーと保存・消費・失効                 | [application/photo-access.ts](../backend/src/application/photo-access.ts)、[domain/photos.ts](../backend/src/domain/photos.ts)                   |
+| 共通データ型・枚数と容量・期限・グループの制限       | [shared/protocol.ts](../shared/protocol.ts)、[shared/photos.ts](../shared/photos.ts)                                                             |
+| Cookie・トークンのキー生成                           | [api/http.ts](../backend/src/api/http.ts)、[domain/tokens.ts](../backend/src/domain/tokens.ts)                                                   |
 
 フィールド・キー・制限・期限処理を変更する際は、この資料と上記の実装をあわせて更新する。D1のスキーマ変更手順は [宣言的なスキーマ管理](auth.md#宣言的なスキーマ管理) を参照。
