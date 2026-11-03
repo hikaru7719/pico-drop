@@ -82,11 +82,11 @@ mise run //frontend:deploy
 
 ## クラスの責務
 
-| クラス        | ファイル                                    | 責務                                                                |
-| ------------- | ------------------------------------------- | ------------------------------------------------------------------- |
-| `D1AuthStore` | `backend/src/infrastructure/d1-store.ts`    | 認証データの永続化、原子的な消費・登録・回数制限、期限切れ削除      |
-| `AuthService` | `backend/src/application/auth.ts`           | 登録・ログイン・署名検証・送信認可。認証HTTPは `PasskeyAuth` が担当 |
-| `RoomObject`  | `backend/src/infrastructure/room-object.ts` | WebSocket用DOのHTTP・写真権限RPC・WebSocket・alarmの受付            |
-| `RoomHub`     | `backend/src/infrastructure/room-hub.ts`    | DOと `RoomService` の接続。認証・送信認可はD1のサービスへ委譲       |
+| クラス        | ファイル                                    | 責務                                                                             |
+| ------------- | ------------------------------------------- | -------------------------------------------------------------------------------- |
+| `D1AuthStore` | `backend/src/infrastructure/d1-store.ts`    | 認証データの永続化、原子的な消費・登録・回数制限、期限切れ削除                   |
+| `AuthService` | `backend/src/application/auth.ts`           | 登録・ログイン・署名検証・送信認可。認証HTTPは `PasskeyAuth` が担当              |
+| `RoomObject`  | `backend/src/infrastructure/room-object.ts` | DOのイベント受付、WebSocket受け入れ、保持する `RoomService` とDO・D1・TURNの接続 |
+| `RoomService` | `backend/src/application/room.ts`           | セッション・共有リンク・転送・写真変換権限の管理と期限切れ処理                   |
 
 `index.ts` はHonoアプリとScheduled Handlerを組み立て、`RoomObject` をexportします。層の責務と依存方向は [ADR-0003](adr/0003-layered-backend-with-hono.md) を参照してください。

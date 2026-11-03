@@ -14,21 +14,20 @@ D1の5テーブルと、各DO専用のSQLiteストレージは別のデータベ
 
 写真本体、変換後の画像、パスキーの秘密鍵・生体情報は、これらのストアに保存しない。写真メタデータのファイル名・形式・容量は保存する。原本はWebRTCで転送し、HEIC/HEIF変換時は利用者が送った画像をサーバーで処理して結果を返す。変換の詳細は [写真処理の設計](photos.md) を参照。
 
-## `RoomObject`・`RoomHub`・`RoomService` の関係
+## `RoomObject`・`RoomService` の関係
 
-CloudflareにDOとして登録するクラスは `RoomObject` の1つだけである。`RoomHub` と `RoomService` は同じDOの処理を分担するクラスで、別のDO・別のストレージを作るわけではない。
+CloudflareにDOとして登録するクラスは `RoomObject` の1つだけである。`RoomObject` が `RoomService` を保持し、Cloudflareのイベント受付と業務処理を分担する。両者は同じDOのストレージと接続を利用する。
 
-| クラス        | 継承・生成の関係                                                                                    | 担当する処理                                                                                                               |
-| ------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `RoomObject`  | Cloudflareの `DurableObject<Bindings>` を継承。`room()` で `new RoomHub(this.ctx, this.env)` を呼ぶ | Cloudflareからの `fetch`・写真権限のRPC・`webSocketMessage/Close/Error`・`alarm` の入口。各イベントを `RoomHub` へ委譲する |
-| `RoomHub`     | `RoomService` を継承し、DOの `state` とbindingを受け取る                                            | `RoomRuntime` と認証・ICE取得の依存を組み立てる。Honoの `roomApp` への接続、WebSocketの受け入れ、200接続の上限を担当する   |
-| `RoomService` | `RoomHub` の親クラス。`RoomRuntime` と `RoomDependencies` を受け取る                                | セッション・リンク・グループ参加・転送・写真変換権限の管理、メッセージ処理、期限切れ掃除などのユースケースを実行する       |
+| クラス        | 継承・生成の関係                                                                                            | 担当する処理                                                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `RoomObject`  | Cloudflareの `DurableObject<Bindings>` を継承。インスタンスの初期化時に `RoomService` を1つ生成して保持する | HTTP・写真権限RPC・WebSocket・Alarmの受付、Honoとの接続、WebSocketの受け入れと200接続の上限、DO・認証・ICE取得の依存の組み立て |
+| `RoomService` | `RoomRuntime` と `RoomDependencies` を受け取る。`RoomObject` との継承関係はない                             | セッション・リンク・グループ参加・転送・写真変換権限の管理、メッセージ処理、期限切れ掃除などのユースケース                     |
 
-`RoomObject` → `RoomHub` は生成と委譲、`RoomHub` → `RoomService` は継承の関係である。例えば `RoomObject.webSocketMessage()` は `this.room().webSocketMessage()` を呼ぶが、`RoomHub` 自身にはそのメソッドの実装はなく、継承した `RoomService.webSocketMessage()` が動く。
+`RoomObject` → `RoomService` は生成・保持と委譲の関係である。例えば `RoomObject.webSocketMessage()` は、保持するサービスの `this.service.webSocketMessage()` を呼ぶ。サービスはDOの実行インスタンス内で使い回し、Cloudflareの実行環境がなくてもインターフェースの実装を渡して単独でテストできる。
 
-HTTPでは `RoomObject.fetch()` → `RoomHub.fetch()` → `roomApp`（Hono）→ `RoomService` の処理へ進む。WebSocketへのUpgradeだけは `roomApp` から `RoomHub.upgradeSocket()` を呼び、`WebSocketPair`・`acceptWebSocket()`・101レスポンスで接続を確立する。その後のメッセージ・切断・エラーはDOのイベント入口からサービスへ渡す。
+HTTPでは `RoomObject.fetch()` → `roomApp`（Hono）→ `RoomService` の処理へ進む。WebSocketへのUpgradeだけは `roomApp` から `RoomObject` の `upgradeSocket()` を呼び、`WebSocketPair`・`acceptWebSocket()`・101レスポンスで接続を確立する。その後のメッセージ・切断・エラーはDOのイベント入口からサービスへ渡す。
 
-`RoomHub` はコンストラクターで以下をサービスへ渡す。
+`RoomObject` はサービスの生成時に以下を渡す。
 
 | 渡すもの                            | 接続する実装                       | サービスからの利用                                   |
 | ----------------------------------- | ---------------------------------- | ---------------------------------------------------- |
@@ -41,9 +40,9 @@ HTTPでは `RoomObject.fetch()` → `RoomHub.fetch()` → `roomApp`（Hono）→
 
 `RoomService` はCloudflareの実装を直接生成せず、上記インターフェースを通して利用する。ただしソケットのインターフェースにはattachmentの読み書きも含まれており、接続状態の管理はその機能を前提にしている。
 
-現在の `RoomObject` は、イベントごとに `RoomHub` を新しく作る。継承元の `RoomService` のコンストラクターもその都度実行される。永続的なルーム状態はクラスのフィールドではなく同じDOのKVとWebSocket attachmentに置くため、作り直したサービスも同じ状態を参照できる。Cloudflareが `RoomObject` を休止後に再生成することと、このイベントごとの `RoomHub` の生成は別の動作である。
+Cloudflareが休止後などに `RoomObject` を再生成すると、保持する `RoomService` も新しく生成する。永続的なルーム状態はクラスのフィールドではなく同じDOのKVとWebSocket attachmentに置くため、再生成したサービスも保存済みの状態を参照できる。
 
-実装は [room-object.ts](../backend/src/infrastructure/room-object.ts)、[room-hub.ts](../backend/src/infrastructure/room-hub.ts)、[room-ports.ts](../backend/src/application/room-ports.ts)、[api/room.ts](../backend/src/api/room.ts) を参照。レイヤーの設計方針は [ADR-0003](adr/0003-layered-backend-with-hono.md) に記載する。
+実装は [room-object.ts](../backend/src/infrastructure/room-object.ts)、[application/room.ts](../backend/src/application/room.ts)、[room-ports.ts](../backend/src/application/room-ports.ts)、[api/room.ts](../backend/src/api/room.ts) を参照。レイヤーの設計方針は [ADR-0003](adr/0003-layered-backend-with-hono.md) に記載する。
 
 ## 概念上のエンティティと関係
 
@@ -314,7 +313,7 @@ attachmentは `getWebSockets()` で取得した接続から読み出す状態で
 
 `routing:room` は文字列で有効期限を持たないため、掃除の対象・次の期限の計算から外れる。現在のコードには `storage.deleteAll()` によるルーム全体の削除はなく、使い終えたDOにもこのキーが残る。DO自体の固定TTLも設けていない。
 
-DOのメモリ上の実行インスタンスの休止・再生成と、ストレージの削除は別である。`RoomObject` はイベントごとに新しい `RoomHub` を作るが、同じDOのストレージと接続を使う。クラスのフィールドだけを永続状態として扱わず、KVとattachmentに保存する。Cloudflare側の動作は [DOのライフサイクル](https://developers.cloudflare.com/durable-objects/concepts/durable-object-lifecycle/) と [ストレージの削除](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/#remove-a-durable-objects-storage) を参照。
+DOのメモリ上の実行インスタンスの休止・再生成と、ストレージの削除は別である。`RoomObject` は保持する `RoomService` にイベント処理を委譲し、サービスは同じDOのストレージと接続を使う。クラスのフィールドだけを永続状態として扱わず、KVとattachmentに保存する。Cloudflare側の動作は [DOのライフサイクル](https://developers.cloudflare.com/durable-objects/concepts/durable-object-lifecycle/) と [ストレージの削除](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/#remove-a-durable-objects-storage) を参照。
 
 ### D1とDOをまたぐ変更の扱い
 
@@ -332,7 +331,7 @@ D1とDOの間にSQL外部キーや一括トランザクションはない。DO�
 | IP単位のセッション発行制限                           | [d1-auth.ts](../backend/src/infrastructure/d1-auth.ts)                                                                                                   |
 | D1の削除スケジュール・DOのbindingとSQLite設定        | [index.ts](../backend/src/index.ts)、[wrangler.jsonc](../backend/wrangler.jsonc)                                                                         |
 | ルームの選択とDO名                                   | [api/routing.ts](../backend/src/api/routing.ts)、[api/app.ts](../backend/src/api/app.ts)、[hub-network.ts](../backend/src/infrastructure/hub-network.ts) |
-| DOの入口・WebSocketと実行環境の接続                  | [room-object.ts](../backend/src/infrastructure/room-object.ts)、[room-hub.ts](../backend/src/infrastructure/room-hub.ts)                                 |
+| DOの入口・WebSocketと実行環境の接続                  | [room-object.ts](../backend/src/infrastructure/room-object.ts)                                                                                           |
 | ルームのKV・attachment・転送進行・Alarm              | [application/room.ts](../backend/src/application/room.ts)                                                                                                |
 | 写真変換権限のキーと保存・消費・失効                 | [application/photo-access.ts](../backend/src/application/photo-access.ts)、[domain/photos.ts](../backend/src/domain/photos.ts)                           |
 | 共通データ型・枚数と容量・期限・グループの制限       | [shared/protocol.ts](../shared/protocol.ts)、[shared/photos.ts](../shared/photos.ts)                                                                     |
