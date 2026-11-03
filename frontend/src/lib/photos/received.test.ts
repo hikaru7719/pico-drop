@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test, vi, afterEach, onTestFinished } from 'vitest';
+import { test, vi, afterEach } from 'vitest';
 import { ReceivedPhotos, type ReceivedPhoto } from './received.ts';
 import { PHOTO_LIFETIME_MS } from '../../../../shared/photos.ts';
 
@@ -7,6 +7,8 @@ const photoAccess = () => ({
 	token: 'secret',
 	expiresAt: Date.now() + PHOTO_LIFETIME_MS
 });
+
+const fixtures: PhotosFixture[] = [];
 
 class PhotosFixture {
 	photos: ReceivedPhoto[] = [];
@@ -22,7 +24,7 @@ class PhotosFixture {
 		this.photos = [this.original()];
 		const access = photoAccess();
 		this.collection = new ReceivedPhotos(this.photos, access, this.callbacks());
-		onTestFinished(() => this.collection.dispose());
+		fixtures.push(this);
 	}
 
 	original(): ReceivedPhoto {
@@ -126,6 +128,11 @@ function assertDiscarded(fixture: PhotosFixture) {
 }
 
 afterEach(() => {
+	// Dispose while fetch is mocked so revocation cannot reach the network.
+	for (const fixture of fixtures.splice(0)) {
+		fixture.collection.dispose();
+		assertRevokeRequest(fixture);
+	}
 	vi.restoreAllMocks();
 	vi.useRealTimers();
 });
