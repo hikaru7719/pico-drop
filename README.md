@@ -130,6 +130,8 @@ Dependabotは毎週月曜09:00（Asia/Tokyo）に、ルートのlockfileで管�
 
 ## アーキテクチャ資料
 
+永続データの構成、D1の全テーブル・フィールド、ルームDOのKV・WebSocket attachment、データ間の関係と保存期間は [データの概念スキーマとフィールド定義](docs/data-schema.md) を参照してください。
+
 `docs/index.html` に現在のアーキテクチャをまとめています。
 
 ```sh

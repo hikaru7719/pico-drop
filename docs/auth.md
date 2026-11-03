@@ -33,6 +33,8 @@
 
 ## D1とWebSocket用DO
 
+各テーブル・KV・WebSocket attachmentのフィールド定義、データ間の参照と保存期間は [データの概念スキーマとフィールド定義](data-schema.md) を参照してください。
+
 認証APIはWorkerからD1へ直接接続します。認証シャード、認証RPC、旧 `mvp` へのフォールバックは使いません。アカウントIDはUUID、Cookieのトークンは256bitのランダム値です。チャレンジとログインはトークンのSHA-256をキーとして保存します。署名検証ではuserHandleとアカウントIDの一致、有効状態も確認します。
 
 D1には `accounts`、`credentials`、`logins`、`challenges`、`rate_limits` の5テーブルを作ります。公開鍵はBLOBで保存し、取得時に `Uint8Array` へ復元します。チャレンジは `DELETE ... RETURNING`、回数制限は条件付きUPSERTで原子的に更新します。アカウントとcredentialはD1の `batch()` でまとめて登録し、credentialが重複した場合はアカウント作成もロールバックします。署名カウンターの更新は検証前の値との比較付きにし、並行ログインによる上書きを拒否します。
