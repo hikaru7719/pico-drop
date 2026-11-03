@@ -20,6 +20,8 @@ frontend・backend・docs・`benchmarks/react-router`・`benchmarks/sveltekit` �
 
 依存パッケージはexactバージョンで指定し、`.npmrc` の `save-exact=true` により `pnpm add` でも固定します。更新時はpackage.jsonとlockfileをあわせて更新してください。Node.jsは26系を維持し、`@types/node`も26系の最新を使用します。
 
+依存更新の待機期間はリリース後7日に統一します。pnpmは `pnpm-workspace.yaml` の `minimumReleaseAge: 10080`（分）、npmは `.npmrc` の `min-release-age=7`（日）、Dependabotは `.github/dependabot.yml` の `cooldown.default-days: 7`（日）で指定します。期間を変更するときは3ファイルをあわせて更新してください。
+
 バックエンドはTypeScript 7.0.2のGo製コンパイラ（旧称tsgo）を使用します。正式版のコマンド名は `tsc` です。フロントエンドは `@typescript/native` エイリアスでTypeScript 7.0.2を併用し、通常・watchともに `svelte-check --tsgo` で型検査します。SvelteKit 3とSvelte関連ツールの内部処理用に `typescript` は6.0.3を維持します（[svelte-checkのTypeScript 7対応](https://github.com/sveltejs/language-tools/tree/master/packages/svelte-check#typescript-7-supports)では6と7の併用が必要です）。React Routerの比較用アプリはTypeScript 7.0.2を使用します。
 
 ## セットアップ
@@ -104,6 +106,8 @@ TURNを有効にする場合は、backendディレクトリで `mise exec -- wra
 デプロイはCI/CDで行わず、上記「公開」の手順で手元から実行します。
 
 ツールは既存の `mise.toml`、依存はlockfileを使います。すべての `uses` は40桁のコミットSHAで固定しています。アクション更新時は公式リポジトリでタグに対応するSHAを確認し、SHAとバージョンコメントをあわせて更新してください。
+
+Dependabotは毎週月曜09:00（Asia/Tokyo）に、ルートのlockfileで管理する全pnpmワークスペースとGitHub Actionsの更新を確認します。npm依存のminor・patch更新はまとめ、major更新は個別のPRにします。`@types/node` は26系、pnpmは10系を維持します。`mise.toml` のツールは自動更新の対象外なので、pnpm・Wranglerなどの共通ツールを更新するときはmise側の固定バージョンもあわせて更新してください。Dependabotのcooldownは通常のバージョン更新に適用され、セキュリティ更新には適用されません。
 
 ## アーキテクチャ資料
 
