@@ -64,7 +64,7 @@ description = "ユニットテストを実行する"
 run = "pnpm exec vitest run"
 
 [tasks."hooks:install"]
-description = "コミット前の整形・lintチェックを有効にする"
+description = "コミット前の自動整形・lintチェックを有効にする"
 dir = "{{ config_root }}"
 run = "git config --local core.hooksPath .githooks"
 
