@@ -11,6 +11,7 @@
 	import ReceivedPhotoCard from './ReceivedPhotoCard.svelte';
 	import { formatBytes } from '#lib/photos/index.ts';
 	import type { GroupParticipant, PhotoMeta, ServerMessage, Session } from '../../../../shared/protocol';
+
 	type Props = {
 		accountControls?: Snippet;
 		senderAuthenticated?: boolean;
@@ -60,6 +61,7 @@
 		save?: () => void;
 		discard?: () => void;
 	};
+
 	let {
 		accountControls,
 		senderAuthenticated = false,

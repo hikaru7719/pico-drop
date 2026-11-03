@@ -14,6 +14,7 @@ import {
 	type Session,
 	type TransferState
 } from '../../../shared/protocol.ts';
+
 type Attachment = {
 	connectedAt: number;
 	authKey?: string;
@@ -41,6 +42,7 @@ type LinkJoin = {
 	link: ShareLink;
 	owner: RoomSocket;
 };
+
 type TransferSockets = {
 	owner: RoomSocket;
 	ws: RoomSocket;
@@ -57,16 +59,22 @@ type StoredSession = Omit<Session, 'token'> & {
 	used?: boolean;
 	authKey?: string;
 };
+
 type Expiring = { expiresAt?: number };
+
 type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
+
 type TransferMessage = Extract<ClientMessage, { id: string }>;
+
 type CreateLinkMessage = Extract<ClientMessage, { type: 'create-link' }>;
+
 type GroupStart = {
 	key: string;
 	link: ShareLink;
 	owner: RoomSocket;
 	member: GroupParticipant;
 };
+
 const REQUEST_LIMIT = '送信要求が多すぎます。1分後に再試行してください。';
 const LINK_UNAVAILABLE =
 	'この共有リンクは使えません。有効期限が切れたか、すでに使われたか、送信者が画面を閉じた可能性があります。送信者に新しいリンクを作ってもらってください。';
@@ -76,6 +84,7 @@ type ShareLink = {
 	expiresAt: number;
 	participants?: GroupParticipant[];
 };
+
 const TURN_LIMIT = '接続設定の取得上限です。再接続してください。';
 const TURN_FAILED = '中継サーバーの準備に失敗しました。再試行してください。';
 

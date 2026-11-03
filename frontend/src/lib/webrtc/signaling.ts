@@ -1,15 +1,18 @@
 import { api, createApi, readJson } from '../api';
 import type { ClientMessage, ServerMessage, Session } from '../../../../shared/protocol.ts';
+
 export interface SignalingConnection {
 	send(message: ClientMessage): void;
 	close(): void;
 }
+
 export interface SignalingSocket extends Pick<
 	WebSocket,
 	'onopen' | 'onmessage' | 'onerror' | 'onclose' | 'readyState' | 'close'
 > {
 	send(message: string): void;
 }
+
 export interface SocketFactory {
 	(url: URL): SignalingSocket;
 }

@@ -1,5 +1,6 @@
 import { registerPasskey, installAuthPost, verifyPasskeySecurity } from '../../shared/passkey-fixture.mjs';
 import assert from 'node:assert/strict';
+
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({
 	headless: true,

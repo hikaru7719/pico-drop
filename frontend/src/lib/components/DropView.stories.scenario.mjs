@@ -1,5 +1,6 @@
 // Run against `mise run //frontend:storybook`; use the same Playwright runtime as browser.mjs.
 import assert from 'node:assert/strict';
+
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const baseURL = process.env.STORYBOOK_URL || 'http://127.0.0.1:6006';
 const browser = await chromium.launch({

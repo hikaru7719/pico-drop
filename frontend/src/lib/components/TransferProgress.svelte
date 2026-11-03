@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatBytes } from '#lib/photos/index.ts';
+
 	let {
 		bytes,
 		total,

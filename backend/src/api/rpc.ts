@@ -3,7 +3,9 @@ import type { StatusCode } from 'hono/utils/http-status';
 import type { AuthService, PasskeyVerifier } from '../application/auth.ts';
 
 export type AccountStatus = Awaited<ReturnType<AuthService['status']>>['data'];
+
 export type RegistrationOptions = Awaited<ReturnType<PasskeyVerifier['generateRegistrationOptions']>>;
+
 export type AuthenticationOptions = Awaited<ReturnType<PasskeyVerifier['generateAuthenticationOptions']>>;
 
 // Declare the wire types without reading response bodies. Validation, body limits
@@ -14,6 +16,7 @@ type RpcHandler<E extends Env, Output, Input extends object, Status extends Stat
 	{ in: Input },
 	Promise<Response & TypedResponse<Output, Status, 'json'>>
 >;
+
 type Forward<E extends Env> = (c: Context<E>) => Promise<Response>;
 
 export function rpc<E extends Env>(handler: Forward<E>) {

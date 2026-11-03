@@ -2,6 +2,7 @@ import { reservePhoto, type PhotoGrant } from '../domain/photos.ts';
 import { test, expect, vi } from 'vitest';
 import assert from 'node:assert/strict';
 import { createPhotoAccess, consumePhoto, revokePhoto, grantKey, type PhotoStore } from './photo-access.ts';
+
 const heic = new Uint8Array([0, 0, 0, 16, 102, 116, 121, 112, 104, 101, 105, 99, 0, 0, 0, 0]);
 const photo = {
 	id: 'photo',

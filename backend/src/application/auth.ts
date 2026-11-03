@@ -12,20 +12,26 @@ import type {
 } from '@simplewebauthn/server';
 
 type Reg = RegistrationResponseJSON;
+
 type Auth = AuthenticationResponseJSON;
+
 type AuthCheck = { ceremony: Ceremony; stored: Credential };
+
 export interface PasskeyVerifier {
 	generateRegistrationOptions: typeof generateRegistrationOptions;
 	generateAuthenticationOptions: typeof generateAuthenticationOptions;
 	verifyRegistrationResponse: typeof verifyRegistrationResponse;
 	verifyAuthenticationResponse: typeof verifyAuthenticationResponse;
 }
+
 export type AuthEnv = { AUTH_ORIGIN?: string };
+
 export interface KeyValueStore {
 	get<T>(key: string): Promise<T | undefined>;
 	put<T>(key: string, value: T): Promise<void>;
 	delete(key: string): Promise<boolean>;
 }
+
 export interface AuthStore {
 	account(id: string): Promise<Account | undefined>;
 	login(key: string): Promise<Login | undefined>;
@@ -39,6 +45,7 @@ export interface AuthStore {
 	updateCredential(stored: Credential, previousCounter: number): Promise<void>;
 	incrementRate(key: string, duration: number, limit: number): Promise<boolean>;
 }
+
 const LOGIN_MS = 7 * 24 * 60 * 60_000;
 const CHALLENGE_MS = 5 * 60_000;
 const REGISTRATION = {
@@ -110,6 +117,7 @@ export type AuthInput = {
 	ip: string;
 	body(): Promise<unknown>;
 };
+
 export type AuthResult = {
 	data: unknown;
 	cookie?: { kind: 'auth' | 'challenge'; token: string };

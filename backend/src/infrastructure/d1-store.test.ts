@@ -4,6 +4,7 @@ import { Database } from './d1.fixture.ts';
 import { gateway } from './gateway.ts';
 import { loginKey, challengeKey } from '../domain/tokens.ts';
 import type { Ceremony } from '../domain/auth.ts';
+
 const databases: Database[] = [];
 const account = { id: 'user', name: 'Sender' };
 const credential = { id: 'passkey', publicKey: new Uint8Array([0, 128, 255]), counter: 0 };

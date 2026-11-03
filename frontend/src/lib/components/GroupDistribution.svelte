@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { LIMITS, type GroupParticipant } from '../../../../shared/protocol';
 	import ShareQr from './ShareQr.svelte';
+
 	let {
 		participants,
 		shareLink,

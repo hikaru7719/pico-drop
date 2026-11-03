@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { convertPhoto, type ImageRenderer, type PhotoAuthority } from '../application/images.ts';
 import { bearerToken } from './room.ts';
 import { serviceError } from './errors.ts';
+
 const headers = {
 	'Cache-Control': 'no-store',
 	'X-Content-Type-Options': 'nosniff'

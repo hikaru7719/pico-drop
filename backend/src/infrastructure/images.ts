@@ -1,10 +1,13 @@
 import type { ImageRenderer } from '../application/images.ts';
+
 export interface ImageOutput {
 	output(options: ImageOutputOptions): Promise<Pick<ImageTransformationResult, 'response'>>;
 }
+
 export interface ImageSource extends ImageOutput {
 	transform(options: ImageTransform): ImageOutput;
 }
+
 export interface ImageService {
 	input(stream: ReadableStream<Uint8Array>): ImageSource;
 }

@@ -1,5 +1,6 @@
 import { test, expect, vi } from 'vitest';
 import { expireRecords, scheduleExpiry } from './expiry.ts';
+
 const now = Date.now();
 
 function storage(alarm: number | null = null) {

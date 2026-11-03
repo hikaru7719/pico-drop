@@ -4,6 +4,7 @@ import { memoryAuthStore } from './auth.fixture.ts';
 import { AuthService } from './auth.ts';
 import { passkeys } from '../infrastructure/passkeys.ts';
 import * as protocol from '../../../shared/protocol.ts';
+
 const files = [{ id: 'p', name: 'photo.jpg', type: 'image/jpeg', size: 8 }];
 class Socket {
 	data: any;

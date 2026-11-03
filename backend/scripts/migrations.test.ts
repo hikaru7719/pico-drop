@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, expect, test } from 'vitest';
 import { generate, migrationFiles, sqlOnly } from './migrations.ts';
+
 const temporary: string[] = [];
 const initial = 'CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);';
 

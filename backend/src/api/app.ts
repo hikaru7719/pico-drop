@@ -14,17 +14,21 @@ import type { IceConfiguration } from '../application/room-ports.ts';
 export interface HubDestination extends PhotoAuthority {
 	fetch(request: Request): Promise<Response>;
 }
+
 export interface ApiGateway {
 	hub(name: string): HubDestination;
 	auth(request: Request): Promise<Response>;
 	rate(ip: string, kind: string): Promise<boolean>;
 	images: ImageRenderer;
 }
+
 type ApiEnv<Bindings extends object> = {
 	Bindings: Bindings;
 	Variables: { gateway: ApiGateway };
 };
+
 type ApiContext<Bindings extends object> = Context<ApiEnv<Bindings>>;
+
 const SESSION_LIMIT = '接続回数が多すぎます。1分後に再試行してください。';
 
 export function createApp<Bindings extends object>(gateway: (env: Bindings) => ApiGateway) {
@@ -51,10 +55,15 @@ function dependencies<B extends object>(app: Hono<ApiEnv<B>>, gateway: (env: B) 
 }
 
 export type AppType = ReturnType<typeof createApp>;
+
 type RoomQuery = { query: { room?: string } };
+
 type PhotoQuery = { query: { id: string; mode: ConversionMode } };
+
 type RegisterInput = { json: { name: string } };
+
 type RegisterProof = { json: RegistrationResponseJSON };
+
 type LoginProof = { json: AuthenticationResponseJSON };
 
 function routes<B extends object>(app: Hono<ApiEnv<B>>) {

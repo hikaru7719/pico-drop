@@ -13,11 +13,14 @@ export type ReceivedPhoto = {
 	busy?: boolean;
 	problem?: string;
 };
+
 type Conversion = { photo: ReceivedPhoto; index: number; mode: ConversionMode };
+
 type Callbacks = {
 	changed: (photos: ReceivedPhoto[]) => void;
 	expired: () => void;
 };
+
 const FAILED = '変換できませんでした。元の写真は保存できます。';
 const TOO_LARGE = '変換は1枚20MiBまでです。元の写真を保存してください。';
 const NO_ACCESS = 'この写真を変換できません。元の写真を保存してください。';

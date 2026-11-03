@@ -1,5 +1,6 @@
 /* eslint-disable no-control-regex -- Reject or sanitize control characters in photo names. */
 import { LIMITS, validPhotos, type PhotoMeta } from '../../../../shared/protocol.ts';
+
 const PHOTO_ERROR = 'JPEG・PNG・WebP・HEIC/HEIFの写真を選んでください。';
 
 const decode = (bytes: Uint8Array, start: number, end: number) => new TextDecoder().decode(bytes.slice(start, end));

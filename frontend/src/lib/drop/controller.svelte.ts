@@ -22,6 +22,7 @@ export interface DropDependencies {
 	sharePhotos: typeof sharePhotos;
 	fetch: typeof fetch;
 }
+
 const browserDependencies: DropDependencies = {
 	createSession,
 	createSignaling: (...args) => new Signaling(...args),
@@ -36,6 +37,7 @@ const browserDependencies: DropDependencies = {
 // oxlint-disable-next-line max-lines-per-function
 export function createDropController(view: ViewCallbacks = {}, dependencies: DropDependencies = browserDependencies) {
 	type RequestInfo = Extract<ServerMessage, { type: 'requested' }>;
+
 	let groupMode = $state(false);
 	let groupReceiver = $state(false);
 	let participants = $state<GroupParticipant[]>([]);

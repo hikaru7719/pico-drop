@@ -3,7 +3,9 @@ import type { Account, Ceremony, Credential, Login } from '../domain/auth.ts';
 import type { WebAuthnCredential } from '@simplewebauthn/server';
 
 type AccountRow = { id: string; name: string; disabled: number };
+
 type CredentialRow = { id: string; account_id: string; public_key: number[]; counter: number; transports: string | null };
+
 type CeremonyRow = {
 	kind: Ceremony['kind'];
 	challenge: string;
@@ -11,6 +13,7 @@ type CeremonyRow = {
 	account_name: string | null;
 	expires_at: number;
 };
+
 const RATE_UPSERT = `INSERT INTO rate_limits (id, count, expires_at) VALUES (?, 1, ?)
 ON CONFLICT(id) DO UPDATE SET
     count = CASE WHEN rate_limits.expires_at <= ? THEN 1 ELSE rate_limits.count + 1 END,

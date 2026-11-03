@@ -74,6 +74,7 @@ export type SendOptions = {
 	signal: AbortSignal;
 	progress: (bytes: number) => void;
 };
+
 class PhotoSender {
 	private sent = 0;
 

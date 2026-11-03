@@ -2,6 +2,7 @@ import type { SendChannel } from './ports';
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { PhotoReceiver, digest, sendPhotos } from './transfer.ts';
+
 const data = new Uint8Array([255, 216, 255, 224, 1, 2, 3, 4]).buffer;
 const meta = {
 	id: 'p',

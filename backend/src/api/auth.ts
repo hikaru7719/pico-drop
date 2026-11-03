@@ -10,6 +10,7 @@ import {
 import { authJson, authOrigin, bodyJson, readCookie, setCookie } from './http.ts';
 import { ServiceError } from '../application/errors.ts';
 import { sessionLoginKey } from '../domain/tokens.ts';
+
 export class PasskeyAuth {
 	readonly service: AuthService;
 	private app = new Hono();

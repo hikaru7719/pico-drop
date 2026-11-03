@@ -3,6 +3,7 @@ import type { RoomService } from '../application/room.ts';
 import { authJson, readCookie } from './http.ts';
 import { sessionLoginKey } from '../domain/tokens.ts';
 import { serviceError } from './errors.ts';
+
 type Upgrade = () => Promise<Response>;
 
 export function roomApp(service: RoomService, upgrade: Upgrade) {

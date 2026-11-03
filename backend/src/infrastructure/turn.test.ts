@@ -1,5 +1,6 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { iceServers } from './turn.ts';
+
 afterEach(() => vi.unstubAllGlobals());
 test.each([{}, { TURN_KEY_ID: 'key' }, { TURN_KEY_API_TOKEN: 'secret' }])(
 	'missing TURN config falls back to STUN',

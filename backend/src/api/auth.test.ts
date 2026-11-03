@@ -9,6 +9,7 @@ import { secretHash } from '../domain/tokens.ts';
 import { passkeys } from '../infrastructure/passkeys.ts';
 
 type Verifier = PasskeyVerifier;
+
 const authEnv = { AUTH_ORIGIN: 'https://photos.example' };
 class Fixture {
 	entries = new Map<string, any>();

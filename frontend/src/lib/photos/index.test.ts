@@ -1,6 +1,7 @@
 import { test, vi, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import { describePhotos, formatBytes, sharePhotos } from './index.ts';
+
 const data = new Uint8Array([255, 216, 255, 224, 1, 2, 3, 4]).buffer;
 test('photo classification uses file bytes', async () => {
 	const [jpeg] = await describePhotos([new File([data], 'camera.heic', { type: 'image/heic' })]);

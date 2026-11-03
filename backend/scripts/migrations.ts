@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath, URL } from 'node:url';
 
 type SchemaRow = { sql: string };
+
 const root = fileURLToPath(new URL('../', import.meta.url));
 
 export function migrationFiles(directory: string) {

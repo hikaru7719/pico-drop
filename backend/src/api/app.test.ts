@@ -1,5 +1,6 @@
 import { test, expect, vi } from 'vitest';
 import { createApp, type ApiGateway } from './app.ts';
+
 const origin = 'https://photos.example';
 const room = '1234567890abcdef';
 class Fixture {

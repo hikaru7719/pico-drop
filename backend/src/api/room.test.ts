@@ -1,6 +1,7 @@
 import { test, expect, vi } from 'vitest';
 import { roomApp } from './room.ts';
 import { ServiceError } from '../application/errors.ts';
+
 const origin = 'https://photos.example';
 
 function fixture() {
