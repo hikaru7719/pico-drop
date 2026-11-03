@@ -9,6 +9,7 @@ node = "26.13.0"
 "npm:wrangler" = "4.156.0"
 "npm:oxfmt" = "0.73.0"
 "npm:oxlint" = "1.88.0"
+sqlite3def = "3.11.28"
 
 [settings]
 npm.package_manager = "npm"

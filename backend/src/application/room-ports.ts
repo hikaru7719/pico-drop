@@ -1,6 +1,6 @@
-import type { AuthStore } from './auth.ts';
+import type { KeyValueStore } from './auth.ts';
 import type { Account } from '../domain/auth.ts';
-export interface RecordStore extends AuthStore {
+export interface RecordStore extends KeyValueStore {
 	list<T>(): Promise<Map<string, T>>;
 	getAlarm(): Promise<number | null>;
 	setAlarm(time: number): Promise<void>;

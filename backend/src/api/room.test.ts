@@ -18,7 +18,7 @@ test('session HTTP adapter returns 201 and only passes the hashed login key', as
 	expect(response.status).toBe(201);
 	expect(service.createSession).toHaveBeenCalledWith({
 		room: 'abc',
-		authKey: expect.stringMatching(/^auth:login:v2\.ab\.[a-f0-9]{64}$/)
+		authKey: expect.stringMatching(/^auth:login:[a-f0-9]{64}$/)
 	});
 	expect(await response.json()).toEqual({ token: 'token' });
 });
@@ -61,7 +61,7 @@ type RoomApp = ReturnType<typeof roomApp>;
 function sessionRequest(app: RoomApp) {
 	return app.request(origin + '/api/session?room=abc', {
 		method: 'POST',
-		headers: { Cookie: '__Host-pico_auth=v2.ab.' + 'a'.repeat(64) }
+		headers: { Cookie: '__Host-pico_auth=' + 'a'.repeat(64) }
 	});
 }
 

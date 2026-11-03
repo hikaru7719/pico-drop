@@ -1,5 +1,6 @@
 import { test, expect, vi } from 'vitest';
 import { RoomService } from './room.ts';
+import { memoryAuthStore } from './auth.fixture.ts';
 import { AuthService } from './auth.ts';
 import { passkeys } from '../infrastructure/passkeys.ts';
 import * as protocol from '../../../shared/protocol.ts';
@@ -49,7 +50,7 @@ class Fixture {
 	}
 
 	environment() {
-		const auth = new AuthService(this.storage() as never, undefined, passkeys);
+		const auth = new AuthService(memoryAuthStore(this.entries), passkeys);
 		return {
 			identity: (key: string) => auth.identity(key),
 			allowSend: (key: string) => auth.allowSend(key),

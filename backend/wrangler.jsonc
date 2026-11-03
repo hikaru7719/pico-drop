@@ -3,12 +3,14 @@
 	"name": "pico-drop-backend",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-09-24",
+	"d1_databases": [{ "binding": "DB", "database_name": "pico-drop" }],
+	"triggers": { "crons": ["*/15 * * * *"] },
 	"images": { "binding": "IMAGES" },
 	"durable_objects": {
 		"bindings": [
 			{
 				"name": "HUB",
-				"class_name": "NearbyHub"
+				"class_name": "RoomObject"
 			}
 		]
 	},
@@ -16,6 +18,11 @@
 		{
 			"tag": "v1",
 			"new_sqlite_classes": ["NearbyHub"]
+		},
+		{
+			"tag": "v2-d1-auth",
+			"deleted_classes": ["NearbyHub"],
+			"new_sqlite_classes": ["RoomObject"]
 		}
 	]
 }

@@ -1,5 +1,6 @@
 import { test, expect, vi, afterEach } from 'vitest';
-import type { AuthNetwork, AuthStore, PasskeyVerifier } from '../application/auth.ts';
+import type { AuthStore, PasskeyVerifier } from '../application/auth.ts';
+import { memoryAuthStore } from '../application/auth.fixture.ts';
 import type { Account } from '../domain/auth.ts';
 import type { verifyRegistrationResponse, verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { PasskeyAuth } from './auth.ts';
@@ -14,18 +15,12 @@ class Fixture {
 	auth: PasskeyAuth;
 	lastChallenge = '';
 
-	constructor(network?: AuthNetwork, verifier?: Verifier) {
-		this.auth = new PasskeyAuth(this.store(), authEnv, network, verifier ?? passkeys);
+	constructor(verifier?: Verifier) {
+		this.auth = new PasskeyAuth(this.store(), authEnv, verifier ?? passkeys);
 	}
 
 	store(): AuthStore {
-		return {
-			get: async (key: string) => structuredClone(this.entries.get(key)),
-			put: async (key: string, value: unknown) => {
-				this.entries.set(key, structuredClone(value));
-			},
-			delete: async (key: string) => this.entries.delete(key)
-		};
+		return memoryAuthStore(this.entries);
 	}
 
 	request(path: string, body?: unknown, cookie = '') {
@@ -215,7 +210,7 @@ async function sessionKey(app: Fixture, response: Response) {
 
 async function registeredApp() {
 	const check = verifier();
-	const app = new Fixture(undefined, check);
+	const app = new Fixture(check);
 	const response = await register(app);
 	const account = [...app.entries.values()].find((value) => value.name === 'Guest') as Account;
 	return { app, check, response, account };
@@ -267,7 +262,7 @@ test('unverified assertions cannot create a login or advance the counter', async
 test('unverified registration never stores an account', async () => {
 	const check = verifier();
 	check.verifyRegistrationResponse.mockResolvedValue({ verified: false });
-	const app = new Fixture(undefined, check);
+	const app = new Fixture(check);
 	expect((await register(app)).status).toBe(400);
 	expect(hasAccount(app)).toBe(false);
 });
@@ -278,7 +273,7 @@ test('a credential cannot be registered twice', async () => {
 });
 test('unknown credentials are rejected before cryptographic verification', async () => {
 	const check = verifier();
-	const app = new Fixture(undefined, check);
+	const app = new Fixture(check);
 	expect((await login(app, 'missing')).status).toBe(400);
 	expect(check.verifyAuthenticationResponse).not.toHaveBeenCalled();
 });
@@ -355,7 +350,7 @@ test('only known POST auth routes are accepted', async () => {
 	expect((await app.auth.route(app.request('unknown'))).status).toBe(404);
 });
 test('local HTTP development uses unprefixed non-secure cookies', async () => {
-	const auth = new PasskeyAuth(new Fixture().store(), {}, undefined, passkeys);
+	const auth = new PasskeyAuth(new Fixture().store(), {}, passkeys);
 	const request = new Request('http://localhost/api/auth/login/options', {
 		method: 'POST'
 	});
@@ -364,67 +359,6 @@ test('local HTTP development uses unprefixed non-secure cookies', async () => {
 	expect(response.headers.get('set-cookie')).toMatch(/^pico_challenge=/);
 	expect(response.headers.get('set-cookie')).not.toContain('Secure');
 });
-const remoteAccount = { id: 'v2.ab.user', name: 'Remote' };
-
-function remoteNetwork() {
-	return {
-		shard: 'ab',
-		take: vi.fn(),
-		register: vi.fn(),
-		revoke: vi.fn(),
-		login: vi.fn().mockResolvedValue(remoteAccount),
-		issue: vi.fn().mockResolvedValue('v2.ab.' + 'b'.repeat(64))
-	};
-}
-
-function networkFixture() {
-	const network = remoteNetwork();
-	return { network, app: new Fixture(network, verifier()) };
-}
-
-async function remoteRegister(app: Fixture, network: ReturnType<typeof remoteNetwork>) {
-	const cookie = cookieOf(await app.begin());
-	const ceremony = app.entries.get(challenges(app)[0]);
-	network.take.mockResolvedValue(ceremony);
-	const request = app.request('register/verify', { id: credential.id }, cookie);
-	return { response: await app.auth.route(request), ceremony };
-}
-
-test('sharded registration uses network storage and rotates the remote session', async () => {
-	const { app, network } = networkFixture();
-	const { response, ceremony } = await remoteRegister(app, network);
-	expect(response.status).toBe(200);
-	expect(ceremony.account.id).toMatch(/^v2\.ab\./);
-	expect(network.register).toHaveBeenCalledWith(ceremony.account, credential);
-	expect(network.issue).toHaveBeenCalledWith(ceremony.account);
-});
-
-const remoteCeremony = () => ({
-	kind: 'login',
-	challenge: 'challenge',
-	expiresAt: Date.now() + 1000
-});
-
-test('sharded login verifies on the account shard and revokes the previous login', async () => {
-	const { app, network } = networkFixture();
-	network.take.mockResolvedValue(remoteCeremony());
-	const cookie = '__Host-pico_auth=' + 'a'.repeat(64);
-	const response = await login(app, remoteAccount.id, cookie);
-	expect(response.status).toBe(200);
-	await assertRemoteLogin(network);
-});
-
-async function assertRemoteLogin(network: ReturnType<typeof remoteNetwork>) {
-	expect(network.login).toHaveBeenCalledWith(
-		expect.objectContaining({ id: credential.id }),
-		'https://photos.example',
-		expect.objectContaining({ challenge: 'challenge' })
-	);
-	const oldKey = 'auth:login:' + (await secretHash('a'.repeat(64)));
-	expect(network.revoke).toHaveBeenCalledWith(oldKey);
-	expect(network.issue).toHaveBeenCalledWith(remoteAccount);
-}
-
 afterEach(() => vi.restoreAllMocks());
 
 function registrationVerifier() {

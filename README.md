@@ -8,7 +8,7 @@ Share photos with a link.
 
 ```text
 frontend/  SvelteKit / TypeScript / Cloudflare Workers
-backend/   Hono / TypeScript / Cloudflare Workers / Durable Objects
+backend/   Hono / TypeScript / Cloudflare Workers / D1 / Durable Objects
 docs/      設計方針・開発メモ
 shared/    frontend・backend共通のプロトコル・写真処理の定義
 benchmarks/ React Router / SvelteKitの性能比較アプリ
@@ -26,7 +26,7 @@ frontend・backend・docs・`benchmarks/react-router`・`benchmarks/sveltekit` �
 
 ## セットアップ
 
-miseをインストール済みの環境で実行します。Node.js・pnpm・Wrangler・oxfmt・oxlintは `mise.toml` に固定し、miseでインストールします。SvelteKit・TypeScriptなどプロジェクトの依存パッケージはpnpmで管理します。
+miseをインストール済みの環境で実行します。Node.js・pnpm・Wrangler・oxfmt・oxlint・sqlite3defは `mise.toml` に固定し、miseでインストールします。SvelteKit・TypeScriptなどプロジェクトの依存パッケージはpnpmで管理します。
 
 ```sh
 mise trust
@@ -63,6 +63,21 @@ Wrangler設定変更後は `mise run gen` で型を再生成します。整形�
 
 `mise run verify` はoxfmtの整形チェック、型情報付きoxlint、frontend・backend・docsのビルド、全ユニットテストとカバレッジ検査を順に実行します。途中で失敗すると停止します。整形の自動修正は行いません。E2Eテストは含まないため、必要に応じてアプリとStorybookを起動して `mise run test:e2e` を実行してください。
 
+## D1のスキーマ変更
+
+`backend/schema.sql` でテーブル・制約・インデックスを宣言します。sqldef（`sqlite3def`）で過去のmigrationとの差分SQLを生成し、WranglerでD1に適用します。SQLアクセスはWorkersのD1 APIを使います。
+
+```sh
+# schema.sqlを編集後、変更名を付けて差分を生成
+mise run //backend:db:generate -- add_login_index
+mise run //backend:db:migrate:local
+mise run verify
+# 公開前に本番へ適用
+mise run //backend:db:migrate:remote
+```
+
+宣言と生成したSQLを両方コミットします。backendビルドで宣言と履歴の一致を検査します。詳細は [宣言的なスキーマ管理](docs/auth.md#宣言的なスキーマ管理) を参照してください。
+
 ## 現在の実装範囲
 
 送信者のパスキー認証、受信者の匿名セッション、10分間有効な共有リンク、受信承諾、WebRTCによる複数枚転送、進捗・キャンセル・プレビュー・共有保存を実装しています。1回10枚・合計50MiBまで。写真をサーバーに保存しません。受信写真は受信完了から10分、破棄、ページ離脱のいずれかでブラウザ内の参照を解放します。HEIC/HEIFは、利用者の操作でCloudflare Imagesへ送ってプレビュー・JPEG変換できます。原本は変更しません。
@@ -87,13 +102,17 @@ Workersの `IMAGES` bindingを使い、画像の保存・公開URL発行は行�
 
 ```sh
 mise exec -- wrangler login
+# 初回のみD1を作成し、database_idを設定する
+mise exec -- wrangler d1 create pico-drop --config backend/wrangler.jsonc --binding DB --update-config
+# スキーマ変更時もbackend公開前に実行する
+mise run //backend:db:migrate:remote
 mise run //backend:deploy
 mise run //frontend:deploy
 ```
 
 公開する段階で実行してください。`mise run build` はフロントエンド・資料のビルドとバックエンドのdry-runを行い、リモートに公開しません。
 
-frontendは `BACKEND` service bindingでbackendへ同一オリジンの `/api/*` を転送します。backendを先にデプロイしてください。接続は送信セッションごとのDO、新規認証は256シャード、IP制限はIPごとのDOへ分散します。旧認証データは保持しますが、更新前の共有リンク・接続は再作成が必要です。詳細は [認証とDO分割](docs/auth.md#DO分割と既存データ) を参照してください。開発時はViteのHTTP/WebSocket proxyを利用します。
+frontendは `BACKEND` service bindingでbackendへ同一オリジンの `/api/*` を転送します。D1の作成・migration適用後、backend、frontendの順にデプロイしてください。認証とIP・アカウントの利用制限は1つのD1、WebSocketと接続・転送状態は送信セッションごとのDOで管理します。旧DOデータは全て破棄し、パスキーの再登録と共有リンクの再作成が必要です。詳細は [D1導入と既存データの破棄](docs/auth.md#初回導入と既存データの破棄) を参照してください。開発時は `mise run dev` がローカルD1のmigrationを適用し、ViteのHTTP/WebSocket proxyを利用します。
 
 TURNを有効にする場合は、backendディレクトリで `mise exec -- wrangler secret put TURN_KEY_ID` と `mise exec -- wrangler secret put TURN_KEY_API_TOKEN` を実行します。管理鍵はブラウザに渡しません。ローカルでは `backend/.dev.vars` に同名の値を設定できます。このファイルはGit管理しません。
 

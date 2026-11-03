@@ -1,7 +1,7 @@
 import { RoomService } from '../application/room.ts';
 import { roomApp } from '../api/room.ts';
 import { authJson } from '../api/http.ts';
-import { identity, allowSend } from './hub-network.ts';
+import { authentication } from './d1-auth.ts';
 import { iceServers } from './turn.ts';
 import type { Bindings } from './bindings.ts';
 export class RoomHub extends RoomService {
@@ -10,8 +10,8 @@ export class RoomHub extends RoomService {
 		env: Bindings
 	) {
 		super(runtime(state), {
-			identity: (key) => identity(env, key),
-			allowSend: (key) => allowSend(env, key),
+			identity: (key) => authentication(env).service.identity(key),
+			allowSend: (key) => authentication(env).service.allowSend(key),
 			iceServers: () => iceServers(env)
 		});
 	}

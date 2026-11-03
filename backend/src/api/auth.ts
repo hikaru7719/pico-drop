@@ -5,7 +5,6 @@ import {
 	type AuthInput,
 	type AuthResult,
 	type AuthStore,
-	type AuthNetwork,
 	type PasskeyVerifier
 } from '../application/auth.ts';
 import { authJson, authOrigin, bodyJson, readCookie, setCookie } from './http.ts';
@@ -18,10 +17,9 @@ export class PasskeyAuth {
 	constructor(
 		storage: AuthStore,
 		private env: AuthEnv,
-		network: AuthNetwork | undefined,
 		verifier: PasskeyVerifier
 	) {
-		this.service = new AuthService(storage, network, verifier);
+		this.service = new AuthService(storage, verifier);
 		this.routes();
 	}
 

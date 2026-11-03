@@ -53,7 +53,7 @@
 				<div
 					class="diagram"
 					role="img"
-					aria-label="送信側と受信側ブラウザはHTTPSとWebSocketでFrontend Worker、Backend Worker、NearbyHubに接続。写真はブラウザ間のWebRTC DataChannelで直接転送し、直接接続できない場合はTURNで中継する。"
+					aria-label="送信側と受信側ブラウザはHTTPSとWebSocketでFrontend Worker、Backend Worker、RoomObjectに接続。写真はブラウザ間のWebRTC DataChannelで直接転送し、直接接続できない場合はTURNで中継する。"
 				>
 					<div class="endpoints">
 						<div class="node">
@@ -87,10 +87,8 @@
 						<div class="connector">↓ HUB binding</div>
 						<div class="node hub">
 							<small>STATE / DURABLE OBJECT</small>
-							<h3>NearbyHub</h3>
-							<p>
-								送信者のパスキー認証 · 短命の共有リンク · Accept / Reject<br />WebSocket signaling · 転送状態 · TURN資格情報の発行
-							</p>
+							<h3>RoomObject</h3>
+							<p>短命の共有リンク · Accept / Reject<br />WebSocket signaling · 転送状態 · TURN資格情報の発行</p>
 							<span>送信セッションごとにHubを分割</span>
 						</div>
 					</div>
@@ -168,7 +166,7 @@
 						<span class="card-label">DURABLE OBJECT</span>
 						<h3>接続を再開できる状態</h3>
 						<p>
-							セッション、リンクのハッシュ・所有者・写真メタデータ・期限、受信者の変換権限、レート制限をDOストレージに保存。接続状態はWebSocket
+							認証とIP・アカウントの利用制限はD1に保存。セッション、リンクのハッシュ・所有者・写真メタデータ・期限、受信者の変換権限はDOストレージに保存。接続状態はWebSocket
 							attachmentで保持し、Hibernation後にも利用します。期限切れをalarmで削除します。
 						</p>
 					</article>
@@ -262,7 +260,7 @@
 							</tr>
 							<tr>
 								<td><code>backend/src/index.ts</code></td>
-								<td>Worker API、NearbyHub、TURN資格情報発行</td>
+								<td>Worker API、RoomObject、TURN資格情報発行</td>
 							</tr>
 							<tr>
 								<td><code>shared/protocol.ts</code></td>
@@ -279,7 +277,7 @@
 					<h3>実装と検証の境界</h3>
 					<p>
 						このページは2026-09-24時点のワークスペース内のコードと設計メモを整理したものです。コードの存在は本番稼働や実機検証の完了を意味しません。iPhone
-						Safariでの保存・HEICプレビュー・異なる回線でのTURN接続は実機検証が必要です。接続Hubは送信セッションごと、新規認証は256シャードに分割しています。
+						Safariでの保存・HEICプレビュー・異なる回線でのTURN接続は実機検証が必要です。接続Hubは送信セッションごとに分割し、認証とIP・アカウントの利用制限はD1で管理しています。
 					</p>
 				</aside>
 			</section>
@@ -330,11 +328,11 @@
 					>を参照してください。
 				</p>
 
-				<h3>pico-dropでは、NearbyHubが両者を仲介する</h3>
+				<h3>pico-dropでは、RoomObjectが両者を仲介する</h3>
 				<div
 					class="diagram"
 					role="img"
-					aria-label="送信者のcreate-linkと受信者のjoin-link・acceptを、同じルームのNearbyHubが受け取る。受信者が承諾すると、両端末にstartを通知する。"
+					aria-label="送信者のcreate-linkと受信者のjoin-link・acceptを、同じルームのRoomObjectが受け取る。受信者が承諾すると、両端末にstartを通知する。"
 				>
 					<div class="endpoints">
 						<div class="node">
@@ -399,7 +397,7 @@
 				<aside class="status">
 					<h3>規模が増えたときの設計</h3>
 					<p>
-						送信セッションごとにHubを分け、各ルームのWebSocketを最大200接続に制限しています。共有リンクの先頭16桁から受信者も同じHubに接続します。新規認証は256シャード、IP制限はIPごとのDOへ分散し、既存認証のみ旧mvpに残します。写真本体は引き続きDataChannelで転送します。
+						送信セッションごとにHubを分け、各ルームのWebSocketを最大200接続に制限しています。共有リンクの先頭16桁から受信者も同じHubに接続します。認証とIP・アカウントの利用制限は1つのD1で管理します。旧DOデータは破棄するため、パスキーの再登録が必要です。写真本体は引き続きDataChannelで転送します。
 					</p>
 				</aside>
 			</section>
