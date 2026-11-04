@@ -5,6 +5,9 @@ packages:
   - benchmarks/react-router
   - benchmarks/sveltekit
 
+# Keep in sync with Dependabot cooldown and .npmrc (7 days, in minutes).
+minimumReleaseAge: 10080
+
 onlyBuiltDependencies:
   - esbuild
   - workerd

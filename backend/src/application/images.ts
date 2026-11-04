@@ -4,10 +4,12 @@ import { MAX_CONVERSION_BYTES } from '../../../shared/photos.ts';
 import type { reservePhoto } from '../domain/photos.ts';
 
 type Reservation = NonNullable<ReturnType<typeof reservePhoto>>;
+
 export type PhotoAuthority = {
 	consumePhoto(token: string, id: string, mode: string): Promise<Reservation | null>;
 	revokePhoto(token: string): Promise<void>;
 };
+
 const EXPIRED = '変換の期限が切れました。';
 const FAILED = '変換できませんでした。元の写真はそのまま保存できます。';
 const TOO_LARGE = '変換できる写真は1枚20MiBまでです。元の写真を保存してください。';
@@ -19,9 +21,11 @@ type Conversion = {
 	grant: Reservation;
 	mode: string;
 };
+
 export type ImageRenderer = {
 	render(bytes: Uint8Array, mode: string): Promise<ReadableStream<Uint8Array> | null>;
 };
+
 export type ConversionInput = {
 	token: string;
 	id: string;

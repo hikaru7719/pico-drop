@@ -48,6 +48,7 @@ const meta = {
 } satisfies Meta<typeof DropView>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
 export const Initial: Story = {
 	name: '01 写真選択前',
 	args: { connection: 'idle', session: undefined }

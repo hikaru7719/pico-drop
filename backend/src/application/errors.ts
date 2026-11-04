@@ -6,6 +6,7 @@ export type ErrorCode =
 	| 'unsupported'
 	| 'conversion-failed'
 	| 'unavailable';
+
 export class ServiceError extends Error {
 	constructor(
 		public code: ErrorCode,

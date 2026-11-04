@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Context, Next } from 'hono';
-import { authJson, readCookie } from './http.ts';
-import { authRoute, roomRoute } from './routing.ts';
+import { authJson } from './http.ts';
+import { roomRoute } from './routing.ts';
 import { photoRequest } from './images.ts';
 import type { ImageRenderer, PhotoAuthority } from '../application/images.ts';
 import { serviceError } from './errors.ts';
@@ -14,19 +14,22 @@ import type { IceConfiguration } from '../application/room-ports.ts';
 export interface HubDestination extends PhotoAuthority {
 	fetch(request: Request): Promise<Response>;
 }
+
 export interface ApiGateway {
 	hub(name: string): HubDestination;
+	auth(request: Request): Promise<Response>;
 	rate(ip: string, kind: string): Promise<boolean>;
-	clearChallenge(token: string): Promise<void>;
 	images: ImageRenderer;
 }
+
 type ApiEnv<Bindings extends object> = {
 	Bindings: Bindings;
 	Variables: { gateway: ApiGateway };
 };
+
 type ApiContext<Bindings extends object> = Context<ApiEnv<Bindings>>;
+
 const SESSION_LIMIT = '接続回数が多すぎます。1分後に再試行してください。';
-const AUTH_LIMIT = '認証の試行が多すぎます。しばらく待ってください。';
 
 export function createApp<Bindings extends object>(gateway: (env: Bindings) => ApiGateway) {
 	const app = new Hono<ApiEnv<Bindings>>();
@@ -52,10 +55,15 @@ function dependencies<B extends object>(app: Hono<ApiEnv<B>>, gateway: (env: B) 
 }
 
 export type AppType = ReturnType<typeof createApp>;
+
 type RoomQuery = { query: { room?: string } };
+
 type PhotoQuery = { query: { id: string; mode: ConversionMode } };
+
 type RegisterInput = { json: { name: string } };
+
 type RegisterProof = { json: RegistrationResponseJSON };
+
 type LoginProof = { json: AuthenticationResponseJSON };
 
 function routes<B extends object>(app: Hono<ApiEnv<B>>) {
@@ -96,33 +104,7 @@ const methodError = () => authJson({ error: 'Method not allowed' }, 405);
 
 async function routeAuth<Bindings extends object>(c: ApiContext<Bindings>) {
 	const gateway = c.get('gateway');
-	if (!(await allowedAuth(c))) {
-		return authJson({ error: AUTH_LIMIT }, 429);
-	}
-	await clearPreviousChallenge(c.req.raw, gateway);
-	return forwardAuth(c.req.raw, gateway);
-}
-
-function forwardAuth(original: Request, gateway: ApiGateway) {
-	const name = authRoute(original);
-	const request = new Request(original);
-	request.headers.set('X-Auth-Route', name);
-	return gateway.hub(name).fetch(request);
-}
-
-async function clearPreviousChallenge(request: Request, gateway: ApiGateway) {
-	const token = readCookie(request, 'challenge');
-	if (token && new URL(request.url).pathname.endsWith('/options')) {
-		await gateway.clearChallenge(token);
-	}
-}
-
-function allowedAuth<Bindings extends object>(c: ApiContext<Bindings>) {
-	return (
-		c.req.path.endsWith('/status') ||
-		c.req.path.endsWith('/logout') ||
-		c.get('gateway').rate(c.req.header('CF-Connecting-IP') ?? 'local', 'auth')
-	);
+	return gateway.auth(c.req.raw);
 }
 
 async function routeSession<Bindings extends object>(c: ApiContext<Bindings>) {

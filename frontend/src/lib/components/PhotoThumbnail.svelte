@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+
 	let { file }: { file: File } = $props();
 	let url = $state('');
 	let failed = $state(false);

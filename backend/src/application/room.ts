@@ -1,4 +1,5 @@
 import { routedToken, secretHash as hash } from '../domain/tokens.ts';
+import { checkGroupSlot, replaceGroupMember, decideGroupMember, recordGroupOutcome } from '../domain/groups.ts';
 import { ServiceError } from './errors.ts';
 import type { RoomRuntime, RoomSocket, RoomDependencies, SessionInput } from './room-ports.ts';
 import { createPhotoAccess, consumePhoto, revokePhoto } from './photo-access.ts';
@@ -14,6 +15,7 @@ import {
 	type Session,
 	type TransferState
 } from '../../../shared/protocol.ts';
+
 type Attachment = {
 	connectedAt: number;
 	authKey?: string;
@@ -41,6 +43,7 @@ type LinkJoin = {
 	link: ShareLink;
 	owner: RoomSocket;
 };
+
 type TransferSockets = {
 	owner: RoomSocket;
 	ws: RoomSocket;
@@ -57,16 +60,22 @@ type StoredSession = Omit<Session, 'token'> & {
 	used?: boolean;
 	authKey?: string;
 };
+
 type Expiring = { expiresAt?: number };
+
 type EndReason = Extract<ServerMessage, { type: 'ended' }>['reason'];
+
 type TransferMessage = Extract<ClientMessage, { id: string }>;
+
 type CreateLinkMessage = Extract<ClientMessage, { type: 'create-link' }>;
+
 type GroupStart = {
 	key: string;
 	link: ShareLink;
 	owner: RoomSocket;
 	member: GroupParticipant;
 };
+
 const REQUEST_LIMIT = '送信要求が多すぎます。1分後に再試行してください。';
 const LINK_UNAVAILABLE =
 	'この共有リンクは使えません。有効期限が切れたか、すでに使われたか、送信者が画面を閉じた可能性があります。送信者に新しいリンクを作ってもらってください。';
@@ -76,6 +85,7 @@ type ShareLink = {
 	expiresAt: number;
 	participants?: GroupParticipant[];
 };
+
 const TURN_LIMIT = '接続設定の取得上限です。再接続してください。';
 const TURN_FAILED = '中継サーバーの準備に失敗しました。再試行してください。';
 
@@ -84,15 +94,12 @@ const device = (session: Device): Device => ({
 	name: session.name
 });
 
-function randomToken() {
-	return Array.from(crypto.getRandomValues(new Uint8Array(32)), (x) => x.toString(16).padStart(2, '0')).join('');
-}
-
-function newSession(): Session {
+function newSession(room?: string): Session {
 	const id = crypto.randomUUID();
 	return {
 		id,
-		token: randomToken(),
+		token: routedToken(room),
+		room,
 		name: `ゲスト ${id.slice(0, 4).toUpperCase()}`,
 		expiresAt: Date.now() + LIMITS.sessionMs
 	};
@@ -123,8 +130,7 @@ export class RoomService {
 	async issueSession(input: SessionInput) {
 		const room = input.room;
 		await this.ctx.storage.put('routing:room', room ?? '');
-		const session = { ...newSession(), token: routedToken(room), room };
-		return this.storeSession(input.authKey, session);
+		return this.storeSession(input.authKey, newSession(room));
 	}
 
 	async storeSession(authKey: string, session: Session) {
@@ -470,7 +476,7 @@ export class RoomService {
 
 	async joinGroup(context: LinkJoin) {
 		const { ws, a, key, link, owner } = context;
-		this.checkGroupSlot(link, a.session!.id);
+		checkGroupSlot(link.participants!, a.session!.id);
 		await this.revokeLink(ws, a);
 		const t = this.newTransfer(this.attachment(owner), a, link.files);
 		t.groupKey = key;
@@ -478,43 +484,12 @@ export class RoomService {
 		await this.storeGroupMember(context, t);
 	}
 
-	checkGroupSlot(link: ShareLink, deviceId: string) {
-		const previous = link.participants!.find((p) => p.device.id === deviceId);
-		if (!previous && link.participants!.length >= LIMITS.participants) {
-			throw new Error('この配布は5人までです。送信者に新しい配布をお願いしてください。');
-		}
-		this.checkGroupRetry(previous);
-	}
-
-	checkGroupRetry(previous?: GroupParticipant) {
-		if (previous && (previous.status !== 'failed' || previous.attempts >= LIMITS.groupAttempts)) {
-			throw new Error('再参加できません。再送は失敗した場合に2回までです。');
-		}
-	}
-
 	async storeGroupMember(context: LinkJoin, t: TransferState) {
 		const { ws, a, key, link } = context;
-		this.replaceGroupMember(link, t);
+		link.participants = replaceGroupMember(link.participants!, t);
 		await this.ctx.storage.put('transfer:' + t.id, t);
 		await this.publishGroup(key, link);
 		this.attachTransfer(ws, a, t);
-	}
-
-	replaceGroupMember(link: ShareLink, t: TransferState) {
-		const previous = link.participants!.find((p) => p.device.id === t.to.id);
-		const member = this.groupMember(t, (previous?.attempts ?? 0) + 1);
-		link.participants = [...link.participants!.filter((p) => p !== previous), member];
-	}
-
-	groupMember(t: TransferState, attempts: number): GroupParticipant {
-		return {
-			id: t.id,
-			device: t.to,
-			status: 'waiting',
-			approved: false,
-			accepted: false,
-			attempts
-		};
 	}
 
 	async publishGroup(key: string, link: ShareLink) {
@@ -530,19 +505,9 @@ export class RoomService {
 		if (!link || link.expiresAt <= Date.now()) {
 			throw new Error(LINK_UNAVAILABLE);
 		}
-		this.updateGroupDecision(link, t.id, action);
+		link.participants = decideGroupMember(link.participants!, t.id, action);
 		await this.publishGroup(t.groupKey!, link);
 		await this.advanceGroup(t.groupKey!);
-	}
-
-	updateGroupDecision(link: ShareLink, id: string, action: string) {
-		const member = link.participants!.find((p) => p.id === id)!;
-		if (action === 'approve') {
-			member.approved = true;
-		} else {
-			member.accepted = true;
-		}
-		member.status = member.approved && member.accepted ? 'queued' : 'waiting';
 	}
 
 	async advanceGroup(key: string) {
@@ -594,23 +559,9 @@ export class RoomService {
 	}
 
 	async updateGroupOutcome(link: ShareLink, t: TransferState, reason: EndReason) {
-		this.setGroupOutcome(link, t.id, reason);
+		link.participants = recordGroupOutcome(link.participants!, t.id, reason);
 		await this.publishGroup(t.groupKey!, link);
 		await this.advanceGroup(t.groupKey!);
-	}
-
-	setGroupOutcome(link: ShareLink, id: string, reason: EndReason) {
-		const member = link.participants!.find((p) => p.id === id);
-		if (member) {
-			member.status = this.groupOutcome(reason);
-		}
-	}
-
-	groupOutcome(reason: EndReason): GroupParticipant['status'] {
-		if (reason === 'complete') {
-			return 'complete';
-		}
-		return ['rejected', 'cancelled'].includes(reason) ? 'declined' : 'failed';
 	}
 
 	async stopGroup(key: string) {

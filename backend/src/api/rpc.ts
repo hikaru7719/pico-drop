@@ -3,17 +3,20 @@ import type { StatusCode } from 'hono/utils/http-status';
 import type { AuthService, PasskeyVerifier } from '../application/auth.ts';
 
 export type AccountStatus = Awaited<ReturnType<AuthService['status']>>['data'];
+
 export type RegistrationOptions = Awaited<ReturnType<PasskeyVerifier['generateRegistrationOptions']>>;
+
 export type AuthenticationOptions = Awaited<ReturnType<PasskeyVerifier['generateAuthenticationOptions']>>;
 
-// Durable Object responses cross a fetch boundary. Declare their wire types here
-// without reading the body: validation, body limits and cookies stay in the hub.
+// Declare the wire types without reading response bodies. Validation, body limits
+// and cookies belong to the authentication and room HTTP adapters.
 type RpcHandler<E extends Env, Output, Input extends object, Status extends StatusCode> = Handler<
 	E,
 	string,
 	{ in: Input },
 	Promise<Response & TypedResponse<Output, Status, 'json'>>
 >;
+
 type Forward<E extends Env> = (c: Context<E>) => Promise<Response>;
 
 export function rpc<E extends Env>(handler: Forward<E>) {

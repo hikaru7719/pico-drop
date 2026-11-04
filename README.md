@@ -8,21 +8,25 @@ Share photos with a link.
 
 ```text
 frontend/  SvelteKit / TypeScript / Cloudflare Workers
-backend/   Hono / TypeScript / Cloudflare Workers / Durable Objects
+backend/   Hono / TypeScript / Cloudflare Workers / D1 / Durable Objects
 docs/      設計方針・開発メモ
+shared/    frontend・backend共通のプロトコル・写真処理の定義
+benchmarks/ React Router / SvelteKitの性能比較アプリ
 ```
 
-frontend・backend・docsはpnpmワークスペースの独立したパッケージです。共通設定とlockfileをルートで管理します。
+frontend・backend・docs・`benchmarks/react-router`・`benchmarks/sveltekit` はpnpmワークスペースの独立したパッケージです。`shared/` はパッケージにせず、各パッケージから直接参照します。共通設定とlockfileをルートで管理します。
 
 バックエンドは `api/`（Hono）・`application/`（ユースケース）・`domain/`（業務ルール）・`infrastructure/`（Cloudflare等の実装）の4層に分離しています。依存方向と互換性の方針は [ADR-0003](docs/adr/0003-layered-backend-with-hono.md) を参照してください。
 
-依存パッケージはexactバージョンで指定し、`.npmrc` の `save-exact=true` により `pnpm add` でも固定します。更新時はpackage.jsonとlockfileをあわせて更新してください。Node.jsは24系を維持し、`@types/node`も24系の最新を使用します。
+依存パッケージはexactバージョンで指定し、`.npmrc` の `save-exact=true` により `pnpm add` でも固定します。更新時はpackage.jsonとlockfileをあわせて更新してください。Node.jsは26系を維持し、`@types/node`も26系の最新を使用します。
+
+依存更新の待機期間はリリース後7日に統一します。pnpmは `pnpm-workspace.yaml` の `minimumReleaseAge: 10080`（分）、npmは `.npmrc` の `min-release-age=7`（日）、Dependabotは `.github/dependabot.yml` の `cooldown.default-days: 7`（日）で指定します。期間を変更するときは3ファイルをあわせて更新してください。
 
 バックエンドはTypeScript 7.0.2のGo製コンパイラ（旧称tsgo）を使用します。正式版のコマンド名は `tsc` です。フロントエンドは `@typescript/native` エイリアスでTypeScript 7.0.2を併用し、通常・watchともに `svelte-check --tsgo` で型検査します。SvelteKit 3とSvelte関連ツールの内部処理用に `typescript` は6.0.3を維持します（[svelte-checkのTypeScript 7対応](https://github.com/sveltejs/language-tools/tree/master/packages/svelte-check#typescript-7-supports)では6と7の併用が必要です）。React Routerの比較用アプリはTypeScript 7.0.2を使用します。
 
 ## セットアップ
 
-miseをインストール済みの環境で実行します。Node.js・pnpm・Wrangler・oxfmt・oxlintは `mise.toml` に固定し、miseでインストールします。SvelteKit・TypeScriptなどプロジェクトの依存パッケージはpnpmで管理します。
+miseをインストール済みの環境で実行します。Node.js・pnpm・Wrangler・oxfmt・oxlint・sqlite3defは `mise.toml` に固定し、miseでインストールします。SvelteKit・TypeScriptなどプロジェクトの依存パッケージはpnpmで管理します。
 
 ```sh
 mise trust
@@ -45,13 +49,13 @@ mise run build
 mise run //frontend:preview
 ```
 
-`mise run setup` は依存のインストール、Workers型の生成、SvelteKitの同期を順に実行します。依存更新のために `mise exec -- pnpm install` を直接実行した場合は、`mise run //frontend:sync` でSvelteKitを同期してください。
+`mise run setup` は依存のインストール、Workers型の生成、SvelteKitの同期、Git hooksの有効化を順に実行します。Git hooksは[コミット前チェック](docs/git-hooks.md)を参照してください。依存更新のために `mise exec -- pnpm install` を直接実行した場合は、`mise run //frontend:sync` でSvelteKitを同期してください。
 
 タスク一覧は `mise tasks ls --all` で確認できます。ルートのタスクはルートディレクトリで実行します。他のディレクトリからルートのlintを実行する場合は `mise run //:lint` のように指定します。
 
 Wrangler設定変更後は `mise run gen` で型を再生成します。整形は `mise run format`。
 
-整形設定は `.oxfmtrc.json`、lint設定は `.oxlintrc.json` で管理します。整形はリポジトリ全体（`shared/` を含む）が対象です。lintは `frontend/`・`backend/`・`shared/`・`docs/` が対象です。生成ファイル・ビルド出力・作業用ディレクトリは対象外にしています。設定のJSON Schemaはmiseで固定したバージョンを参照するため、ツール更新時にあわせて更新してください。
+整形設定は `.oxfmtrc.json`、lint設定は `.oxlintrc.json` で管理します。整形はリポジトリ全体（`shared/` を含む）が対象です。lintは `frontend/`・`backend/`・`shared/`・`docs/`・`benchmarks/` とルートのVitest設定が対象です。生成ファイル・ビルド出力・作業用ディレクトリは対象外にしています。設定のJSON Schemaはmiseで固定したバージョンを参照するため、ツール更新時にあわせて更新してください。
 
 関数間は空行を1行入れて記述します。oxfmtは既存の空行を保持しますが、関数間に空行を自動挿入する設定はありません。`printWidth: 130` は長い行の折り返しの目安であり、文字列などを含むすべての行の長さを強制する上限ではありません。`singleAttributePerLine: true` で複数属性を持つ要素を1属性1行にし、`objectWrap: "preserve"` で既存のオブジェクトの改行を保持します。型定義も複数行で記述し、整形後も改行を維持します。Svelteの整形にはルートの `svelte` 依存と、formatタスクの `NODE_PATH` を使用します。
 
@@ -59,9 +63,24 @@ Wrangler設定変更後は `mise run gen` で型を再生成します。整形�
 
 `mise run verify` はoxfmtの整形チェック、型情報付きoxlint、frontend・backend・docsのビルド、全ユニットテストとカバレッジ検査を順に実行します。途中で失敗すると停止します。整形の自動修正は行いません。E2Eテストは含まないため、必要に応じてアプリとStorybookを起動して `mise run test:e2e` を実行してください。
 
+## D1のスキーマ変更
+
+`backend/schema.sql` でテーブル・制約・インデックスを宣言します。sqldef（`sqlite3def`）で過去のmigrationとの差分SQLを生成し、WranglerでD1に適用します。SQLアクセスはWorkersのD1 APIを使います。
+
+```sh
+# schema.sqlを編集後、変更名を付けて差分を生成
+mise run //backend:db:generate -- add_login_index
+mise run //backend:db:migrate:local
+mise run verify
+# 公開前に本番へ適用
+mise run //backend:db:migrate:remote
+```
+
+宣言と生成したSQLを両方コミットします。backendビルドで宣言と履歴の一致を検査します。詳細は [宣言的なスキーマ管理](docs/auth.md#宣言的なスキーマ管理) を参照してください。
+
 ## 現在の実装範囲
 
-送信者のパスキー認証、受信者の匿名セッション、10分間有効な共有リンク、受信承諾、WebRTCによる複数枚転送、進捗・キャンセル・プレビュー・共有保存を実装しています。1回10枚・合計50MBまで。写真をサーバーに保存しません。受信写真は受信完了から10分、破棄、ページ離脱のいずれかでブラウザ内の参照を解放します。HEIC/HEIFは、利用者の操作でCloudflare Imagesへ送ってプレビュー・JPEG変換できます。原本は変更しません。
+送信者のパスキー認証、受信者の匿名セッション、10分間有効な共有リンク、受信承諾、WebRTCによる複数枚転送、進捗・キャンセル・プレビュー・共有保存を実装しています。1回10枚・合計50MiBまで。写真をサーバーに保存しません。受信写真は受信完了から10分、破棄、ページ離脱のいずれかでブラウザ内の参照を解放します。HEIC/HEIFは、利用者の操作でCloudflare Imagesへ送ってプレビュー・JPEG変換できます。原本は変更しません。
 
 1対1で渡す場合は、送信側でパスキー登録・ログインを行い、写真を選んで「写真を渡す」を押し、表示されたQRを目の前の相手のカメラで読み取ってもらってください。「リンクで送る」からリンク共有・コピーもできます。受信側はリンクを開くと相手の名前・写真の枚数・容量が表示され、「受け取る」を押すと転送します。リンクは受信画面の読み込み時点で使用済みになります。双方とも画面を開いたままにしてください。リンクは作成から10分間、最初の参加だけに有効です。取り消し・送信者の切断でも失効します。参加済みの転送はリンク期限から独立して継続します。合言葉・位置情報は使いません。受け取った写真は、共有シートまたは個別ダウンロードから保存できます。
 
@@ -83,13 +102,17 @@ Workersの `IMAGES` bindingを使い、画像の保存・公開URL発行は行�
 
 ```sh
 mise exec -- wrangler login
+# 初回のみD1を作成し、database_idを設定する
+mise exec -- wrangler d1 create pico-drop --config backend/wrangler.jsonc --binding DB --update-config
+# スキーマ変更時もbackend公開前に実行する
+mise run //backend:db:migrate:remote
 mise run //backend:deploy
 mise run //frontend:deploy
 ```
 
 公開する段階で実行してください。`mise run build` はフロントエンド・資料のビルドとバックエンドのdry-runを行い、リモートに公開しません。
 
-frontendは `BACKEND` service bindingでbackendへ同一オリジンの `/api/*` を転送します。backendを先にデプロイしてください。接続は送信セッションごとのDO、新規認証は256シャード、IP制限はIPごとのDOへ分散します。旧認証データは保持しますが、更新前の共有リンク・接続は再作成が必要です。詳細は [認証とDO分割](docs/auth.md#DO分割と既存データ) を参照してください。開発時はViteのHTTP/WebSocket proxyを利用します。
+frontendは `BACKEND` service bindingでbackendへ同一オリジンの `/api/*` を転送します。D1の作成・migration適用後、backend、frontendの順にデプロイしてください。認証とIP・アカウントの利用制限は1つのD1、WebSocketと接続・転送状態は送信セッションごとのDOで管理します。旧DOデータは全て破棄し、パスキーの再登録と共有リンクの再作成が必要です。詳細は [D1導入と既存データの破棄](docs/auth.md#初回導入と既存データの破棄) を参照してください。開発時は `mise run dev` がローカルD1のmigrationを適用し、ViteのHTTP/WebSocket proxyを利用します。
 
 TURNを有効にする場合は、backendディレクトリで `mise exec -- wrangler secret put TURN_KEY_ID` と `mise exec -- wrangler secret put TURN_KEY_API_TOKEN` を実行します。管理鍵はブラウザに渡しません。ローカルでは `backend/.dev.vars` に同名の値を設定できます。このファイルはGit管理しません。
 
@@ -97,19 +120,19 @@ TURNを有効にする場合は、backendディレクトリで `mise exec -- wra
 
 ## GitHub Actions
 
-- `.github/workflows/build.yml`: PR・mainへのpush・手動実行で、セットアップとfrontend・backend・docsのビルドを実行します。
-- `.github/workflows/deploy.yml`: mainへのpush・mainを選択した手動実行で、同じセットアップとビルドを実行後、backend→frontendの順にCloudflare Workersへ公開します。docsは公開対象に含みません。
+- `.github/workflows/build.yml`: PR・mainへのpush・手動実行で、セットアップ、整形チェック、型情報付きlint、ユニットテスト、frontend・backend・docsのビルドを実行します。
 
-GitHubのSettings → Environmentsで `production` を作成し、次のEnvironment secretsを登録してください。
+デプロイはCI/CDで行わず、上記「公開」の手順で手元から実行します。
 
-- `CLOUDFLARE_API_TOKEN`: 対象アカウントのWorkersをデプロイできるAPIトークン。
-- `CLOUDFLARE_ACCOUNT_ID`: デプロイ先のCloudflareアカウントID。
+ツールは既存の `mise.toml`、依存はlockfileを使います。すべての `uses` は40桁のコミットSHAで固定しています。アクション更新時は公式リポジトリでタグに対応するSHAを確認し、SHAとバージョンコメントをあわせて更新してください。
 
-mainへpushすると自動で公開します。Actions → Deploy → Run workflowで `main` を選んで手動で公開することもできます。他のブランチではデプロイジョブをスキップします。同時デプロイは直列化し、実行中のデプロイはキャンセルしません。
-
-ツールは既存の `mise.toml`、依存はlockfileを使います。すべての `uses` は40桁のコミットSHAで固定しています。アクション更新時は公式リポジトリでタグに対応するSHAを確認し、両ワークフローのSHAとバージョンコメントをあわせて更新してください。
+Dependabotは毎週月曜09:00（Asia/Tokyo）に、ルートのlockfileで管理する全pnpmワークスペースとGitHub Actionsの更新を確認します。npm依存のminor・patch更新はまとめ、major更新は個別のPRにします。`@types/node` は26系、pnpmは10系を維持します。`mise.toml` のツールは自動更新の対象外なので、pnpm・Wranglerなどの共通ツールを更新するときはmise側の固定バージョンもあわせて更新してください。Dependabotのcooldownは通常のバージョン更新に適用され、セキュリティ更新には適用されません。
 
 ## アーキテクチャ資料
+
+永続データの構成、D1の全テーブル・フィールド、ルームDOのKV・WebSocket attachment、データ間の関係と保存期間は [データの概念スキーマとフィールド定義](docs/data-schema.md) を参照してください。
+
+ブラウザの共有処理は [画面コントローラー](frontend/src/lib/drop/controller.svelte.ts) が接続と転送を統括し、[招待リンク](frontend/src/lib/drop/invitations.svelte.ts) がURL・共有・リンク期限、[受信写真の操作](frontend/src/lib/drop/received-photos.svelte.ts) が表示状態・保存・変換・写真の期限を管理します。各ページが独立した状態を持ち、ページ離脱時にコントローラーから接続・タイマー・写真の参照を解放します。接続の世代判定と転送中断はコントローラーに集約します。
 
 `docs/index.html` に現在のアーキテクチャをまとめています。
 
@@ -131,7 +154,7 @@ http://127.0.0.1:5174 で閲覧できます。`mise run dev` はアプリ用で�
 `mise run //frontend:storybook` で起動し、http://127.0.0.1:6006/ を開きます。
 `mise run //frontend:build-storybook` で `frontend/storybook-static/` に静的出力します。
 
-「画面 / 写真を共有」から写真選択、リンク作成、リンク共有、参加、受信承諾、転送、受信完了、エラーなど19状態を確認できます。
+「画面 / 写真を共有」から写真選択、リンク作成、リンク共有、参加、受信承諾、転送、受信完了、エラーなど22状態を確認できます。
 「コンポーネント / 探索の波紋」ではアニメーション単体を確認できます。
 
 本番と共通の `DropView.svelte` を固定データで表示します。バックエンド、WebRTCは不要です。

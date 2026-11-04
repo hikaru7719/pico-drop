@@ -2,6 +2,7 @@ import { reservePhoto, type PhotoGrant } from '../domain/photos.ts';
 import { test, expect, vi } from 'vitest';
 import assert from 'node:assert/strict';
 import { createPhotoAccess, consumePhoto, revokePhoto, grantKey, type PhotoStore } from './photo-access.ts';
+
 const heic = new Uint8Array([0, 0, 0, 16, 102, 116, 121, 112, 104, 101, 105, 99, 0, 0, 0, 0]);
 const photo = {
 	id: 'photo',
@@ -14,6 +15,10 @@ const grant = (): PhotoGrant => ({
 	expiresAt: Date.now() + 60_000,
 	files: [photo],
 	uses: {}
+});
+
+test('photo grant keys preserve the existing SHA-256 storage format', async () => {
+	expect(await grantKey('a'.repeat(64))).toBe('photo:ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb');
 });
 
 test('conversion grants reject expired, absent, wrong photo and invalid mode', () => {

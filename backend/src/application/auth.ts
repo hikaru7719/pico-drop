@@ -12,20 +12,40 @@ import type {
 } from '@simplewebauthn/server';
 
 type Reg = RegistrationResponseJSON;
+
 type Auth = AuthenticationResponseJSON;
+
 type AuthCheck = { ceremony: Ceremony; stored: Credential };
+
 export interface PasskeyVerifier {
 	generateRegistrationOptions: typeof generateRegistrationOptions;
 	generateAuthenticationOptions: typeof generateAuthenticationOptions;
 	verifyRegistrationResponse: typeof verifyRegistrationResponse;
 	verifyAuthenticationResponse: typeof verifyAuthenticationResponse;
 }
+
 export type AuthEnv = { AUTH_ORIGIN?: string };
-export interface AuthStore {
+
+export interface KeyValueStore {
 	get<T>(key: string): Promise<T | undefined>;
 	put<T>(key: string, value: T): Promise<void>;
 	delete(key: string): Promise<boolean>;
 }
+
+export interface AuthStore {
+	account(id: string): Promise<Account | undefined>;
+	login(key: string): Promise<Login | undefined>;
+	credential(id: string): Promise<Credential | undefined>;
+	saveLogin(key: string, value: Login): Promise<void>;
+	deleteLogin(key: string): Promise<void>;
+	saveCeremony(key: string, value: Ceremony): Promise<void>;
+	deleteCeremony(key: string): Promise<void>;
+	takeCeremony(key: string): Promise<Ceremony | undefined>;
+	register(account: Account, credential: WebAuthnCredential): Promise<void>;
+	updateCredential(stored: Credential, previousCounter: number): Promise<void>;
+	incrementRate(key: string, duration: number, limit: number): Promise<boolean>;
+}
+
 const LOGIN_MS = 7 * 24 * 60 * 60_000;
 const CHALLENGE_MS = 5 * 60_000;
 const REGISTRATION = {
@@ -68,14 +88,6 @@ function registrationName(body: unknown) {
 const RATE_ERROR = '認証の試行が多すぎます。しばらく待ってください。';
 const SEND_ERROR = '1日あたりの送信上限に達しました。時間をおいてお試しください。';
 
-const credentialKey = (id: string) => 'auth:credential:' + id;
-
-type Rate = { count: number; expiresAt: number };
-
-function currentRate(old: Rate | undefined, duration: number): Rate {
-	return old && old.expiresAt > Date.now() ? old : { count: 0, expiresAt: Date.now() + duration };
-}
-
 function ceremony(kind: Ceremony['kind'], challenge: string, account?: Account): Ceremony {
 	return { kind, challenge, account, expiresAt: Date.now() + CHALLENGE_MS };
 }
@@ -105,6 +117,7 @@ export type AuthInput = {
 	ip: string;
 	body(): Promise<unknown>;
 };
+
 export type AuthResult = {
 	data: unknown;
 	cookie?: { kind: 'auth' | 'challenge'; token: string };
@@ -118,21 +131,11 @@ function checkAccount(account: Account | undefined, response: AuthenticationResp
 	return account;
 }
 
-export type AuthNetwork = {
-	shard?: string;
-	take(key: string): Promise<Ceremony | undefined>;
-	register(account: Account, credential: WebAuthnCredential): Promise<void>;
-	login(response: Auth, origin: string, ceremony: Ceremony): Promise<Account>;
-	revoke(key: string): Promise<void>;
-	issue(account: Account): Promise<string>;
-};
-
 export class AuthService {
 	private verification: PasskeyVerification;
 
 	constructor(
 		protected storage: AuthStore,
-		protected network: AuthNetwork | undefined,
 		private verifier: PasskeyVerifier
 	) {
 		this.verification = new PasskeyVerification(verifier);
@@ -143,16 +146,16 @@ export class AuthService {
 	}
 
 	async identity(key: string) {
-		const login = key ? await this.storage.get<Login>(key) : undefined;
+		const login = key ? await this.storage.login(key) : undefined;
 		if (!login || login.expiresAt <= Date.now()) {
 			return undefined;
 		}
-		const account = await this.storage.get<Account>('auth:account:' + login.account);
+		const account = await this.storage.account(login.account);
 		return account && !account.disabled ? account : undefined;
 	}
 
 	async authorizeAction(input: AuthInput) {
-		if (!this.network && !(await this.rate(input))) {
+		if (!(await this.rate(input))) {
 			throw new ServiceError('rate-limit', RATE_ERROR);
 		}
 	}
@@ -163,12 +166,7 @@ export class AuthService {
 	}
 
 	async incrementRate(key: string, duration: number) {
-		const rate = currentRate(await this.storage.get<Rate>(key), duration);
-		if (++rate.count > 30) {
-			return false;
-		}
-		await this.storage.put(key, rate);
-		return true;
+		return this.storage.incrementRate(key, duration, 30);
 	}
 
 	async status(request: AuthInput) {
@@ -179,16 +177,13 @@ export class AuthService {
 	async logout(request: AuthInput) {
 		const key = await this.loginKey(request);
 		if (key) {
-			await this.storage.delete(key);
+			await this.storage.deleteLogin(key);
 		}
 		return cookieResult({ account: null }, 'auth', '');
 	}
 
 	async registerOptions(request: AuthInput, origin: URL) {
 		const account = await newAccount(request);
-		if (this.network?.shard) {
-			account.id = `v2.${this.network.shard}.${account.id}`;
-		}
 		const options = await registrationOptions(this.verifier, origin, account);
 		const value = ceremony('register', options.challenge, account);
 		return this.saveCeremony(request, options, value);
@@ -204,48 +199,38 @@ export class AuthService {
 	}
 
 	async saveCeremony(request: AuthInput, options: unknown, value: Ceremony) {
-		await this.storage.delete(await challengeKey(request.challenge));
+		await this.storage.deleteCeremony(await challengeKey(request.challenge));
 		const token = this.newToken();
-		await this.storage.put(await challengeKey(token), value);
+		await this.storage.saveCeremony(await challengeKey(token), value);
 		return cookieResult(options, 'challenge', token);
 	}
 
 	async takeCeremony(request: AuthInput, kind: Ceremony['kind']) {
 		const key = await challengeKey(request.challenge);
-		const value = this.network ? await this.network.take(key) : await this.takeStoredCeremony(key);
+		const value = await this.takeStoredCeremony(key);
 		return checkCeremony(value, kind);
 	}
 
 	async takeStoredCeremony(key: string) {
-		const value = await this.storage.get<Ceremony>(key);
-		await this.storage.delete(key);
-		return value;
+		return this.storage.takeCeremony(key);
 	}
 
 	async registerVerify(request: AuthInput, origin: URL) {
 		const value = await this.takeCeremony(request, 'register');
 		const response = (await request.body()) as RegistrationResponseJSON;
 		const credential = await this.verification.signup(response, origin, value);
-		await (this.network ? this.network.register(value.account!, credential) : this.storeAccount(value.account!, credential));
+		await this.storeAccount(value.account!, credential);
 		return this.issueLogin(request, value.account!);
 	}
 
 	async storeAccount(account: Account, credential: WebAuthnCredential) {
-		const key = credentialKey(credential.id);
-		if (await this.storage.get(key)) {
-			throw new Error('Duplicate');
-		}
-		await this.storage.put('auth:account:' + account.id, account);
-		const stored: Credential = { account: account.id, credential };
-		await this.storage.put(key, stored);
+		await this.storage.register(account, credential);
 	}
 
 	async loginVerify(request: AuthInput, origin: URL) {
 		const ceremony = await this.takeCeremony(request, 'login');
 		const response = (await request.body()) as Auth;
-		const account = this.network
-			? await this.network.login(response, origin.origin, ceremony)
-			: await this.completeLogin(response, origin, ceremony);
+		const account = await this.completeLogin(response, origin, ceremony);
 		return this.issueLogin(request, account);
 	}
 
@@ -255,12 +240,11 @@ export class AuthService {
 	}
 
 	newToken() {
-		const prefix = this.network?.shard ? `v2.${this.network.shard}.` : '';
-		return prefix + randomSecret();
+		return randomSecret();
 	}
 
 	async loadCredential(id: string) {
-		const stored = await this.storage.get<Credential>(credentialKey(id));
+		const stored = await this.storage.credential(id);
 		if (!stored) {
 			throw new Error('Credential');
 		}
@@ -270,33 +254,30 @@ export class AuthService {
 	async verifyLogin(response: Auth, origin: URL, data: AuthCheck) {
 		const result = await this.verification.assertion(response, origin, data);
 		const account = await this.checkedAccount(data.stored.account, response);
+		const previousCounter = data.stored.credential.counter;
 		data.stored.credential.counter = result.authenticationInfo.newCounter;
-		await this.storage.put(credentialKey(data.stored.credential.id), data.stored);
+		await this.storage.updateCredential(data.stored, previousCounter);
 		return account;
 	}
 
 	async checkedAccount(id: string, response: Auth) {
-		return checkAccount(await this.storage.get<Account>('auth:account:' + id), response);
+		return checkAccount(await this.storage.account(id), response);
 	}
 
 	async issueLogin(request: AuthInput, account: Account) {
 		const key = await this.loginKey(request);
-		if (this.network) {
-			await this.network.revoke(key);
-			return loginResult(account, await this.network.issue(account));
-		}
-		return this.issueLocalLogin(request, account, key);
+		return this.issueStoredLogin(account, key);
 	}
 
-	async issueLocalLogin(request: AuthInput, account: Account, key: string) {
-		await this.storage.delete(key);
+	async issueStoredLogin(account: Account, key: string) {
+		await this.storage.deleteLogin(key);
 		const token = this.newToken();
 		await this.storeLogin(token, account.id);
 		return loginResult(account, token);
 	}
 
 	async storeLogin(token: string, account: string) {
-		await this.storage.put(await loginKey(token), {
+		await this.storage.saveLogin(await loginKey(token), {
 			account,
 			expiresAt: Date.now() + LOGIN_MS
 		} satisfies Login);

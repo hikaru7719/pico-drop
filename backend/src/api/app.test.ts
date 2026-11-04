@@ -1,5 +1,6 @@
 import { test, expect, vi } from 'vitest';
 import { createApp, type ApiGateway } from './app.ts';
+
 const origin = 'https://photos.example';
 const room = '1234567890abcdef';
 class Fixture {
@@ -10,7 +11,7 @@ class Fixture {
 	gateway = {
 		hub: vi.fn(() => this),
 		rate: vi.fn(async () => true),
-		clearChallenge: vi.fn(async () => {}),
+		auth: vi.fn(async (request: Request) => this.fetch(request)),
 		images: { render: vi.fn() }
 	} satisfies ApiGateway;
 	app = createApp(() => this.gateway);
@@ -79,44 +80,25 @@ test.each(['/api/ws', '/api/session?room=bad', '/api/ice', '/api/photos/convert'
 		expect(fixture.gateway.hub).not.toHaveBeenCalled();
 	}
 );
-test('auth routing replaces untrusted routing headers and preserves cookies', async () => {
+test('auth routes directly to the D1 gateway and preserves cookies', async () => {
 	const fixture = new Fixture();
-	const Cookie = '__Host-pico_auth=v2.ab.' + 'a'.repeat(64);
+	const Cookie = '__Host-pico_auth=' + 'a'.repeat(64);
 	await authStatus(fixture, Cookie);
-	expect(fixture.gateway.hub).toHaveBeenCalledWith('auth:ab');
-	expect(forwardedHeader(fixture, 'X-Auth-Route')).toBe('auth:ab');
+	expect(fixture.gateway.hub).not.toHaveBeenCalled();
+	expect(fixture.gateway.auth).toHaveBeenCalledOnce();
 	expect(forwardedHeader(fixture, 'Cookie')).toBe(Cookie);
 });
-test.each(['status', 'logout'])('auth %s bypasses the login attempt quota', async (action) => {
-	const fixture = new Fixture();
-	await fixture.request('/api/auth/' + action);
-	expect(fixture.gateway.rate).not.toHaveBeenCalled();
-	expect(fixture.gateway.clearChallenge).not.toHaveBeenCalled();
-});
-test('auth rate limits do not invalidate a previous ceremony', async () => {
-	const fixture = new Fixture();
-	vi.mocked(fixture.gateway.rate).mockResolvedValue(false);
-	expect((await fixture.request('/api/auth/login/options')).status).toBe(429);
-	expect(fixture.gateway.clearChallenge).not.toHaveBeenCalled();
-	expect(fixture.fetch).not.toHaveBeenCalled();
-});
-test('new options invalidate an existing challenge before forwarding', async () => {
-	const fixture = new Fixture();
-	const token = 'v2.cd.' + 'a'.repeat(64);
-	await fixture.request('/api/auth/login/options', 'POST', {
-		Cookie: '__Host-pico_challenge=' + token
-	});
-	expect(fixture.gateway.clearChallenge).toHaveBeenCalledWith(token);
-	expectRandomAuth(fixture);
-});
-test('verification leaves challenge consumption to its original shard', async () => {
-	const fixture = new Fixture();
-	await fixture.request('/api/auth/login/verify', 'POST', {
-		Cookie: '__Host-pico_challenge=v2.cd.' + 'a'.repeat(64)
-	});
-	expect(fixture.gateway.hub).toHaveBeenCalledWith('auth:cd');
-	expect(fixture.gateway.clearChallenge).not.toHaveBeenCalled();
-});
+
+test.each(['status', 'logout', 'login/options', 'login/verify'])(
+	'auth %s delegates quotas and challenges to authentication',
+	async (action) => {
+		const fixture = new Fixture();
+		await fixture.request('/api/auth/' + action);
+		expect(fixture.gateway.rate).not.toHaveBeenCalled();
+		expect(fixture.gateway.auth).toHaveBeenCalledOnce();
+		expect(fixture.gateway.hub).not.toHaveBeenCalled();
+	}
+);
 test('socket forwarding returns the original response including upgrade metadata', async () => {
 	const fixture = new Fixture();
 	markUpgrade(fixture);
@@ -151,10 +133,6 @@ function forwardedRoom(fixture: Fixture) {
 
 function forwardedHeader(fixture: Fixture, name: string) {
 	return fixture.fetch.mock.calls[0][0].headers.get(name);
-}
-
-function expectRandomAuth(fixture: Fixture) {
-	expect(fixture.gateway.hub).toHaveBeenCalledWith(expect.stringMatching(/^auth:[a-f0-9]{2}$/));
 }
 
 function markUpgrade(fixture: Fixture) {

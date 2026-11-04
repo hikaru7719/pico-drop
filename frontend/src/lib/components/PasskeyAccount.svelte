@@ -2,6 +2,7 @@
 	import { authApi as api } from '#lib/auth.ts';
 	import { onMount } from 'svelte';
 	import { startRegistration, startAuthentication, browserSupportsWebAuthn } from '@simplewebauthn/browser';
+
 	let { authenticated = $bindable(false) }: { authenticated?: boolean } = $props();
 	$effect(() => {
 		authenticated = !!account && !pending;

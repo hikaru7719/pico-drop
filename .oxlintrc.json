@@ -44,6 +44,25 @@
 					}
 				],
 				"next": "*"
+			},
+			{
+				"blankLine": "always",
+				"prev": "import",
+				"next": "*"
+			},
+			{
+				"blankLine": "any",
+				"prev": "import",
+				"next": "import"
+			},
+			{
+				"blankLine": "always",
+				"prev": [
+					{
+						"selector": "TSInterfaceDeclaration, TSTypeAliasDeclaration, :matches(ExportNamedDeclaration, ExportDefaultDeclaration)[declaration.type=/^(TSInterfaceDeclaration|TSTypeAliasDeclaration)$/]"
+					}
+				],
+				"next": "*"
 			}
 		],
 		"@stylistic/lines-between-class-members": [

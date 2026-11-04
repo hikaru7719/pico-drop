@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { resolve, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from 'vitest';
+
 const root = dirname(fileURLToPath(import.meta.url));
 const allowed: Record<string, string[]> = {
 	domain: ['domain'],

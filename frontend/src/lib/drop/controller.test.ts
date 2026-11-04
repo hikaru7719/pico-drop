@@ -22,6 +22,7 @@ afterEach(() => {
 });
 
 type SetupOptions = { pendingSession?: boolean; token?: string };
+
 class FakeSocket implements SignalingConnection {
 	closed = false;
 	messages: unknown[] = [];

@@ -226,6 +226,7 @@ type Authorization = {
 	action: string;
 	now: number;
 };
+
 const authorizationRules: [(context: Authorization) => boolean, string][] = [
 	[
 		({ transfer: t, actor, now }) => t.expiresAt <= now || ![t.from.id, t.to.id].includes(actor),

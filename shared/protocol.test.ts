@@ -7,6 +7,7 @@ const deniedActions = [
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { authorizeTransfer, parseClient, validPhotos, LIMITS, type TransferState } from './protocol.ts';
+
 const photo = {
 	id: 'photo-1',
 	name: 'photo.jpg',

@@ -1,5 +1,6 @@
 import { ServiceError, type ErrorCode } from '../application/errors.ts';
 import { authJson } from './http.ts';
+
 const statuses: Record<ErrorCode, number> = {
 	unauthorized: 401,
 	forbidden: 403,

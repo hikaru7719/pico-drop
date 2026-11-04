@@ -1,27 +1,16 @@
 import { Hono, type Context, type Next } from 'hono';
-import {
-	AuthService,
-	type AuthEnv,
-	type AuthInput,
-	type AuthResult,
-	type AuthStore,
-	type AuthNetwork,
-	type PasskeyVerifier
-} from '../application/auth.ts';
+import type { AuthService, AuthEnv, AuthInput, AuthResult } from '../application/auth.ts';
 import { authJson, authOrigin, bodyJson, readCookie, setCookie } from './http.ts';
 import { ServiceError } from '../application/errors.ts';
 import { sessionLoginKey } from '../domain/tokens.ts';
+
 export class PasskeyAuth {
-	readonly service: AuthService;
 	private app = new Hono();
 
 	constructor(
-		storage: AuthStore,
-		private env: AuthEnv,
-		network: AuthNetwork | undefined,
-		verifier: PasskeyVerifier
+		readonly service: AuthService,
+		private env: AuthEnv
 	) {
-		this.service = new AuthService(storage, network, verifier);
 		this.routes();
 	}
 

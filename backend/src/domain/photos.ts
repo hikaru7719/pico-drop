@@ -1,5 +1,6 @@
 import type { PhotoMeta } from '../../../shared/protocol.ts';
 import { isHeic, type ConversionMode } from '../../../shared/photos.ts';
+
 export type PhotoGrant = {
 	expiresAt: number;
 	files: PhotoMeta[];

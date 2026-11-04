@@ -5,11 +5,13 @@ import { PhotoReceiver, sendPhotos, TransferProgress } from './transfer';
 import type { SignalingConnection } from './signaling';
 
 type RequestInfo = Extract<ServerMessage, { type: 'requested' }>;
+
 export type IceConfig = {
 	iceServers: RTCIceServer[];
 	relay: boolean;
 	error?: string;
 };
+
 export interface TransferCallbacks {
 	files: File[];
 	total: number;

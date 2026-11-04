@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { photos } from '../../../data';
+
 	let ready = $state(false);
 	let selected = $state(false);
 	let progress = $state(0);

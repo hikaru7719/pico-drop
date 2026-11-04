@@ -1,6 +1,8 @@
 import type { DataChannel, PeerConnection, TransferPeer } from './ports';
 import type { Signal } from '../../../../shared/protocol.ts';
+
 type Candidate = Extract<Signal, { candidate: unknown }>['candidate'];
+
 const CONNECT_FAILED = '接続できませんでした。回線を確認して再試行してください。';
 const CONNECT_TIMEOUT = '相手に接続できませんでした。インターネット接続を確認して、もう一度お試しください。';
 export class PhotoPeer implements TransferPeer {

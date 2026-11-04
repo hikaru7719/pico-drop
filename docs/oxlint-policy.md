@@ -25,11 +25,13 @@
 
 参考: [ルール一覧](https://oxc.rs/docs/guide/usage/linter/rules)、[curly](https://oxc.rs/docs/guide/usage/linter/rules/eslint/curly)、[max-lines-per-function](https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-lines-per-function)、[max-params](https://oxc.rs/docs/guide/usage/linter/rules/eslint/max-params)、[yoda](https://oxc.rs/docs/guide/usage/linter/rules/eslint/yoda)、[switch-exhaustiveness-check](https://oxc.rs/docs/guide/usage/linter/rules/typescript/switch-exhaustiveness-check)。
 
-## 関数・メソッド間の空行
+## import群・型定義の直後と関数・メソッド間の空行
 
 Oxfmt は既存の空行を維持するが、関数間に自動挿入しないため、Oxlint の `jsPlugins` で `@stylistic/eslint-plugin` を読み込む。実行は既存の Oxlint に統一し、ESLint を別途実行する必要はない。
 
 - `@stylistic/padding-line-between-statements`: 関数宣言の前後に空行を必須とする。export 付きの関数宣言、および変数に直接代入したアロー関数・関数式も対象。export 付きの宣言や関数式はセレクターで指定する。
+- 同ルールでimport群の直後にも空行を必須とする。後続の定数・型定義・関数呼び出し・exportも対象。import同士の空行は任意とし、既存のグループ分けを維持する。
+- 同ルールでinterfaceとtype定義の直後にも空行を必須とする。export・declare付きの定義もセレクターで指定し、連続する型定義の間にも空行を入れる。
 - `@stylistic/lines-between-class-members`: メソッド（コンストラクター・getter・setter を含む）の前後に空行を必須とする。フィールド同士には空行を強制しない。
 
 `mise run lint` / `mise run verify` で検査し、`mise run lint:fix` で不足する空行を補完する。その後 `mise run format` で通常の整形を行う。関数内の空行も既存の10行制限に数える。

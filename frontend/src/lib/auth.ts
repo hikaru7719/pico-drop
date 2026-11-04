@@ -2,6 +2,7 @@ import { api, readJson } from './api';
 import type { InferRequestType } from 'hono/client';
 
 type RegisterResponse = InferRequestType<typeof api.auth.register.verify.$post>['json'];
+
 type LoginResponse = InferRequestType<typeof api.auth.login.verify.$post>['json'];
 
 const readAuth = <T>(response: { ok: boolean; json(): Promise<T> }) => readJson(response, '認証できませんでした。');

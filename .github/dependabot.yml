@@ -1,0 +1,42 @@
+version: 2
+updates:
+  # The root lockfile covers every pnpm workspace package.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Asia/Tokyo
+    # Keep in sync with pnpm-workspace.yaml and .npmrc (7 days).
+    cooldown:
+      default-days: 7
+    versioning-strategy: increase
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Node.js stays on 26.x; upgrade the runtime and its types together.
+      - dependency-name: '@types/node'
+        versions: ['>=27']
+      # Upgrade pnpm together with the pinned version in mise.toml.
+      - dependency-name: pnpm
+        update-types: ['version-update:semver-major']
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Asia/Tokyo
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+      include: scope

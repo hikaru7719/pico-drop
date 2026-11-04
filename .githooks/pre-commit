@@ -2,5 +2,12 @@
 set -eu
 
 cd "$(git rev-parse --show-toplevel)"
-mise run //:format:check
+mise run //:format
+
+if ! git diff --cached --name-only --diff-filter=ACMR -z |
+	xargs -0 sh -c 'test "$#" -eq 0 || git diff --quiet -- "$@"' sh; then
+	printf '%s\n' 'ステージ済みファイルに未ステージの変更があります。整形後の差分を確認し、必要な内容をステージして再コミットしてください。' >&2
+	exit 1
+fi
+
 mise run //:lint

@@ -1,6 +1,6 @@
 [tasks.dev]
 description = "バックエンドのWorkers開発サーバーを起動する"
-run = "wrangler dev --port 8787"
+run = ["wrangler d1 migrations apply DB --local", "wrangler dev --port 8787"]
 
 [tasks.gen]
 description = "バックエンドのWorkers型を生成する"
@@ -12,7 +12,7 @@ run = ["wrangler types --check", "pnpm exec tsc --noEmit"]
 
 [tasks.build]
 description = "バックエンドをビルドする（dry-run）"
-run = "wrangler deploy --dry-run --outdir dist"
+run = ["node scripts/migrations.ts check", "wrangler deploy --dry-run --outdir dist"]
 
 [tasks.deploy]
 description = "バックエンドをCloudflareへ公開する"
@@ -22,3 +22,19 @@ run = "wrangler deploy --var AUTH_ORIGIN:https://pico-drop-frontend.pico-drop-ba
 description = "backendのVitestテストを実行する"
 dir = "{{ config_root }}/.."
 run = "pnpm exec vitest run --project backend"
+
+[tasks."db:migrate:local"]
+description = "ローカルD1にスキーマを適用する"
+run = "wrangler d1 migrations apply DB --local"
+
+[tasks."db:migrate:remote"]
+description = "本番D1にスキーマを適用する"
+run = "wrangler d1 migrations apply DB --remote"
+
+[tasks."db:generate"]
+description = "schema.sqlと過去のmigrationをsqldefで比較し、差分SQLを生成する"
+run = "node scripts/migrations.ts generate"
+
+[tasks."db:check"]
+description = "マイグレーション履歴とschema.sqlの一致を検証する"
+run = "node scripts/migrations.ts check"

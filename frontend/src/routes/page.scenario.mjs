@@ -3,6 +3,7 @@ import { virtualPasskey } from '../../../shared/passkey-fixture.mjs';
 import assert from 'node:assert/strict';
 import jsQR from 'jsqr';
 import { createHash } from 'node:crypto';
+
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({
 	headless: true,
