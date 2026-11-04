@@ -60,10 +60,10 @@ function checkChannel(channel: SendChannel, signal: AbortSignal) {
 	}
 }
 
-async function drain(channel: SendChannel, signal: AbortSignal) {
+function drain(channel: SendChannel, signal: AbortSignal) {
 	checkChannel(channel, signal);
-	if (channel.bufferedAmount > 256 * 1024) {
-		await new Promise<void>((resolve, reject) => new DrainWaiter(channel, signal, { resolve, reject }));
+	if (channel.bufferedAmount > 64 * 1024) {
+		return new Promise<void>((resolve, reject) => new DrainWaiter(channel, signal, { resolve, reject }));
 	}
 }
 
@@ -74,6 +74,24 @@ export type SendOptions = {
 	signal: AbortSignal;
 	progress: (bytes: number) => void;
 };
+
+export class TransferProgress {
+	private last = -Infinity;
+
+	constructor(
+		private total: number,
+		private notify: (bytes: number) => void
+	) {}
+
+	update = (bytes: number) => {
+		const now = performance.now();
+		if (bytes === this.total || now - this.last >= 50) {
+			this.last = now;
+			this.notify(bytes);
+		}
+	};
+}
+
 class PhotoSender {
 	private sent = 0;
 
@@ -81,7 +99,7 @@ class PhotoSender {
 
 	async send() {
 		const { channel, files, signal } = this.options;
-		channel.bufferedAmountLowThreshold = 128 * 1024;
+		channel.bufferedAmountLowThreshold = 32 * 1024;
 		for (let i = 0; i < files.length; i++) {
 			await this.sendFile(files[i], this.options.metadata[i]);
 		}
@@ -110,13 +128,20 @@ class PhotoSender {
 	}
 
 	private async sendChunks(data: ArrayBuffer) {
+		const bytes = new Uint8Array(data);
 		for (let offset = 0; offset < data.byteLength; offset += LIMITS.chunk) {
-			await drain(this.options.channel, this.options.signal);
-			const chunk = data.slice(offset, offset + LIMITS.chunk);
-			this.options.channel.send(chunk);
-			this.sent += chunk.byteLength;
-			this.options.progress(this.sent);
+			const waiting = drain(this.options.channel, this.options.signal);
+			if (waiting) {
+				await waiting;
+			}
+			this.sendChunk(bytes.subarray(offset, offset + LIMITS.chunk));
 		}
+	}
+
+	private sendChunk(chunk: Uint8Array<ArrayBuffer>) {
+		this.options.channel.send(chunk);
+		this.sent += chunk.byteLength;
+		this.options.progress(this.sent);
 	}
 }
 

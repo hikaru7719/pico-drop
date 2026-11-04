@@ -1,0 +1,1147 @@
+{
+	"environment": {
+		"baseline": "229b582b2608d99f740e6a0c6a3b941da4c7126b",
+		"codeHashes": {
+			"/baseline.js": "cd5f60cb6d3ac6d23d3b516dec72acd14d07fb5d3b6932df6f85ca566128ccfb",
+			"/current.js": "eb351936e64461e037ff32891b7bac473112fc12d08165893c3ab32d6a18cc5b"
+		},
+		"date": "2026-11-04T00:51:30.303Z",
+		"node": "v24.20.0",
+		"browser": "156.0.8078.4",
+		"cpu": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+		"platform": "linux",
+		"runs": 9,
+		"profiles": [
+			{
+				"name": "local",
+				"cpu": 1
+			},
+			{
+				"name": "cpu4",
+				"cpu": 4
+			}
+		],
+		"cases": [
+			{
+				"files": 10,
+				"bytes": 5242880
+			}
+		]
+	},
+	"summary": [
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"transferMs": {
+				"median": 3478.4000000059605,
+				"p95": 4676,
+				"min": 3464.3999999910593,
+				"max": 4676
+			},
+			"readMs": {
+				"median": 32.6000000089407,
+				"p95": 33.29999999701977,
+				"min": 32.19999998807907,
+				"max": 33.29999999701977
+			},
+			"hashMs": {
+				"median": 60.900000005960464,
+				"p95": 62.799999967217445,
+				"min": 59.099999994039536,
+				"max": 62.799999967217445
+			},
+			"drainMs": {
+				"median": 3307.4000000059605,
+				"p95": 4507.200000137091,
+				"min": 3297.9999999403954,
+				"max": 4507.200000137091
+			},
+			"progressCalls": {
+				"median": 3200,
+				"p95": 3200,
+				"min": 3200,
+				"max": 3200
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"transferMs": {
+				"median": 3145.6000000089407,
+				"p95": 3944.7000000029802,
+				"min": 2672.5,
+				"max": 3944.7000000029802
+			},
+			"readMs": {
+				"median": 31.69999998807907,
+				"p95": 32.900000020861626,
+				"min": 30.19999998807907,
+				"max": 32.900000020861626
+			},
+			"hashMs": {
+				"median": 60.19999997317791,
+				"p95": 62.29999999701977,
+				"min": 58.70000000298023,
+				"max": 62.29999999701977
+			},
+			"drainMs": {
+				"median": 3004.699999898672,
+				"p95": 3804.899999976158,
+				"min": 2538.3999998122454,
+				"max": 3804.899999976158
+			},
+			"progressCalls": {
+				"median": 21,
+				"p95": 22,
+				"min": 21,
+				"max": 22
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "cpu4",
+			"files": 10,
+			"transferMs": {
+				"median": 4184.5,
+				"p95": 5026.79999999702,
+				"min": 3769.7000000029802,
+				"max": 5026.79999999702
+			},
+			"readMs": {
+				"median": 139,
+				"p95": 143.59999999403954,
+				"min": 116.89999996125698,
+				"max": 143.59999999403954
+			},
+			"hashMs": {
+				"median": 314.49999998509884,
+				"p95": 329.50000001490116,
+				"min": 252.20000000298023,
+				"max": 329.50000001490116
+			},
+			"drainMs": {
+				"median": 3411.3999997079372,
+				"p95": 4238.399999886751,
+				"min": 2980.299999728799,
+				"max": 4238.399999886751
+			},
+			"progressCalls": {
+				"median": 3200,
+				"p95": 3200,
+				"min": 3200,
+				"max": 3200
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "cpu4",
+			"files": 10,
+			"transferMs": {
+				"median": 2006.7999999970198,
+				"p95": 3397.5,
+				"min": 1486.5999999940395,
+				"max": 3397.5
+			},
+			"readMs": {
+				"median": 139.50000001490116,
+				"p95": 143.99999998509884,
+				"min": 109.30000001192093,
+				"max": 143.99999998509884
+			},
+			"hashMs": {
+				"median": 322.30000001192093,
+				"p95": 347.09999999403954,
+				"min": 238.70000000298023,
+				"max": 347.09999999403954
+			},
+			"drainMs": {
+				"median": 1377.199999883771,
+				"p95": 2801.699999794364,
+				"min": 1011.9000000655651,
+				"max": 2801.699999794364
+			},
+			"progressCalls": {
+				"median": 34,
+				"p95": 34,
+				"min": 23,
+				"max": 34
+			}
+		}
+	],
+	"samples": [
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 0,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 32.30000001192093,
+				"hashMs": 61.3999999910593,
+				"drainMs": 3306.800000101328,
+				"transferMs": 3476,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 546.1999999731779,
+				"hashMs": 112.20000003278255,
+				"drainMs": 0,
+				"transferMs": 3476.0999999940395,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 0,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 21,
+				"readMs": 31.69999998807907,
+				"hashMs": 62.29999999701977,
+				"drainMs": 3004.699999898672,
+				"transferMs": 3145.6000000089407,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 26,
+				"readMs": 563.8999999761581,
+				"hashMs": 115,
+				"drainMs": 0,
+				"transferMs": 3145.5999999940395,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 1,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 22,
+				"readMs": 31.400000020861626,
+				"hashMs": 61,
+				"drainMs": 3414.200000092387,
+				"transferMs": 3553.3999999910593,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 27,
+				"readMs": 574.6999999582767,
+				"hashMs": 115.5,
+				"drainMs": 0,
+				"transferMs": 3553.3999999910593,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 1,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 32.29999998211861,
+				"hashMs": 61.00000001490116,
+				"drainMs": 3730.899999976158,
+				"transferMs": 3901.2999999970198,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 556.3999999761581,
+				"hashMs": 113.7000000178814,
+				"drainMs": 0,
+				"transferMs": 3901.300000011921,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 2,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 33.19999998807907,
+				"hashMs": 59.3999999910593,
+				"drainMs": 3305.5000000298023,
+				"transferMs": 3475.2999999970198,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 545.4000000357628,
+				"hashMs": 112.99999997019768,
+				"drainMs": 0,
+				"transferMs": 3474.800000011921,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 2,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 21,
+				"readMs": 30.19999998807907,
+				"hashMs": 58.70000000298023,
+				"drainMs": 3385.199999809265,
+				"transferMs": 3517.4000000059605,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 26,
+				"readMs": 606.3000000268221,
+				"hashMs": 115.49999997019768,
+				"drainMs": 0,
+				"transferMs": 3517.4000000059605,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 3,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 21,
+				"readMs": 32.20000000298023,
+				"hashMs": 60.19999997317791,
+				"drainMs": 2574.1999999582767,
+				"transferMs": 2713.7000000029802,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 25,
+				"readMs": 596.0999999791384,
+				"hashMs": 113.40000002086163,
+				"drainMs": 0,
+				"transferMs": 2713.7000000029802,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 3,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 32.19999998807907,
+				"hashMs": 59.799999967217445,
+				"drainMs": 4507.200000137091,
+				"transferMs": 4676,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 569.6000000089407,
+				"hashMs": 114.19999998807907,
+				"drainMs": 0,
+				"transferMs": 4676,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 4,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 32.50000002980232,
+				"hashMs": 60.900000005960464,
+				"drainMs": 4128.700000047684,
+				"transferMs": 4295,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 603.0000000447035,
+				"hashMs": 113.19999995827675,
+				"drainMs": 0,
+				"transferMs": 4294.79999999702,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 4,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 21,
+				"readMs": 32.19999998807907,
+				"hashMs": 60.3999999910593,
+				"drainMs": 2973.499999821186,
+				"transferMs": 3111.199999988079,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 26,
+				"readMs": 566.0000000298023,
+				"hashMs": 117.39999994635582,
+				"drainMs": 0,
+				"transferMs": 3111.2999999970198,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 5,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 21,
+				"readMs": 31.100000008940697,
+				"hashMs": 59.29999999701977,
+				"drainMs": 3409.099999770522,
+				"transferMs": 3542.6000000089407,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 25,
+				"readMs": 542,
+				"hashMs": 116.90000000596046,
+				"drainMs": 0,
+				"transferMs": 3542.7000000029802,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 5,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 33.00000001490116,
+				"hashMs": 60.49999997019768,
+				"drainMs": 3736.4999999552965,
+				"transferMs": 3905.2999999970198,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 547.9000000059605,
+				"hashMs": 112.79999999701977,
+				"drainMs": 0,
+				"transferMs": 3905.3999999910593,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 6,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 32.6000000089407,
+				"hashMs": 62.799999967217445,
+				"drainMs": 3307.4000000059605,
+				"transferMs": 3478.4000000059605,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 566.5000000149012,
+				"hashMs": 116.80000001192093,
+				"drainMs": 0,
+				"transferMs": 3478.3999999910593,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 6,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 21,
+				"readMs": 30.200000002980232,
+				"hashMs": 59.60000002384186,
+				"drainMs": 2538.3999998122454,
+				"transferMs": 2672.5,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 24,
+				"readMs": 554.2999999374151,
+				"hashMs": 115.60000005364418,
+				"drainMs": 0,
+				"transferMs": 2672.5999999940395,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 7,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 21,
+				"readMs": 32.900000020861626,
+				"hashMs": 60.099999994039536,
+				"drainMs": 2568.2000001370907,
+				"transferMs": 2707.6000000089407,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 25,
+				"readMs": 558.0999999940395,
+				"hashMs": 114.10000002384186,
+				"drainMs": 0,
+				"transferMs": 2707.5,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 7,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 33.29999999701977,
+				"hashMs": 59.099999994039536,
+				"drainMs": 3297.9999999403954,
+				"transferMs": 3464.3999999910593,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 562.3000000119209,
+				"hashMs": 116.49999998509884,
+				"drainMs": 0,
+				"transferMs": 3463.7999999970198,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 8,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 32.6000000089407,
+				"hashMs": 61.30000002682209,
+				"drainMs": 3304.899999856949,
+				"transferMs": 3473.5,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 547.3000000119209,
+				"hashMs": 113.69999998807907,
+				"drainMs": 0,
+				"transferMs": 3473.5,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 8,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 21,
+				"readMs": 31.99999998509884,
+				"hashMs": 60.500000059604645,
+				"drainMs": 3804.899999976158,
+				"transferMs": 3944.7000000029802,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 28,
+				"readMs": 543.4999999850988,
+				"hashMs": 115.70000000298023,
+				"drainMs": 0,
+				"transferMs": 3944.3999999910593,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 0,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 116.89999996125698,
+				"hashMs": 252.20000000298023,
+				"drainMs": 3610.799999937415,
+				"transferMs": 4230.5999999940395,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 2176.9000000059605,
+				"hashMs": 504.70000000298023,
+				"drainMs": 0,
+				"transferMs": 4230.5,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 0,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 23,
+				"readMs": 112.59999997913837,
+				"hashMs": 259.19999998807907,
+				"drainMs": 1011.9000000655651,
+				"transferMs": 1503.4000000059605,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 23,
+				"readMs": 2075.500000014901,
+				"hashMs": 500.39999993145466,
+				"drainMs": 0,
+				"transferMs": 1502.7000000029802,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 1,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 24,
+				"readMs": 109.30000001192093,
+				"hashMs": 238.70000000298023,
+				"drainMs": 1025.8999998271465,
+				"transferMs": 1486.5999999940395,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 24,
+				"readMs": 2274.7000000178814,
+				"hashMs": 525.5999999344349,
+				"drainMs": 0,
+				"transferMs": 1486.800000011921,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 1,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 135.99999995529652,
+				"hashMs": 320,
+				"drainMs": 3439.9999999403954,
+				"transferMs": 4231,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 2594.2000000029802,
+				"hashMs": 644.8999999910593,
+				"drainMs": 0,
+				"transferMs": 4231.100000008941,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 2,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 142.80000001192093,
+				"hashMs": 314.49999998509884,
+				"drainMs": 3403.2999999523163,
+				"transferMs": 4184.5,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 2812.0999999940395,
+				"hashMs": 656.7999999970198,
+				"drainMs": 0,
+				"transferMs": 4184.4000000059605,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 2,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 34,
+				"readMs": 139.50000001490116,
+				"hashMs": 325.70000000298023,
+				"drainMs": 1391.1999999582767,
+				"transferMs": 2013.2000000029802,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 30,
+				"readMs": 2495.899999946356,
+				"hashMs": 618.4000000357628,
+				"drainMs": 0,
+				"transferMs": 2013.8999999910593,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 3,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 34,
+				"readMs": 141.90000000596046,
+				"hashMs": 337.7999999821186,
+				"drainMs": 1377.199999883771,
+				"transferMs": 2014.5,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 28,
+				"readMs": 2497.4999999552965,
+				"hashMs": 622.6000000089407,
+				"drainMs": 0,
+				"transferMs": 2014.2999999970198,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 3,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 137.90000000596046,
+				"hashMs": 300.1000000089407,
+				"drainMs": 3007.999999910593,
+				"transferMs": 3772,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 2521.0999999940395,
+				"hashMs": 612.5000000149012,
+				"drainMs": 0,
+				"transferMs": 3772.2999999970198,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 4,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 134.80000001192093,
+				"hashMs": 309.2999999821186,
+				"drainMs": 3411.3999997079372,
+				"transferMs": 4181.699999988079,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 2372.4000000208616,
+				"hashMs": 614.2999999970198,
+				"drainMs": 0,
+				"transferMs": 4181.0999999940395,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 4,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 34,
+				"readMs": 142.8000000268221,
+				"hashMs": 340.80000001192093,
+				"drainMs": 1379.199999794364,
+				"transferMs": 2006.7999999970198,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 27,
+				"readMs": 2433.2999999821186,
+				"hashMs": 616.1000000238419,
+				"drainMs": 0,
+				"transferMs": 2006.3999999910593,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 5,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 34,
+				"readMs": 142.90000002086163,
+				"hashMs": 347.09999999403954,
+				"drainMs": 1390.5999998301268,
+				"transferMs": 2033.2000000029802,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 28,
+				"readMs": 2457.9000000059605,
+				"hashMs": 614.9000000059605,
+				"drainMs": 0,
+				"transferMs": 2033.1000000089407,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 5,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 143.29999996721745,
+				"hashMs": 328.29999996721745,
+				"drainMs": 2980.299999728799,
+				"transferMs": 3769.7000000029802,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 2545.900000035763,
+				"hashMs": 607.0999999642372,
+				"drainMs": 0,
+				"transferMs": 3769.1000000089407,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 6,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 139,
+				"hashMs": 309.4999999701977,
+				"drainMs": 3405.800000011921,
+				"transferMs": 4175.9000000059605,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 2391.0999999940395,
+				"hashMs": 607.2000000327826,
+				"drainMs": 0,
+				"transferMs": 4175.70000000298,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 6,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 34,
+				"readMs": 143.99999998509884,
+				"hashMs": 313.10000002384186,
+				"drainMs": 1373.2000000178814,
+				"transferMs": 1968.5,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 30,
+				"readMs": 2515.9000000059605,
+				"hashMs": 621.1999999880791,
+				"drainMs": 0,
+				"transferMs": 1969.0999999940395,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 7,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 31,
+				"readMs": 132.7000000178814,
+				"hashMs": 305.70000000298023,
+				"drainMs": 2801.699999794364,
+				"transferMs": 3397.5,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 31,
+				"readMs": 2475.4000000059605,
+				"hashMs": 609.6999999731779,
+				"drainMs": 0,
+				"transferMs": 3397.5999999940395,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 7,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 142.40000002086163,
+				"hashMs": 320.899999961257,
+				"drainMs": 4238.399999886751,
+				"transferMs": 5026.79999999702,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 2509.399999976158,
+				"hashMs": 598.4000000357628,
+				"drainMs": 0,
+				"transferMs": 5026.399999991059,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 8,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 143.59999999403954,
+				"hashMs": 329.50000001490116,
+				"drainMs": 3768.999999910593,
+				"transferMs": 4562.899999991059,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 2513.000000014901,
+				"hashMs": 620.5999999791384,
+				"drainMs": 0,
+				"transferMs": 4563.20000000298,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "cpu4",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 8,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 32,
+				"readMs": 129.1999999731779,
+				"hashMs": 322.30000001192093,
+				"drainMs": 1291.1999997794628,
+				"transferMs": 1906.6000000089407,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 27,
+				"readMs": 2461.2999999821186,
+				"hashMs": 623.9999999850988,
+				"drainMs": 0,
+				"transferMs": 1906.7000000029802,
+				"valid": true
+			}
+		}
+	]
+}

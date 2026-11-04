@@ -1,7 +1,7 @@
 import type { DataChannel, PeerFactory, TransferPeer, TransferReceiver } from './ports';
 import { LIMITS, type ServerMessage } from '../../../../shared/protocol.ts';
 import { PhotoPeer } from './peer';
-import { PhotoReceiver, sendPhotos } from './transfer';
+import { PhotoReceiver, sendPhotos, TransferProgress } from './transfer';
 import type { SignalingConnection } from './signaling';
 
 type RequestInfo = Extract<ServerMessage, { type: 'requested' }>;
@@ -34,19 +34,15 @@ const browserPeer: PeerFactory = (config) => new RTCPeerConnection(config);
 
 export class TransferConnection implements Transfer {
 	private attached = false;
-	readonly transfer: RequestInfo;
-	readonly signal: AbortSignal;
-	readonly isSender: boolean;
+	readonly progress: (bytes: number) => void;
 
 	constructor(
-		transfer: RequestInfo,
-		signal: AbortSignal,
-		isSender: boolean,
+		readonly transfer: RequestInfo,
+		readonly signal: AbortSignal,
+		readonly isSender: boolean,
 		readonly callbacks: TransferCallbacks
 	) {
-		this.transfer = transfer;
-		this.signal = signal;
-		this.isSender = isSender;
+		this.progress = new TransferProgress(callbacks.total, callbacks.progress).update;
 	}
 
 	failIfActive(e: unknown) {
@@ -106,7 +102,7 @@ export class TransferConnection implements Transfer {
 			files: this.callbacks.files,
 			metadata: this.transfer.files,
 			signal: this.signal,
-			progress: this.callbacks.progress
+			progress: this.progress
 		});
 	}
 
@@ -175,11 +171,8 @@ class IncomingChannel {
 	}
 
 	createReceiver() {
-		return new PhotoReceiver(
-			this.transfer.transfer.files,
-			this.transfer.callbacks.progress,
-			this.transfer.callbacks.received,
-			() => this.verify()
+		return new PhotoReceiver(this.transfer.transfer.files, this.transfer.progress, this.transfer.callbacks.received, () =>
+			this.verify()
 		);
 	}
 

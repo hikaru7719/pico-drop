@@ -97,3 +97,7 @@ run = "pnpm --filter '@pico-drop/bench-*' check"
 description = "本番SSRビルドをChromiumで比較する（結果はbenchmarks/results/latest.json）"
 depends = ["bench:build"]
 run = "node benchmarks/run.mjs"
+
+[tasks."bench:transfer"]
+description = "実WebRTC転送をGitリビジョンと作業ツリーで比較する"
+run = "node benchmarks/transfer/run.mjs"

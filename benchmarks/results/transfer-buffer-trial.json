@@ -1,0 +1,266 @@
+{
+	"environment": {
+		"baseline": "229b582b2608d99f740e6a0c6a3b941da4c7126b",
+		"date": "2026-11-04T00:24:36.910Z",
+		"node": "v24.20.0",
+		"browser": "156.0.8078.4",
+		"cpu": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+		"platform": "linux",
+		"runs": 3,
+		"profiles": [
+			{
+				"name": "local",
+				"cpu": 1
+			}
+		],
+		"cases": [
+			{
+				"files": 10,
+				"bytes": 5242880
+			}
+		]
+	},
+	"summary": [
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"transferMs": {
+				"median": 3810.4000000059605,
+				"p95": 4321.79999999702,
+				"min": 3520.2000000029802,
+				"max": 4321.79999999702
+			},
+			"readMs": {
+				"median": 32.099999994039536,
+				"p95": 32.599999994039536,
+				"min": 31.499999970197678,
+				"max": 32.599999994039536
+			},
+			"hashMs": {
+				"median": 60.89999997615814,
+				"p95": 61.80000001192093,
+				"min": 60.49999998509884,
+				"max": 61.80000001192093
+			},
+			"drainMs": {
+				"median": 3637.6999999433756,
+				"p95": 4146.499999880791,
+				"min": 3332.8999999314547,
+				"max": 4146.499999880791
+			},
+			"progressCalls": {
+				"median": 3200,
+				"p95": 3200,
+				"min": 3200,
+				"max": 3200
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"transferMs": {
+				"median": 3928.0999999940395,
+				"p95": 4715.20000000298,
+				"min": 3495.0999999940395,
+				"max": 4715.20000000298
+			},
+			"readMs": {
+				"median": 33.69999995827675,
+				"p95": 34.79999998211861,
+				"min": 33.599999994039536,
+				"max": 34.79999998211861
+			},
+			"hashMs": {
+				"median": 61.599999979138374,
+				"p95": 63.10000002384186,
+				"min": 60.70000000298023,
+				"max": 63.10000002384186
+			},
+			"drainMs": {
+				"median": 3777.0000000298023,
+				"p95": 4565.70000000298,
+				"min": 3334.7999999672174,
+				"max": 4565.70000000298
+			},
+			"progressCalls": {
+				"median": 3200,
+				"p95": 3200,
+				"min": 3200,
+				"max": 3200
+			}
+		}
+	],
+	"samples": [
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 0,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 31.499999970197678,
+				"hashMs": 61.80000001192093,
+				"drainMs": 4146.499999880791,
+				"transferMs": 4321.79999999702,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 609.2000000327826,
+				"hashMs": 116.39999997615814,
+				"drainMs": 0,
+				"transferMs": 4321.899999991059,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 0,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 34.79999998211861,
+				"hashMs": 61.599999979138374,
+				"drainMs": 4565.70000000298,
+				"transferMs": 4715.20000000298,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 601.7000000327826,
+				"hashMs": 111.00000001490116,
+				"drainMs": 0,
+				"transferMs": 4715.0999999940395,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 1,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 33.599999994039536,
+				"hashMs": 60.70000000298023,
+				"drainMs": 3777.0000000298023,
+				"transferMs": 3928.0999999940395,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 604,
+				"hashMs": 114.7000000178814,
+				"drainMs": 0,
+				"transferMs": 3928,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 1,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 32.099999994039536,
+				"hashMs": 60.89999997615814,
+				"drainMs": 3637.6999999433756,
+				"transferMs": 3810.4000000059605,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 549.6000000089407,
+				"hashMs": 115.70000004768372,
+				"drainMs": 0,
+				"transferMs": 3810.5,
+				"valid": true
+			}
+		},
+		{
+			"variant": "baseline",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 2,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 32.599999994039536,
+				"hashMs": 60.49999998509884,
+				"drainMs": 3332.8999999314547,
+				"transferMs": 3520.2000000029802,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 548.3000000119209,
+				"hashMs": 116.59999994933605,
+				"drainMs": 0,
+				"transferMs": 3520.1000000089407,
+				"valid": true
+			}
+		},
+		{
+			"variant": "current",
+			"profile": "local",
+			"files": 10,
+			"bytes": 5242880,
+			"iteration": 2,
+			"sender": {
+				"bytes": 52428800,
+				"photos": 0,
+				"progressCalls": 3200,
+				"readMs": 33.69999995827675,
+				"hashMs": 63.10000002384186,
+				"drainMs": 3334.7999999672174,
+				"transferMs": 3495.0999999940395,
+				"valid": true
+			},
+			"receiver": {
+				"bytes": 52428800,
+				"photos": 10,
+				"progressCalls": 3200,
+				"readMs": 621.5999999791384,
+				"hashMs": 121.30000002682209,
+				"drainMs": 0,
+				"transferMs": 3495.300000011921,
+				"valid": true
+			}
+		}
+	],
+	"experiment": {
+		"description": "1MiB high water / 512KiB low water with Uint8Array views; no prefetch or progress throttling; exploratory comparison, not the final implementation",
+		"highWaterBytes": 1048576,
+		"lowWaterBytes": 524288,
+		"prefetch": false,
+		"progressIntervalMs": 0
+	}
+}

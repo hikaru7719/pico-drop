@@ -25,3 +25,7 @@ mise run bench
 この比較はフレームワークの基礎コストを調べる小規模な合成ワークロードです。既存のDropView、画像デコード、HEIC変換、WebRTC、写真のハッシュ処理、Cloudflare Workers、Safari、実機回線は含みません。既存アプリを完全移行した場合の性能や転送速度の結論には使用できません。サーバー実装・圧縮方式の違いも初期ロード時間に含まれます。
 
 公式資料: [React Router Framework Mode](https://reactrouter.com/start/modes)、[SvelteKit adapter-node](https://svelte.dev/docs/kit/adapter-node)。
+
+## WebRTC転送の比較
+
+写真本体の転送速度は別のベンチマークで計測する。`mise run bench:transfer` で、指定Gitリビジョンと作業ツリーの実DataChannel転送を比較できる。条件・測定結果・限界は [WebRTC転送ベンチマーク](transfer/README.md) を参照。

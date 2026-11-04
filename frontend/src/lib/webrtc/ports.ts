@@ -6,6 +6,7 @@ export interface SendChannel extends Pick<
 > {
 	send(data: string): void;
 	send(data: ArrayBuffer): void;
+	send(data: Uint8Array<ArrayBuffer>): void;
 }
 
 export interface DataChannel
