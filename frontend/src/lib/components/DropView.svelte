@@ -652,7 +652,7 @@
 	.picker .photo-icon {
 		transform: rotate(-6deg);
 	}
-	@media (min-width: 801px) {
+	@media (min-width: 801px) and (min-height: 600px) {
 		main:not(.in-flow):not(:has(.alert)) {
 			display: grid;
 			grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
@@ -673,7 +673,7 @@
 		main:not(.in-flow):not(:has(.alert)) .workspace {
 			width: 100%;
 		}
-		.headline-word {
+		.intro .headline-word {
 			display: block;
 		}
 	}
@@ -733,6 +733,7 @@
 		box-sizing: border-box;
 		margin-top: 12px;
 		padding: 12px;
+		font-size: 16px;
 	}
 	:global(body) {
 		margin: 0;
@@ -763,12 +764,14 @@
 	main {
 		max-width: 1160px;
 		margin: auto;
-		padding: 32px clamp(20px, 4vw, 48px);
+		padding: calc(32px + env(safe-area-inset-top, 0px)) max(clamp(16px, 4vw, 48px), env(safe-area-inset-right, 0px))
+			calc(32px + env(safe-area-inset-bottom, 0px)) max(clamp(16px, 4vw, 48px), env(safe-area-inset-left, 0px));
 	}
 	header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		flex-wrap: wrap;
 		gap: 16px;
 	}
 	header {
@@ -778,7 +781,7 @@
 	}
 	.identity {
 		min-width: 0;
-		max-width: 55%;
+		flex: 1 1 120px;
 		text-align: right;
 	}
 	.identity-label {
@@ -858,7 +861,8 @@
 		margin: 16px 0 20px;
 	}
 	.headline-word {
-		white-space: nowrap;
+		display: inline-block;
+		max-width: 100%;
 	}
 	.headline-character {
 		display: inline-block;
@@ -965,6 +969,8 @@
 		flex-direction: column;
 		gap: 12px;
 		min-height: 190px;
+		padding: 16px;
+		text-align: center;
 		border: 1px dashed #b8a58b;
 		border-radius: 6px;
 		background: #f6f0e5;
@@ -1009,6 +1015,8 @@
 		border-radius: 6px;
 		font-size: 14px;
 		min-height: 44px;
+		max-width: 100%;
+		overflow-wrap: anywhere;
 	}
 	.primary {
 		background: #b64629;
@@ -1118,6 +1126,7 @@
 	}
 	footer {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: center;
 		gap: 6px;
@@ -1180,7 +1189,7 @@
 	}
 	@media (max-width: 640px) {
 		main {
-			padding-top: 24px;
+			padding-top: calc(20px + env(safe-area-inset-top, 0px));
 		}
 		.intro {
 			padding: 32px 0 28px;
@@ -1189,7 +1198,7 @@
 			grid-template-columns: 1fr;
 		}
 		.card {
-			padding: 24px 20px;
+			padding: 24px clamp(16px, 4vw, 20px);
 		}
 		.badge {
 			font-size: 11px;

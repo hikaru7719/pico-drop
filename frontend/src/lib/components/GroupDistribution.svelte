@@ -99,6 +99,7 @@
 
 <style>
 	.group {
+		min-width: 0;
 		max-width: 640px;
 		margin: 0 auto 20px;
 		padding: 28px;
@@ -142,6 +143,8 @@
 		margin-top: 12px;
 	}
 	button {
+		max-width: 100%;
+		overflow-wrap: anywhere;
 		min-height: 44px;
 		padding: 10px 14px;
 		border: 1px solid #cdcbbc;
@@ -157,12 +160,14 @@
 	input {
 		display: block;
 		width: 100%;
+		min-width: 0;
+		font-size: 16px;
 		margin-top: 8px;
 		padding: 10px;
 	}
 	@media (max-width: 640px) {
 		.group {
-			padding: 24px 20px;
+			padding: 24px clamp(16px, 4vw, 20px);
 		}
 	}
 </style>

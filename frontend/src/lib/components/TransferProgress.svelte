@@ -84,6 +84,7 @@
 	}
 	.progress-heading {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
 		gap: 16px;
@@ -91,6 +92,7 @@
 	}
 	.progress-copy {
 		min-width: 0;
+		flex: 1 1 160px;
 	}
 	.status {
 		margin: 0;
@@ -152,6 +154,7 @@
 	}
 	.progress-caption {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: space-between;
 		gap: 12px;
 		margin-top: 12px;

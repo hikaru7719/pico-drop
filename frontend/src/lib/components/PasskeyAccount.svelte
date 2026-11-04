@@ -123,6 +123,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		flex-wrap: wrap;
 		gap: 12px;
 		padding-bottom: 20px;
 		margin-bottom: 24px;
@@ -173,10 +174,13 @@
 	input {
 		width: 100%;
 		min-width: 0;
+		font-size: 16px;
 		background: #fff;
 		color: #283f35;
 	}
 	button {
+		max-width: 100%;
+		overflow-wrap: anywhere;
 		cursor: pointer;
 		background: #fff;
 		color: #a23d24;
@@ -198,6 +202,10 @@
 		flex-shrink: 0;
 		border: 0;
 		font-weight: 400;
+	}
+	.authenticated p {
+		flex: 1 1 150px;
+		min-width: 0;
 	}
 	button:disabled {
 		opacity: 0.45;

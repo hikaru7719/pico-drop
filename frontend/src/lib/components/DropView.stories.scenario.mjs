@@ -19,15 +19,26 @@ page.on('request', (request) => {
 try {
 	const index = await (await fetch(`${baseURL}/index.json`)).json();
 	const stories = Object.values(index.entries).filter((entry) => entry.type === 'story');
-	assert.equal(stories.length, 24);
-	for (const story of stories) {
-		await page.goto(`${baseURL}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`);
-		await page
-			.locator('#storybook-root')
-			.locator(story.title.startsWith('画面/') ? 'main' : '.discovery')
-			.waitFor();
-		assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, story.name);
+	assert.equal(stories.length, 25);
+	for (const viewport of [
+		{ width: 320, height: 568 },
+		{ width: 390, height: 664 },
+		{ width: 844, height: 390 }
+	]) {
+		await page.setViewportSize(viewport);
+		for (const entry of stories) {
+			await page.goto(`${baseURL}/iframe.html?id=${encodeURIComponent(entry.id)}&viewMode=story`);
+			await page
+				.locator('#storybook-root')
+				.locator(entry.title.startsWith('画面/') ? 'main' : '.discovery')
+				.waitFor();
+			await page.evaluate(() => document.fonts.ready);
+			await verifyNoOverflow(`${entry.name} at ${viewport.width}px`);
+		}
+		await verifyPreview();
+		await verifyExpandedContent();
 	}
+	await page.setViewportSize({ width: 390, height: 844 });
 	await page.goto(`${baseURL}/iframe.html?id=${encodeURIComponent('画面-写真を共有--peer-connecting')}&viewMode=story`);
 	await page.locator('.transfer').waitFor();
 	assert.equal(await page.getByRole('heading', { name: '目の前の人に、写真を。' }).count(), 0);
@@ -104,9 +115,42 @@ async function verifyPreview() {
 	const trigger = control('button', 'weekend.pngを拡大する');
 	await trigger.click();
 	await visible(page.getByRole('dialog'));
+	await verifyPreviewFits();
 	await page.keyboard.press('Escape');
 	await visible(page.getByRole('dialog'), false);
 	await verifyFocus(trigger);
+}
+
+async function verifyPreviewFits() {
+	const fits = await page.getByRole('dialog').evaluate((dialog) => dialog.scrollHeight <= dialog.clientHeight + 1);
+	assert.equal(fits, true, 'preview photo must fit without scrolling');
+	await verifyCloseFits();
+}
+
+async function verifyCloseFits() {
+	const fits = await control('button', '閉じる').evaluate((button) => {
+		const rect = button.getBoundingClientRect();
+		return rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth;
+	});
+	assert.equal(fits, true, 'preview close button must fit in the viewport');
+}
+
+async function verifyNoOverflow(message) {
+	assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, message);
+	const overflowing = await page
+		.locator('button:visible')
+		.evaluateAll((buttons) =>
+			buttons.filter((button) => button.scrollWidth > button.clientWidth + 1).map((button) => button.textContent)
+		);
+	assert.deepEqual(overflowing, [], message);
+}
+
+async function verifyExpandedContent() {
+	for (const name of ['link-ready', 'group-ready', 'converted-photo']) {
+		await story(name);
+		await page.locator('summary').click();
+		await verifyNoOverflow(`${name} with expanded details`);
+	}
 }
 
 async function verifyEditable(photos, editable) {

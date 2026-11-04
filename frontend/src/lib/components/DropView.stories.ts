@@ -215,3 +215,21 @@ export const ManyReceived: Story = {
 		}))
 	}
 };
+
+export const GroupReady: Story = {
+	name: '24 みんなに渡す・参加者の確認',
+	args: {
+		...LinkReady.args,
+		groupMode: true,
+		participants: [
+			{
+				id: '12345678',
+				device: { id: 'guest', name: 'very-long-participant-name-without-spaces' },
+				status: 'waiting',
+				approved: false,
+				accepted: true,
+				attempts: 0
+			}
+		]
+	}
+};

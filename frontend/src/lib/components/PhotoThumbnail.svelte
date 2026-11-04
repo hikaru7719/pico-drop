@@ -78,19 +78,27 @@
 		background: #283f35e6;
 	}
 	dialog {
-		width: min(900px, calc(100% - 32px));
-		max-height: 90dvh;
+		inset: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+			max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+		width: min(900px, calc(100% - max(16px, env(safe-area-inset-left, 0px)) - max(16px, env(safe-area-inset-right, 0px))));
+		max-width: none;
+		max-height: calc(100dvh - max(16px, env(safe-area-inset-top, 0px)) - max(16px, env(safe-area-inset-bottom, 0px)));
 		border: 1px solid #dedcd1;
 		border-radius: 12px;
 		padding: 16px;
 		background: #fffdf8;
 		color: #283f35;
 	}
+	dialog[open] {
+		display: flex;
+		flex-direction: column;
+	}
 	dialog::backdrop {
 		background: #15251ed9;
 	}
 	.preview-header {
 		display: flex;
+		flex-shrink: 0;
 		align-items: center;
 		justify-content: space-between;
 		gap: 16px;
@@ -113,6 +121,7 @@
 		font: inherit;
 	}
 	img.full-photo {
+		min-height: 0;
 		height: auto;
 		max-height: 70dvh;
 		object-fit: contain;
